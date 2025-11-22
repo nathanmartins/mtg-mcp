@@ -54,7 +54,7 @@ func TestHTTPGet(t *testing.T) {
 				}
 
 				w.WriteHeader(tt.serverStatus)
-				w.Write([]byte(tt.serverResponse))
+				_, _ = w.Write([]byte(tt.serverResponse))
 			}))
 			defer server.Close()
 
@@ -101,6 +101,7 @@ func TestHTTPGet_Timeout(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(15 * time.Second) // Longer than 10 second timeout
 		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	}))
 	defer server.Close()
 

@@ -404,14 +404,17 @@ func (s *MTGCommanderServer) handleCheckLegality(ctx context.Context, request mc
 	var output strings.Builder
 	output.WriteString(fmt.Sprintf("# Legality Check: %s\n\n", card.Name))
 
-	status := strings.Title(string(card.Legalities.Commander))
+	// Capitalize first letter for display
+	legality := string(card.Legalities.Commander)
+	status := strings.ToUpper(legality[:1]) + legality[1:]
 	output.WriteString(fmt.Sprintf("**Commander Format:** %s\n\n", status))
 
-	if card.Legalities.Commander == "banned" {
+	switch card.Legalities.Commander {
+	case scryfall.LegalityBanned:
 		output.WriteString("⚠️ This card is **BANNED** in Commander format.\n\n")
-	} else if card.Legalities.Commander == "legal" {
+	case scryfall.LegalityLegal:
 		output.WriteString("✅ This card is **LEGAL** in Commander format.\n\n")
-	} else {
+	case scryfall.LegalityNotLegal, scryfall.LegalityRestricted:
 		output.WriteString("❌ This card is **NOT LEGAL** in Commander format.\n\n")
 	}
 
@@ -640,12 +643,13 @@ func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp
 	// Check deck size
 	totalCards := len(cardNames)
 	output.WriteString(fmt.Sprintf("**Deck Size:** %d cards ", totalCards))
-	if totalCards == 99 {
+	switch totalCards {
+	case 99:
 		output.WriteString("✅\n")
-	} else if totalCards == 100 {
+	case 100:
 		output.WriteString("(Note: 100 cards including commander, should be 99 in decklist)\n")
-	} else {
-		output.WriteString(fmt.Sprintf("❌ (should be 99 cards plus commander)\n"))
+	default:
+		output.WriteString("❌ (should be 99 cards plus commander)\n")
 	}
 
 	// Check singleton (no duplicates except basic lands)
@@ -675,7 +679,7 @@ func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp
 	if len(duplicates) == 0 {
 		output.WriteString("✅ No duplicates\n")
 	} else {
-		output.WriteString(fmt.Sprintf("❌ Found duplicates:\n"))
+		output.WriteString("❌ Found duplicates:\n")
 		for _, dup := range duplicates {
 			output.WriteString(fmt.Sprintf("  - %s\n", dup))
 		}
@@ -976,8 +980,8 @@ func (s *MTGCommanderServer) handleBannedListResource(ctx context.Context, reque
 	bannedCards := make([]map[string]string, len(result.Cards))
 	for i, card := range result.Cards {
 		bannedCards[i] = map[string]string{
-			"name":     card.Name,
-			"type":     card.TypeLine,
+			"name":      card.Name,
+			"type":      card.TypeLine,
 			"mana_cost": card.ManaCost,
 		}
 	}
@@ -1026,6 +1030,6 @@ func getUSDToBRLRate(ctx context.Context) (float64, error) {
 
 func convertToBRL(priceStr string, rate float64) float64 {
 	var price float64
-	fmt.Sscanf(priceStr, "%f", &price)
+	_, _ = fmt.Sscanf(priceStr, "%f", &price)
 	return price * rate
 }

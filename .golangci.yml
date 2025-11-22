@@ -16,8 +16,8 @@ formatters:
 
     ## you may want to enable
     # - gci # checks if code and import statements are formatted, with additional rules
-    #- gofumpt # enforces a stricter format than 'gofmt', while being backwards compatible
-    #- swaggo # formats swaggo comments
+    # - gofumpt # enforces a stricter format than 'gofmt', while being backwards compatible
+    # - swaggo # formats swaggo comments
 
   # All settings can be found here https://github.com/golangci/golangci-lint/blob/HEAD/.golangci.reference.yml
   settings:
@@ -79,7 +79,8 @@ linters:
     - nakedret # finds naked returns in functions greater than a specified function length
     - nestif # reports deeply nested if statements
     - nilerr # finds the code that returns nil even if it checks that the error is not nil
-    - nilnesserr # reports that it checks for err != nil, but it returns a different nil value error (powered by nilness and nilerr)
+    # reports that it checks for err != nil, but it returns a different nil value error
+    - nilnesserr # (powered by nilness and nilerr)
     - nilnil # checks that there is no simultaneous return of nil error and an invalid value
     - noctx # finds sending http request without context.Context
     - nolintlint # reports ill-formed or insufficient nolint directives
@@ -110,43 +111,58 @@ linters:
     - whitespace # detects leading and trailing whitespace
 
     ## you may want to enable
-    #- arangolint # opinionated best practices for arangodb client
-    #- decorder # checks declaration order and count of types, constants, variables and functions
-    #- exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
-    #- ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
-    #- godox # detects usage of FIXME, TODO and other keywords inside comments
-    #- goheader # checks is file header matches to pattern
-    #- inamedparam # [great idea, but too strict, need to ignore a lot of cases by default] reports interfaces with unnamed method parameters
-    #- interfacebloat # checks the number of methods inside an interface
-    #- ireturn # accept interfaces, return concrete types
-    #- noinlineerr # disallows inline error handling `if err := ...; err != nil {`
-    #- prealloc # [premature optimization, but can be used in some cases] finds slice declarations that could potentially be preallocated
-    #- tagalign # checks that struct tags are well aligned
-    #- varnamelen # [great idea, but too many false positives] checks that the length of a variable's name matches its scope
-    #- wrapcheck # checks that errors returned from external packages are wrapped
-    #- zerologlint # detects the wrong usage of zerolog that a user forgets to dispatch zerolog.Event
+    # - arangolint # opinionated best practices for arangodb client
+    # - decorder # checks declaration order and count of types, constants, variables and functions
+    # - exhaustruct # [highly recommend to enable] checks if all structure fields are initialized
+    # - ginkgolinter # [if you use ginkgo/gomega] enforces standards of using ginkgo and gomega
+    # - godox # detects usage of FIXME, TODO and other keywords inside comments
+    # - goheader # checks is file header matches to pattern
+    # [great idea, but too strict, need to ignore a lot of cases by default]
+    # - inamedparam # reports interfaces with unnamed method parameters
+    # - interfacebloat # checks the number of methods inside an interface
+    # - ireturn # accept interfaces, return concrete types
+    # - noinlineerr # disallows inline error handling `if err := ...; err != nil {`
+    # [premature optimization, but can be used in some cases]
+    # - prealloc # finds slice declarations that could potentially be preallocated
+    # - tagalign # checks that struct tags are well aligned
+    # [great idea, but too many false positives]
+    # - varnamelen # checks that the length of a variable's name matches its scope
+    # - wrapcheck # checks that errors returned from external packages are wrapped
+    # - zerologlint # detects the wrong usage of zerolog that a user forgets to dispatch zerolog.Event
 
     ## disabled
-    #- containedctx # detects struct contained context.Context field
-    #- contextcheck # [too many false positives] checks the function whether use a non-inherited context
-    #- dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    #- dupword # [useless without config] checks for duplicate words in the source code
-    #- err113 # [too strict] checks the errors handling expressions
-    #- errchkjson # [don't see profit + I'm against of omitting errors like in the first example https://github.com/breml/errchkjson] checks types passed to the json encoding functions. Reports unsupported types and optionally reports occasions, where the check for the returned error can be omitted
-    #- forcetypeassert # [replaced by errcheck] finds forced type assertions
-    #- gomodguard # [use more powerful depguard] allow and block lists linter for direct Go module dependencies
-    #- gosmopolitan # reports certain i18n/l10n anti-patterns in your Go codebase
-    #- grouper # analyzes expression groups
-    #- importas # enforces consistent import aliases
-    #- lll # [replaced by golines] reports long lines
-    #- maintidx # measures the maintainability index of each function
-    #- misspell # [useless] finds commonly misspelled English words in comments
-    #- nlreturn # [too strict and mostly code is not more readable] checks for a new line before return and branch statements to increase code clarity
-    #- paralleltest # [too many false positives] detects missing usage of t.Parallel() method in your Go test
-    #- tagliatelle # checks the struct tags
-    #- thelper # detects golang test helpers without t.Helper() call and checks the consistency of test helpers
-    #- wsl # [too strict and mostly code is not more readable] whitespace linter forces you to use empty lines
-    #- wsl_v5 # [too strict and mostly code is not more readable] add or remove empty lines
+    # - containedctx # detects struct contained context.Context field
+    # [too many false positives]
+    # - contextcheck # checks the function whether use a non-inherited context
+    # - dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
+    # [useless without config]
+    # - dupword # checks for duplicate words in the source code
+    # [too strict]
+    # - err113 # checks the errors handling expressions
+    # [don't see profit + I'm against of omitting errors like in the first example]
+    # - errchkjson # checks types passed to the json encoding functions
+    # [replaced by errcheck]
+    # - forcetypeassert # finds forced type assertions
+    # [use more powerful depguard]
+    # - gomodguard # allow and block lists linter for direct Go module dependencies
+    # - gosmopolitan # reports certain i18n/l10n anti-patterns in your Go codebase
+    # - grouper # analyzes expression groups
+    # - importas # enforces consistent import aliases
+    # [replaced by golines]
+    # - lll # reports long lines
+    # - maintidx # measures the maintainability index of each function
+    # [useless]
+    # - misspell # finds commonly misspelled English words in comments
+    # [too strict and mostly code is not more readable]
+    # - nlreturn # checks for a new line before return and branch statements to increase code clarity
+    # [too many false positives]
+    # - paralleltest # detects missing usage of t.Parallel() method in your Go test
+    # - tagliatelle # checks the struct tags
+    # - thelper # detects golang test helpers without t.Helper() call
+    # [too strict and mostly code is not more readable]
+    # - wsl # whitespace linter forces you to use empty lines
+    # [too strict and mostly code is not more readable]
+    # - wsl_v5 # add or remove empty lines
 
   # All settings can be found here https://github.com/golangci/golangci-lint/blob/HEAD/.golangci.reference.yml
   settings:
@@ -178,9 +194,10 @@ linters:
       rules:
         "deprecated":
           # List of file globs that will match this list of settings to compare against.
-          # By default, if a path is relative, it is relative to the directory where the golangci-lint command is executed.
-          # The placeholder '${base-path}' is substituted with a path relative to the mode defined with `run.relative-path-mode`.
-          # The placeholder '${config-path}' is substituted with a path relative to the configuration file.
+          # By default, if a path is relative, it is relative to the directory where
+          # the golangci-lint command is executed. The placeholder '${base-path}' is
+          # substituted with a path relative to the mode defined with `run.relative-path-mode`.
+          # The placeholder '${config-path}' is substituted with a path relative to the config file.
           # Default: $all
           files:
             - "$all"
@@ -189,7 +206,8 @@ linters:
           # Default: []
           deny:
             - pkg: github.com/golang/protobuf
-              desc: Use google.golang.org/protobuf instead, see https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules
+              # Use google.golang.org/protobuf instead
+              desc: See https://developers.google.com/protocol-buffers/docs/reference/go/faq#modules
             - pkg: github.com/satori/go.uuid
               desc: Use github.com/google/uuid instead, satori's package is not maintained
             - pkg: github.com/gofrs/uuid$
@@ -205,7 +223,8 @@ linters:
             - "!**/main.go"
           deny:
             - pkg: log$
-              desc: Use log/slog instead, see https://go.dev/blog/slog
+              # Use log/slog instead of log package
+              desc: See https://go.dev/blog/slog
 
     embeddedstructfieldcheck:
       # Checks that sync.Mutex and sync.RWMutex are not used as embedded fields.
@@ -298,7 +317,8 @@ linters:
       # Default: false
       enable-all: true
       # Disable analyzers by name.
-      # Run `GL_DEBUG=govet golangci-lint run --enable=govet` to see default, all available analyzers, and enabled analyzers.
+      # Run `GL_DEBUG=govet golangci-lint run --enable=govet` to see default, all available
+      # analyzers, and enabled analyzers.
       # Default: []
       disable:
         - fieldalignment # too strict
@@ -342,7 +362,7 @@ linters:
     nolintlint:
       # Exclude following linters from requiring an explanation.
       # Default: []
-      allow-no-explanation: [ funlen, gocognit, golines, mnd ]
+      allow-no-explanation: [funlen, gocognit, golines, mnd]
       # Enable to require an explanation of nonzero length after each nolint directive.
       # Default: false
       require-explanation: true
@@ -419,17 +439,17 @@ linters:
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
       - source: 'TODO'
-        linters: [ godot ]
+        linters: [godot]
       - text: 'should have a package comment'
-        linters: [ revive ]
+        linters: [revive]
       - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
-        linters: [ revive ]
+        linters: [revive]
       - text: 'package comment should be of the form ".+"'
         source: '// ?(nolint|TODO)'
-        linters: [ revive ]
+        linters: [revive]
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
         source: '// ?(nolint|TODO)'
-        linters: [ revive, staticcheck ]
+        linters: [revive, staticcheck]
       - path: '_test\.go'
         linters:
           - bodyclose

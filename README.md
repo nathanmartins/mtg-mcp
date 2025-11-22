@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml)
 
-A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card information, rulings, pricing, and deck validation tools.
+A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card
+information, rulings, pricing, and deck validation tools.
 
 ## Features
 
@@ -50,37 +51,44 @@ A Model Context Protocol (MCP) server for Magic: The Gathering Commander format,
    - Color identity validation
    - Supports JSON array or text format decklists
 
-#### Moxfield Integration (2 tools)
+#### Moxfield Integration (3 tools)
 
-8. **get_moxfield_deck** - Fetch complete deck from Moxfield
+1. **get_moxfield_deck** - Fetch complete deck from Moxfield
    - Accepts deck URL or public ID
    - Full decklist with card types organized
    - Deck metadata (views, likes, comments, author)
    - Commanders, mainboard, sideboard, maybeboard
    - Last updated timestamp
 
-9. **get_moxfield_user_decks** - Get user's deck list from Moxfield
+2. **get_moxfield_user_decks** - Get user's deck list from Moxfield
    - List all decks for a Moxfield user
    - Paginated results (up to 100 per page)
    - Deck summaries with views and likes
    - Format and public URL for each deck
 
+3. **search_moxfield_decks** - Search for decks on Moxfield by commander
+   - Search by commander name
+   - Filter by format (commander, standard, modern, etc.)
+   - Sort by updated, views, or likes
+   - Paginated results (up to 100 per page)
+   - Returns deck metadata with views, likes, and URLs
+
 #### EDHREC Meta Data (2 tools)
 
-10. **get_edhrec_recommendations** - Get EDHREC recommendations for a commander
-    - High synergy cards with synergy scores
-    - Most popular cards by inclusion rate
-    - New cards trending for the commander
-    - Card categories (creatures, instants, artifacts, etc.)
-    - Deck count and meta statistics
-    - Salt scores for controversial cards
+1. **get_edhrec_recommendations** - Get EDHREC recommendations for a commander
+   - High synergy cards with synergy scores
+   - Most popular cards by inclusion rate
+   - New cards trending for the commander
+   - Card categories (creatures, instants, artifacts, etc.)
+   - Deck count and meta statistics
+   - Salt scores for controversial cards
 
-11. **get_edhrec_combos** - Get popular combos for color combinations
-    - Combo cards and prerequisites
-    - Combo results (e.g., "Infinite mana", "Win the game")
-    - Usage statistics and percentages
-    - Ranked by popularity
-    - Color identity filtering (w/u/b/r/g)
+2. **get_edhrec_combos** - Get popular combos for color combinations
+   - Combo cards and prerequisites
+   - Combo results (e.g., "Infinite mana", "Win the game")
+   - Usage statistics and percentages
+   - Ranked by popularity
+   - Color identity filtering (w/u/b/r/g)
 
 ### Resources (Data Sources)
 
@@ -157,13 +165,13 @@ After adding the configuration, restart Claude Desktop.
 
 To make this server available globally in Claude Code across all projects:
 
-**Option 1: Using the CLI (Recommended)**
+#### Option 1: Using the CLI (Recommended)
 
 ```bash
 claude mcp add --transport stdio mtg-commander /absolute/path/to/mtg-mcp/mtg-commander-server --scope user
 ```
 
-**Option 2: Manual Configuration**
+#### Option 2: Manual Configuration
 
 Edit the global MCP configuration file:
 
@@ -213,6 +221,8 @@ Once connected to Claude Desktop, you can ask questions like:
 - "Fetch this Moxfield deck: <https://www.moxfield.com/decks/abc123>"
 - "Show me decks by user JohnDoe on Moxfield"
 - "What's in the mainboard of Moxfield deck xyz789?"
+- "Search Moxfield for top Atraxa, Praetors' Voice decks"
+- "Find the most popular Thrasios decks on Moxfield sorted by views"
 
 **EDHREC:**
 
@@ -264,13 +274,21 @@ Once connected to Claude Desktop, you can ask questions like:
 
 ## Project Structure
 
-```
+```text
 mtg-mcp/
 ├── main.go                 # Core MCP server implementation
 ├── logger.go               # Structured logging configuration (zerolog)
 ├── edhrec.go               # EDHREC API integration
 ├── moxfield.go             # Moxfield API integration
 ├── http.go                 # HTTP utilities for API calls
+├── *_test.go               # Unit test files
+│   ├── edhrec_test.go      # Tests for EDHREC functionality
+│   ├── moxfield_test.go    # Tests for Moxfield functionality
+│   ├── http_test.go        # Tests for HTTP utilities
+│   └── logger_test.go      # Tests for logger
+├── .github/                # GitHub Actions workflows
+│   └── workflows/
+│       └── ci.yaml         # CI pipeline with tests and linting
 ├── go.mod                  # Go module dependencies
 ├── go.sum                  # Dependency checksums
 ├── mtg-commander-server    # Compiled MCP server binary
@@ -289,6 +307,33 @@ Key dependencies (automatically managed by `go mod`):
 
 ## Development
 
+### Running Tests
+
+The project includes comprehensive unit tests with good coverage:
+
+```bash
+# Run all tests
+go test -v ./...
+
+# Run tests with coverage
+go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+# View coverage report
+go tool cover -html=coverage.out
+```
+
+### Linting
+
+The project uses golangci-lint for code quality checks:
+
+```bash
+# Run linter
+golangci-lint run
+
+# Run linter with auto-fix
+golangci-lint run --fix
+```
+
 ### Adding New Tools
 
 1. Define the tool in `registerTools()` using `mcp.NewTool()`
@@ -299,6 +344,7 @@ Key dependencies (automatically managed by `go mod`):
    ```
 
 3. Register with `mcpServer.AddTool()`
+4. Write unit tests in a corresponding `*_test.go` file
 
 ### Adding New Resources
 
@@ -310,6 +356,16 @@ Key dependencies (automatically managed by `go mod`):
    ```
 
 3. Register with `mcpServer.AddResource()`
+4. Write unit tests for the resource handler
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI:
+
+- **Build**: Compiles the project for Linux/amd64
+- **Test**: Runs all tests with race detection and coverage
+- **Lint**: Runs golangci-lint for code quality checks
+- **Coverage**: Uploads coverage reports to Codecov (optional)
 
 ## Limitations
 
@@ -320,14 +376,17 @@ Key dependencies (automatically managed by `go mod`):
 
 2. **Rate Limiting:** Scryfall API has a 10 req/sec limit (automatically handled)
 
-3. **Deck Validation:** Basic validation only. Full color identity and individual card legality checks require manual implementation for large decks.
+3. **Deck Validation:** Basic validation only. Full color identity and individual card legality checks require
+   manual implementation for large decks.
 
 ## Future Enhancements
 
 Potential improvements:
 
 - [x] Moxfield deck fetching and user deck lists
+- [x] Moxfield deck search by commander
 - [x] EDHREC card recommendations and combo database
+- [x] Comprehensive unit tests with CI/CD
 - [ ] Direct LigaMagic integration for accurate BRL pricing
 - [ ] Caching layer for frequently accessed cards
 - [ ] Bulk deck validation with full color identity checking
@@ -346,7 +405,8 @@ This is a personal project for Commander format assistance. Contributions, sugge
 
 This project is provided as-is for personal use.
 
-**Note:** This project uses data from Scryfall, which is provided under Wizards of the Coast's Fan Content Policy. Card data and imagery are property of Wizards of the Coast.
+**Note:** This project uses data from Scryfall, which is provided under Wizards of the Coast's Fan Content Policy.
+Card data and imagery are property of Wizards of the Coast.
 
 ## Acknowledgments
 

@@ -23,17 +23,17 @@ type EDHRECContainer struct {
 
 // EDHRECData contains the main data structure
 type EDHRECData struct {
-	Card      EDHRECCardInfo  `json:"card"`
+	Card      EDHRECCardInfo   `json:"card"`
 	CardLists []EDHRECCardList `json:"cardlists"`
-	NumDecks  int             `json:"num_decks"`
+	NumDecks  int              `json:"num_decks"`
 }
 
 // EDHRECCardInfo represents commander information
 type EDHRECCardInfo struct {
-	Name       string   `json:"name"`
-	Sanitized  string   `json:"sanitized"`
-	ColorID    []string `json:"color_id"`
-	NumDecks   int      `json:"num_decks"`
+	Name      string   `json:"name"`
+	Sanitized string   `json:"sanitized"`
+	ColorID   []string `json:"color_id"`
+	NumDecks  int      `json:"num_decks"`
 }
 
 // EDHRECCardList represents a category of cards
@@ -45,14 +45,14 @@ type EDHRECCardList struct {
 
 // EDHRECCardView represents a card with statistics
 type EDHRECCardView struct {
-	Name       string              `json:"name"`
-	Sanitized  string              `json:"sanitized"`
-	Inclusion  int                 `json:"inclusion"`
-	NumDecks   int                 `json:"num_decks"`
-	Synergy    float64             `json:"synergy"`
-	Label      string              `json:"label"`
-	Salt       float64             `json:"salt"`
-	Prices     map[string]float64  `json:"prices"`
+	Name      string             `json:"name"`
+	Sanitized string             `json:"sanitized"`
+	Inclusion int                `json:"inclusion"`
+	NumDecks  int                `json:"num_decks"`
+	Synergy   float64            `json:"synergy"`
+	Label     string             `json:"label"`
+	Salt      float64            `json:"salt"`
+	Prices    map[string]float64 `json:"prices"`
 }
 
 // EDHRECComboResponse represents combo data
@@ -72,14 +72,14 @@ type EDHRECComboData struct {
 
 // EDHRECCombo represents a card combo
 type EDHRECCombo struct {
-	ComboID   string   `json:"comboId"`
-	Colors    string   `json:"colors"`
-	Count     int      `json:"count"`
-	Percentage float64 `json:"percentage"`
-	Rank      int      `json:"rank"`
-	CardIDs   []string `json:"cardIds"`
-	CardNames []string `json:"cardNames"`
-	Results   []string `json:"results"`
+	ComboID    string   `json:"comboId"`
+	Colors     string   `json:"colors"`
+	Count      int      `json:"count"`
+	Percentage float64  `json:"percentage"`
+	Rank       int      `json:"rank"`
+	CardIDs    []string `json:"cardIds"`
+	CardNames  []string `json:"cardNames"`
+	Results    []string `json:"results"`
 }
 
 // SanitizeCardName converts a card name to EDHREC URL format
@@ -119,7 +119,9 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("EDHREC API returned status %d for %s", resp.StatusCode, commanderName)
@@ -152,7 +154,9 @@ func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, e
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("EDHREC combos API returned status %d", resp.StatusCode)
@@ -275,7 +279,9 @@ func GetTopCardsForCategory(ctx context.Context, category string, page int) ([]E
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("EDHREC top cards API returned status %d", resp.StatusCode)

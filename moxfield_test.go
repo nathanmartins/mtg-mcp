@@ -116,7 +116,7 @@ func TestGetMoxfieldDeck(t *testing.T) {
 
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.mockDeck)
+					_ = json.NewEncoder(w).Encode(tt.mockDeck)
 				}
 			}))
 			defer server.Close()
@@ -422,13 +422,13 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 
 func TestFormatDeckForDisplay(t *testing.T) {
 	deck := &MoxfieldDeck{
-		Name:        "Test Deck",
-		Format:      "commander",
-		Authors:     []string{"Author1", "Author2"},
-		ViewCount:   1000,
-		LikeCount:   100,
+		Name:         "Test Deck",
+		Format:       "commander",
+		Authors:      []string{"Author1", "Author2"},
+		ViewCount:    1000,
+		LikeCount:    100,
 		CommentCount: 50,
-		Description: "This is a test deck",
+		Description:  "This is a test deck",
 		Commanders: map[string]MoxfieldCardEntry{
 			"cmd": {
 				Quantity: 1,

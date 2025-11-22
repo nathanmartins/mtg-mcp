@@ -13,21 +13,21 @@ var moxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
 
 // MoxfieldDeck represents a deck from Moxfield
 type MoxfieldDeck struct {
-	ID          string                       `json:"id"`
-	PublicID    string                       `json:"publicId"`
-	Name        string                       `json:"name"`
-	Format      string                       `json:"format"`
-	Description string                       `json:"description"`
-	Mainboard   map[string]MoxfieldCardEntry `json:"mainboard"`
-	Sideboard   map[string]MoxfieldCardEntry `json:"sideboard"`
-	Commanders  map[string]MoxfieldCardEntry `json:"commanders"`
-	Maybeboard  map[string]MoxfieldCardEntry `json:"maybeboard"`
-	CreatedAt   string                       `json:"createdAtUtc"`
-	LastUpdated string                       `json:"lastUpdatedAtUtc"`
-	ViewCount   int                          `json:"viewCount"`
-	LikeCount   int                          `json:"likeCount"`
-	CommentCount int                         `json:"commentCount"`
-	Authors     []string                     `json:"authors"`
+	ID           string                       `json:"id"`
+	PublicID     string                       `json:"publicId"`
+	Name         string                       `json:"name"`
+	Format       string                       `json:"format"`
+	Description  string                       `json:"description"`
+	Mainboard    map[string]MoxfieldCardEntry `json:"mainboard"`
+	Sideboard    map[string]MoxfieldCardEntry `json:"sideboard"`
+	Commanders   map[string]MoxfieldCardEntry `json:"commanders"`
+	Maybeboard   map[string]MoxfieldCardEntry `json:"maybeboard"`
+	CreatedAt    string                       `json:"createdAtUtc"`
+	LastUpdated  string                       `json:"lastUpdatedAtUtc"`
+	ViewCount    int                          `json:"viewCount"`
+	LikeCount    int                          `json:"likeCount"`
+	CommentCount int                          `json:"commentCount"`
+	Authors      []string                     `json:"authors"`
 }
 
 // MoxfieldCardEntry represents a card in a Moxfield deck
@@ -47,11 +47,11 @@ type MoxfieldCardInfo struct {
 
 // MoxfieldUserDecksResponse represents paginated user decks
 type MoxfieldUserDecksResponse struct {
-	PageNumber   int                    `json:"pageNumber"`
-	PageSize     int                    `json:"pageSize"`
-	TotalResults int                    `json:"totalResults"`
-	TotalPages   int                    `json:"totalPages"`
-	Data         []MoxfieldDeckSummary  `json:"data"`
+	PageNumber   int                   `json:"pageNumber"`
+	PageSize     int                   `json:"pageSize"`
+	TotalResults int                   `json:"totalResults"`
+	TotalPages   int                   `json:"totalPages"`
+	Data         []MoxfieldDeckSummary `json:"data"`
 }
 
 // MoxfieldDeckSummary represents a deck summary in list view
@@ -66,11 +66,11 @@ type MoxfieldDeckSummary struct {
 
 // MoxfieldSearchResponse represents search results from Moxfield
 type MoxfieldSearchResponse struct {
-	PageNumber   int                    `json:"pageNumber"`
-	PageSize     int                    `json:"pageSize"`
-	TotalResults int                    `json:"totalResults"`
-	TotalPages   int                    `json:"totalPages"`
-	Data         []MoxfieldDeckSummary  `json:"data"`
+	PageNumber   int                   `json:"pageNumber"`
+	PageSize     int                   `json:"pageSize"`
+	TotalResults int                   `json:"totalResults"`
+	TotalPages   int                   `json:"totalPages"`
+	Data         []MoxfieldDeckSummary `json:"data"`
 }
 
 // MoxfieldSearchParams represents search parameters

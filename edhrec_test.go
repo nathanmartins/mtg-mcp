@@ -74,13 +74,13 @@ func TestSanitizeCardName(t *testing.T) {
 
 func TestGetCommanderRecommendations(t *testing.T) {
 	tests := []struct {
-		name           string
-		commanderName  string
-		mockResponse   EDHRECResponse
-		mockStatus     int
-		wantErr        bool
-		checkURL       bool
-		expectedURL    string
+		name          string
+		commanderName string
+		mockResponse  EDHRECResponse
+		mockStatus    int
+		wantErr       bool
+		checkURL      bool
+		expectedURL   string
 	}{
 		{
 			name:          "successful request",
@@ -140,7 +140,7 @@ func TestGetCommanderRecommendations(t *testing.T) {
 
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.mockResponse)
+					_ = json.NewEncoder(w).Encode(tt.mockResponse)
 				}
 			}))
 			defer server.Close()
@@ -211,7 +211,7 @@ func TestGetCombosForColors(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.mockResponse)
+					_ = json.NewEncoder(w).Encode(tt.mockResponse)
 				}
 			}))
 			defer server.Close()
