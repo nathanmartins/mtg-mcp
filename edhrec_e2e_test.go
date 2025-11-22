@@ -28,7 +28,10 @@ func TestEDHRECCommanderRecommendationsE2E(t *testing.T) {
 
 	// Note: EDHREC data might be empty for some commanders or during API updates
 	if data.NumDecks == 0 {
-		t.Logf("Warning: EDHREC returned 0 decks for %s (API might be updating or commander not tracked)", data.Card.Name)
+		t.Logf(
+			"Warning: EDHREC returned 0 decks for %s (API might be updating or commander not tracked)",
+			data.Card.Name,
+		)
 	}
 
 	if len(data.CardLists) == 0 {

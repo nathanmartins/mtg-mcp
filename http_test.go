@@ -97,23 +97,26 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 }
 
 func TestHTTPGet_Timeout(t *testing.T) {
-	// Create a server that delays longer than the timeout
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		time.Sleep(15 * time.Second) // Longer than 10 second timeout
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok"}`))
+	// Note: synctest doesn't work well with httptest.NewServer since it uses real TCP connections.
+	// Instead, we use a short real timeout (50ms) to keep the test fast.
+	// See: https://go.dev/blog/synctest (recommends net.Pipe for in-memory testing)
+
+	// Create a server that blocks until request context is cancelled
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		// Wait for context cancellation
+		<-r.Context().Done()
 	}))
 	defer server.Close()
 
-	ctx := context.Background()
+	// Use a short timeout to make test run fast (50ms)
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
 	_, err := HTTPGet(ctx, server.URL)
 
-	// Should timeout after 10 seconds (but we won't wait that long in the test)
-	// The actual timeout behavior is handled by the HTTP client
+	// Should timeout due to context deadline
 	if err == nil {
-		// If no error, the server responded faster than expected
-		// This is acceptable in test environment
-		t.Skip("Server responded before timeout (acceptable in test)")
+		t.Error("HTTPGet() expected timeout error, got nil")
 	}
 }
 

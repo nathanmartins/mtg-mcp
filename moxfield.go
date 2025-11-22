@@ -304,18 +304,23 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 
 	// Authors field can be either []string or an object, handle gracefully
 	if deck.Authors != nil {
-		if authors, ok := deck.Authors.([]interface{}); ok && len(authors) > 0 {
-			authorStrs := make([]string, 0, len(authors))
-			for _, author := range authors {
-				if authorStr, ok := author.(string); ok {
-					authorStrs = append(authorStrs, authorStr)
-				}
-			}
-			if len(authorStrs) > 0 {
-				output.WriteString(fmt.Sprintf("**Author:** %s\n", strings.Join(authorStrs, ", ")))
+		authors, ok := deck.Authors.([]interface{})
+		if !ok || len(authors) == 0 {
+			goto skipAuthors
+		}
+
+		authorStrs := make([]string, 0, len(authors))
+		for _, author := range authors {
+			if authorStr, isString := author.(string); isString {
+				authorStrs = append(authorStrs, authorStr)
 			}
 		}
+
+		if len(authorStrs) > 0 {
+			output.WriteString(fmt.Sprintf("**Author:** %s\n", strings.Join(authorStrs, ", ")))
+		}
 	}
+skipAuthors:
 
 	output.WriteString(fmt.Sprintf("**Views:** %d | **Likes:** %d | **Comments:** %d\n",
 		deck.ViewCount, deck.LikeCount, deck.CommentCount))

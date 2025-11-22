@@ -315,6 +315,57 @@ Key dependencies (automatically managed by `go mod`):
 
 ## Development
 
+### Quick Start with Makefile
+
+The project includes a Makefile with common development tasks (compatible with MacOS and Linux):
+
+```bash
+# View all available commands
+make help
+
+# Run all checks (format, lint, unit tests)
+make check
+
+# Build the binary
+make build
+
+# Run unit tests (fast)
+make test-unit
+
+# Run all tests including E2E
+make test
+
+# Run tests with coverage report
+make test-coverage
+
+# Format and lint code
+make fmt lint
+
+# Run CI pipeline locally
+make ci
+```
+
+**Common Makefile Commands:**
+
+| Command | Description |
+|---------|-------------|
+| `make help` | Show all available commands |
+| `make build` | Build the binary |
+| `make test-unit` | Run unit tests only (fast, skips E2E) |
+| `make test-e2e` | Run E2E tests only |
+| `make test` | Run all tests (unit + E2E) |
+| `make test-coverage` | Generate HTML coverage report |
+| `make test-coverage-cli` | Show coverage in terminal |
+| `make test-race` | Run tests with race detector |
+| `make bench` | Run benchmarks |
+| `make fmt` | Format Go code |
+| `make lint` | Run all linters |
+| `make check` | Run fmt + lint + test-unit |
+| `make ci` | Run full CI pipeline locally |
+| `make clean` | Clean build artifacts |
+| `make deps` | Download dependencies |
+| `make tidy` | Tidy go.mod |
+
 ### Running Tests
 
 The project includes comprehensive unit tests with good coverage:
