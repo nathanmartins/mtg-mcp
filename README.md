@@ -351,7 +351,7 @@ make ci
 **Common Makefile Commands:**
 
 | Command | Description |
-|---------|-------------|
+| ------- | ----------- |
 | `make help` | Show all available commands |
 | `make build` | Build the binary |
 | `make test-unit` | Run unit tests only (fast, skips E2E) |
