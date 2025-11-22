@@ -187,6 +187,47 @@ Replace `/absolute/path/to/mtg-mcp/` with the actual path to the binary.
 
 After adding the configuration, restart Claude Desktop.
 
+#### Connecting to Claude Code (Global Configuration)
+
+To make this server available globally in Claude Code across all projects:
+
+**Option 1: Using the CLI (Recommended)**
+
+```bash
+claude mcp add --transport stdio mtg-commander /absolute/path/to/mtg-mcp/mtg-commander-server --scope user
+```
+
+**Option 2: Manual Configuration**
+
+Edit the global MCP configuration file:
+
+**File location:**
+- macOS: `~/.claude/servers.json`
+- Windows: `%APPDATA%\ClaudeCode\servers.json`
+- Linux: `~/.config/ClaudeCode/servers.json`
+
+**Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "mtg-commander": {
+      "command": "/absolute/path/to/mtg-mcp/mtg-commander-server",
+      "args": [],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+**Verify installation:**
+
+```bash
+claude mcp list
+```
+
+You should see `mtg-commander` in the list of available servers.
+
 ## Example Queries
 
 Once connected to Claude Desktop, you can ask questions like:
