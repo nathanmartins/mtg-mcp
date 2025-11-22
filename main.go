@@ -183,7 +183,29 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(moxfieldUserDecksTool, s.handleGetMoxfieldUserDecks)
 
-	// Tool 10: Get EDHREC Recommendations
+	// Tool 10: Search Moxfield Decks
+	searchMoxfieldDecksTool := mcp.NewTool("search_moxfield_decks",
+		mcp.WithDescription("Search for decks on Moxfield by commander name or other criteria, returns popular decks sorted by views/likes"),
+		mcp.WithString("commander",
+			mcp.Required(),
+			mcp.Description("Commander card name to search for (e.g., 'Atraxa, Praetors Voice')"),
+		),
+		mcp.WithString("format",
+			mcp.Description("MTG format to filter by (default: 'commander')"),
+		),
+		mcp.WithString("sort_type",
+			mcp.Description("Sort type: 'updated', 'views', 'likes' (default: 'updated')"),
+		),
+		mcp.WithString("sort_direction",
+			mcp.Description("Sort direction: 'Ascending' or 'Descending' (default: 'Descending')"),
+		),
+		mcp.WithNumber("page_size",
+			mcp.Description("Number of decks to return (default: 20, max: 100)"),
+		),
+	)
+	mcpServer.AddTool(searchMoxfieldDecksTool, s.handleSearchMoxfieldDecks)
+
+	// Tool 11: Get EDHREC Recommendations
 	edhrecRecommendationsTool := mcp.NewTool("get_edhrec_recommendations",
 		mcp.WithDescription("Get EDHREC card recommendations for a specific commander, including high synergy cards, top cards, and statistics"),
 		mcp.WithString("commander",
@@ -196,7 +218,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(edhrecRecommendationsTool, s.handleGetEDHRECRecommendations)
 
-	// Tool 11: Get EDHREC Combos
+	// Tool 12: Get EDHREC Combos
 	edhrecCombosTool := mcp.NewTool("get_edhrec_combos",
 		mcp.WithDescription("Get popular card combos for a color combination from EDHREC"),
 		mcp.WithString("colors",
@@ -734,6 +756,101 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(ctx context.Context, req
 		output.WriteString(fmt.Sprintf("   - Views: %d | Likes: %d\n", deck.ViewCount, deck.LikeCount))
 		output.WriteString(fmt.Sprintf("   - URL: %s\n\n", deck.PublicURL))
 	}
+
+	return mcp.NewToolResultText(output.String()), nil
+}
+
+func (s *MTGCommanderServer) handleSearchMoxfieldDecks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	commander, err := request.RequireString("commander")
+	if err != nil {
+		logger.Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Get optional parameters
+	args := request.GetArguments()
+
+	format := "commander"
+	if formatVal, hasFormat := args["format"]; hasFormat {
+		if formatStr, ok := formatVal.(string); ok {
+			format = formatStr
+		}
+	}
+
+	sortType := "updated"
+	if sortTypeVal, hasSortType := args["sort_type"]; hasSortType {
+		if sortTypeStr, ok := sortTypeVal.(string); ok {
+			sortType = sortTypeStr
+		}
+	}
+
+	sortDirection := "Descending"
+	if sortDirVal, hasSortDir := args["sort_direction"]; hasSortDir {
+		if sortDirStr, ok := sortDirVal.(string); ok {
+			sortDirection = sortDirStr
+		}
+	}
+
+	pageSize := 20
+	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
+		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
+			pageSize = int(pageSizeFloat)
+			if pageSize > 100 {
+				pageSize = 100
+			}
+		}
+	}
+
+	logger.Info().
+		Str("tool", "search_moxfield_decks").
+		Str("commander", commander).
+		Str("format", format).
+		Str("sort_type", sortType).
+		Int("page_size", pageSize).
+		Msg("Searching Moxfield decks")
+
+	params := MoxfieldSearchParams{
+		Query:         commander,
+		Format:        format,
+		SortType:      sortType,
+		SortDirection: sortDirection,
+		PageSize:      pageSize,
+		PageNumber:    1,
+	}
+
+	results, err := SearchMoxfieldDecks(ctx, params)
+	if err != nil {
+		logger.Error().
+			Err(err).
+			Str("tool", "search_moxfield_decks").
+			Str("commander", commander).
+			Msg("Failed to search Moxfield decks")
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
+	}
+
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("# Moxfield Decks for %s\n\n", commander))
+	output.WriteString(fmt.Sprintf("**Format:** %s\n", format))
+	output.WriteString(fmt.Sprintf("**Total Results:** %d\n", results.TotalResults))
+	output.WriteString(fmt.Sprintf("**Showing:** %d decks (Page %d of %d)\n\n", len(results.Data), results.PageNumber, results.TotalPages))
+
+	if len(results.Data) == 0 {
+		output.WriteString("No decks found for this commander.\n")
+	} else {
+		for i, deck := range results.Data {
+			output.WriteString(fmt.Sprintf("## %d. %s\n", i+1, deck.Name))
+			output.WriteString(fmt.Sprintf("- **Format:** %s\n", deck.Format))
+			output.WriteString(fmt.Sprintf("- **Deck ID:** %s\n", deck.PublicID))
+			output.WriteString(fmt.Sprintf("- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount))
+			output.WriteString(fmt.Sprintf("- **URL:** %s\n\n", deck.PublicURL))
+		}
+	}
+
+	logger.Info().
+		Str("tool", "search_moxfield_decks").
+		Str("commander", commander).
+		Int("results_count", len(results.Data)).
+		Msg("Successfully searched Moxfield decks")
 
 	return mcp.NewToolResultText(output.String()), nil
 }

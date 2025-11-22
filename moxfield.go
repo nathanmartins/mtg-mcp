@@ -9,6 +9,7 @@ import (
 )
 
 const moxfieldBaseURL = "https://api.moxfield.com/v2"
+const moxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
 
 // MoxfieldDeck represents a deck from Moxfield
 type MoxfieldDeck struct {
@@ -61,6 +62,25 @@ type MoxfieldDeckSummary struct {
 	PublicURL string `json:"publicUrl"`
 	ViewCount int    `json:"viewCount"`
 	LikeCount int    `json:"likeCount"`
+}
+
+// MoxfieldSearchResponse represents search results from Moxfield
+type MoxfieldSearchResponse struct {
+	PageNumber   int                    `json:"pageNumber"`
+	PageSize     int                    `json:"pageSize"`
+	TotalResults int                    `json:"totalResults"`
+	TotalPages   int                    `json:"totalPages"`
+	Data         []MoxfieldDeckSummary  `json:"data"`
+}
+
+// MoxfieldSearchParams represents search parameters
+type MoxfieldSearchParams struct {
+	Query         string
+	Format        string
+	SortType      string
+	SortDirection string
+	PageSize      int
+	PageNumber    int
 }
 
 // GetMoxfieldDeck fetches a deck by its public ID
@@ -129,6 +149,60 @@ func GetUserDecks(ctx context.Context, username string, pageSize int) (*Moxfield
 	}
 
 	return &decksResp, nil
+}
+
+// SearchMoxfieldDecks searches for decks on Moxfield
+func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*MoxfieldSearchResponse, error) {
+	if params.PageSize <= 0 || params.PageSize > 100 {
+		params.PageSize = 20
+	}
+	if params.PageNumber < 1 {
+		params.PageNumber = 1
+	}
+
+	// Build query parameters
+	url := fmt.Sprintf("%s?pageSize=%d&pageNumber=%d",
+		moxfieldSearchURL, params.PageSize, params.PageNumber)
+
+	if params.Query != "" {
+		url += fmt.Sprintf("&board=commanders&query=%s", params.Query)
+	}
+	if params.Format != "" {
+		url += fmt.Sprintf("&fmt=%s", params.Format)
+	}
+	if params.SortType != "" {
+		url += fmt.Sprintf("&sortType=%s", params.SortType)
+	}
+	if params.SortDirection != "" {
+		url += fmt.Sprintf("&sortDirection=%s", params.SortDirection)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("moxfield search API returned status %d", resp.StatusCode)
+	}
+
+	var searchResp MoxfieldSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+		return nil, fmt.Errorf("failed to decode search response: %w", err)
+	}
+
+	return &searchResp, nil
 }
 
 // ExtractPublicIDFromURL extracts the public ID from a Moxfield URL
