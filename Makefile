@@ -72,6 +72,11 @@ test-coverage-cli:
 	@echo "Coverage summary:"
 	$(GOCMD) tool cover -func=$(COVERAGE_FILE)
 
+## update-coverage-badge: Update coverage badge in README with proper colors
+update-coverage-badge:
+	@echo "Updating coverage badge..."
+	@./scripts/update-coverage-badge.sh
+
 ## test-race: Run tests with race detector
 test-race:
 	@echo "Running tests with race detector..."

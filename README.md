@@ -362,6 +362,7 @@ make ci
 | `make test` | Run all tests (unit + E2E) |
 | `make test-coverage` | Generate HTML coverage report |
 | `make test-coverage-cli` | Show coverage in terminal |
+| `make update-coverage-badge` | Update coverage badge in README with proper colors |
 | `make test-race` | Run tests with race detector |
 | `make bench` | Run benchmarks |
 | `make fmt` | Format Go code |

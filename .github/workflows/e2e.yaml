@@ -48,11 +48,10 @@ jobs:
           GO_TEST_TIMEOUT_SCALE: 2
 
       - name: Generate coverage badge
-        uses: tj-actions/coverage-badge-go@481919ec72da287775fef015fd9011dc75a5db05 # v3.0.0
-        with:
-          filename: coverage.out
-          green: 80
-          yellow: 60
+        run: |
+          echo "::group::Generate Coverage Badge"
+          ./scripts/update-coverage-badge.sh
+          echo "::endgroup::"
 
       - name: Commit coverage badge
         run: |
