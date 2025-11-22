@@ -6,10 +6,12 @@ import (
 	"time"
 )
 
+const defaultHTTPTimeout = 10 * time.Second
+
 // HTTPGet performs an HTTP GET request with context and timeout.
 func HTTPGet(ctx context.Context, url string) (*http.Response, error) {
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: defaultHTTPTimeout,
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

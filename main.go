@@ -12,6 +12,16 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+const (
+	totalToolCount               = 11
+	totalResourceCount           = 2
+	maxSearchLimit               = 50
+	defaultSplitLimit            = 2
+	maxPageSize                  = 100
+	deckValidationBasicCardCount = 99
+	deckValidationCommanderCount = 100
+)
+
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
 type MTGCommanderServer struct {
 	scryfallClient *scryfall.Client
@@ -37,24 +47,25 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info().Msg("Initializing MTG Commander MCP Server")
+	log := GetLogger()
+	log.Info().Msg("Initializing MTG Commander MCP Server")
 
 	// Check for log level flag
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
 		SetLogLevel("debug")
-		logger.Debug().Msg("Debug logging enabled")
+		log.Debug().Msg("Debug logging enabled")
 	}
 
 	// Create MTG Commander server instance
-	logger.Info().Msg("Creating MTG Commander server instance")
+	log.Info().Msg("Creating MTG Commander server instance")
 	mtgServer, err := NewMTGCommanderServer()
 	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to create MTG Commander server")
+		log.Fatal().Err(err).Msg("Failed to create MTG Commander server")
 	}
-	logger.Info().Msg("MTG Commander server instance created successfully")
+	log.Info().Msg("MTG Commander server instance created successfully")
 
 	// Create MCP server
-	logger.Info().Msg("Creating MCP server")
+	log.Info().Msg("Creating MCP server")
 	mcpServer := server.NewMCPServer(
 		"MTG Commander Assistant",
 		"1.0.0",
@@ -62,23 +73,23 @@ func main() {
 	)
 
 	// Register all tools
-	logger.Info().Msg("Registering MCP tools")
+	log.Info().Msg("Registering MCP tools")
 	mtgServer.registerTools(mcpServer)
-	logger.Info().Int("tool_count", 11).Msg("All tools registered successfully")
+	log.Info().Int("tool_count", totalToolCount).Msg("All tools registered successfully")
 
 	// Register resources
-	logger.Info().Msg("Registering MCP resources")
+	log.Info().Msg("Registering MCP resources")
 	mtgServer.registerResources(mcpServer)
-	logger.Info().Int("resource_count", 2).Msg("All resources registered successfully")
+	log.Info().Int("resource_count", totalResourceCount).Msg("All resources registered successfully")
 
 	// Start server with stdio transport
-	logger.Info().
+	log.Info().
 		Str("transport", "stdio").
 		Str("log_file", logFilePath).
 		Msg("Starting MTG Commander MCP Server")
 
-	if err := server.ServeStdio(mcpServer); err != nil {
-		logger.Fatal().Err(err).Msg("Server error")
+	if serveErr := server.ServeStdio(mcpServer); serveErr != nil {
+		log.Fatal().Err(serveErr).Msg("Server error")
 	}
 }
 
@@ -291,22 +302,23 @@ func (s *MTGCommanderServer) handleSearchCards(
 ) (*mcp.CallToolResult, error) {
 	query, err := request.RequireString("query")
 	if err != nil {
-		logger.Error().Err(err).Str("tool", "search_cards").Msg("Missing required query parameter")
+		GetLogger().Error().Err(err).Str("tool", "search_cards").Msg("Missing required query parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	limit := 10
+	const defaultLimit = 10
+	limit := defaultLimit
 	args := request.GetArguments()
 	if limitVal, hasLimit := args["limit"]; hasLimit {
 		if limitFloat, ok := limitVal.(float64); ok {
 			limit = int(limitFloat)
-			if limit > 50 {
-				limit = 50
+			if limit > maxSearchLimit {
+				limit = maxSearchLimit
 			}
 		}
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "search_cards").
 		Str("query", query).
 		Int("limit", limit).
@@ -320,7 +332,7 @@ func (s *MTGCommanderServer) handleSearchCards(
 
 	result, err := s.scryfallClient.SearchCards(ctx, query, searchOpts)
 	if err != nil {
-		logger.Error().
+		GetLogger().Error().
 			Err(err).
 			Str("tool", "search_cards").
 			Str("query", query).
@@ -329,14 +341,14 @@ func (s *MTGCommanderServer) handleSearchCards(
 	}
 
 	if len(result.Cards) == 0 {
-		logger.Info().
+		GetLogger().Info().
 			Str("tool", "search_cards").
 			Str("query", query).
 			Msg("No cards found")
 		return mcp.NewToolResultText("No cards found matching your query."), nil
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "search_cards").
 		Str("query", query).
 		Int("results_found", result.TotalCards).
@@ -540,9 +552,9 @@ func (s *MTGCommanderServer) handleGetPrice(
 		card = result.Cards[0]
 	} else {
 		// Get default card
-		c, err := s.scryfallClient.GetCardByName(ctx, name, false, scryfall.GetCardByNameOptions{})
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", err)), nil
+		c, getErr := s.scryfallClient.GetCardByName(ctx, name, false, scryfall.GetCardByNameOptions{})
+		if getErr != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", getErr)), nil
 		}
 		card = c
 	}
@@ -556,7 +568,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 	// Get exchange rate for BRL
 	usdToBRL, err := getUSDToBRLRate(ctx)
 	if err != nil {
-		logger.Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
+		GetLogger().Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
 		usdToBRL = 5.40 // Fallback rate
 	}
 
@@ -628,6 +640,48 @@ func (s *MTGCommanderServer) handleGetBannedList(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
+func parseDecklistString(decklistStr string) []string {
+	var cardNames []string
+
+	// Try JSON first
+	if unmarshalErr := json.Unmarshal([]byte(decklistStr), &cardNames); unmarshalErr != nil {
+		// Parse as text format (one card per line, optional quantity prefix)
+		cardNames = parseTextDecklist(decklistStr)
+	}
+
+	return cardNames
+}
+
+func parseTextDecklist(decklistStr string) []string {
+	var cardNames []string
+	lines := strings.Split(decklistStr, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		cardNames = append(cardNames, parseCardLine(line))
+	}
+
+	return cardNames
+}
+
+func parseCardLine(line string) string {
+	// Remove quantity prefix (e.g., "1 Sol Ring" -> "Sol Ring")
+	parts := strings.SplitN(line, " ", defaultSplitLimit)
+	if len(parts) != defaultSplitLimit {
+		return line
+	}
+
+	// Check if first part is a number
+	if _, scanErr := fmt.Sscanf(parts[0], "%d", new(int)); scanErr == nil {
+		return strings.TrimSpace(parts[1])
+	}
+
+	return line
+}
+
 func (s *MTGCommanderServer) handleValidateDeck(
 	ctx context.Context,
 	request mcp.CallToolRequest,
@@ -643,31 +697,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	}
 
 	// Parse decklist (support both JSON array and text format)
-	var cardNames []string
-
-	// Try JSON first
-	if err := json.Unmarshal([]byte(decklistStr), &cardNames); err != nil {
-		// Parse as text format (one card per line, optional quantity prefix)
-		lines := strings.Split(decklistStr, "\n")
-		for _, line := range lines {
-			line = strings.TrimSpace(line)
-			if line == "" {
-				continue
-			}
-			// Remove quantity prefix (e.g., "1 Sol Ring" -> "Sol Ring")
-			parts := strings.SplitN(line, " ", 2)
-			if len(parts) == 2 {
-				// Check if first part is a number
-				if _, err := fmt.Sscanf(parts[0], "%d", new(int)); err == nil {
-					cardNames = append(cardNames, strings.TrimSpace(parts[1]))
-				} else {
-					cardNames = append(cardNames, line)
-				}
-			} else {
-				cardNames = append(cardNames, line)
-			}
-		}
-	}
+	cardNames := parseDecklistString(decklistStr)
 
 	var output strings.Builder
 	output.WriteString("# Commander Deck Validation\n\n")
@@ -706,9 +736,9 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	totalCards := len(cardNames)
 	output.WriteString(fmt.Sprintf("**Deck Size:** %d cards ", totalCards))
 	switch totalCards {
-	case 99:
+	case deckValidationBasicCardCount:
 		output.WriteString("✅\n")
-	case 100:
+	case deckValidationCommanderCount:
 		output.WriteString("(Note: 100 cards including commander, should be 99 in decklist)\n")
 	default:
 		output.WriteString("❌ (should be 99 cards plus commander)\n")
@@ -760,21 +790,21 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 ) (*mcp.CallToolResult, error) {
 	deckID, err := request.RequireString("deck_id")
 	if err != nil {
-		logger.Error().Err(err).Str("tool", "get_moxfield_deck").Msg("Missing deck_id parameter")
+		GetLogger().Error().Err(err).Str("tool", "get_moxfield_deck").Msg("Missing deck_id parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	// Extract public ID if URL was provided
 	publicID := ExtractPublicIDFromURL(deckID)
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "get_moxfield_deck").
 		Str("deck_id", publicID).
 		Msg("Fetching Moxfield deck")
 
 	deck, err := GetMoxfieldDeck(ctx, publicID)
 	if err != nil {
-		logger.Error().
+		GetLogger().Error().
 			Err(err).
 			Str("tool", "get_moxfield_deck").
 			Str("deck_id", publicID).
@@ -782,7 +812,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Moxfield deck: %v", err)), nil
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "get_moxfield_deck").
 		Str("deck_id", publicID).
 		Str("deck_name", deck.Name).
@@ -803,13 +833,14 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	pageSize := 20
+	const defaultPageSize = 20
+	pageSize := defaultPageSize
 	args := request.GetArguments()
 	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
 		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
 			pageSize = int(pageSizeFloat)
-			if pageSize > 100 {
-				pageSize = 100
+			if pageSize > maxPageSize {
+				pageSize = maxPageSize
 			}
 		}
 	}
@@ -842,7 +873,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 ) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString("commander")
 	if err != nil {
-		logger.Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
+		GetLogger().Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -870,17 +901,18 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		}
 	}
 
-	pageSize := 20
+	const defaultPageSize = 20
+	pageSize := defaultPageSize
 	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
 		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
 			pageSize = int(pageSizeFloat)
-			if pageSize > 100 {
-				pageSize = 100
+			if pageSize > maxPageSize {
+				pageSize = maxPageSize
 			}
 		}
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "search_moxfield_decks").
 		Str("commander", commander).
 		Str("format", format).
@@ -899,7 +931,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 
 	results, err := SearchMoxfieldDecks(ctx, params)
 	if err != nil {
-		logger.Error().
+		GetLogger().Error().
 			Err(err).
 			Str("tool", "search_moxfield_decks").
 			Str("commander", commander).
@@ -932,7 +964,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		}
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "search_moxfield_decks").
 		Str("commander", commander).
 		Int("results_count", len(results.Data)).
@@ -947,7 +979,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 ) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString("commander")
 	if err != nil {
-		logger.Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
+		GetLogger().Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -959,7 +991,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		}
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "get_edhrec_recommendations").
 		Str("commander", commander).
 		Int("limit", limit).
@@ -967,7 +999,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 
 	data, err := GetCommanderRecommendations(ctx, commander)
 	if err != nil {
-		logger.Error().
+		GetLogger().Error().
 			Err(err).
 			Str("tool", "get_edhrec_recommendations").
 			Str("commander", commander).
@@ -975,7 +1007,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC recommendations: %v", err)), nil
 	}
 
-	logger.Info().
+	GetLogger().Info().
 		Str("tool", "get_edhrec_recommendations").
 		Str("commander", commander).
 		Int("num_decks", data.NumDecks).
@@ -995,7 +1027,8 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	limit := 10
+	const defaultLimit = 10
+	limit := defaultLimit
 	args := request.GetArguments()
 	if limitVal, hasLimit := args["limit"]; hasLimit {
 		if limitFloat, ok := limitVal.(float64); ok {
@@ -1115,8 +1148,8 @@ func getUSDToBRLRate(ctx context.Context) (float64, error) {
 		} `json:"rates"`
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return 0, err
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
+		return 0, decodeErr
 	}
 
 	return result.Rates.BRL, nil

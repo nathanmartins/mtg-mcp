@@ -39,12 +39,12 @@ func TestInitLogger(t *testing.T) {
 
 			if !tt.wantErr {
 				// Check if log file was created
-				if _, err := os.Stat(tt.logFilePath); os.IsNotExist(err) {
+				if _, statErr := os.Stat(tt.logFilePath); os.IsNotExist(statErr) {
 					t.Errorf("InitLogger() log file not created at %s", tt.logFilePath)
 				}
 
 				// Test that logger can be used
-				logger.Info().Msg("test log message")
+				GetLogger().Info().Msg("test log message")
 
 				// Check that GetLogger returns a non-nil logger
 				if l := GetLogger(); l == nil {
@@ -145,10 +145,11 @@ func TestLogger_MultipleWrites(t *testing.T) {
 	}
 
 	// Write multiple log messages
-	logger.Info().Msg("message 1")
-	logger.Debug().Msg("message 2")
-	logger.Warn().Msg("message 3")
-	logger.Error().Msg("message 4")
+	log := GetLogger()
+	log.Info().Msg("message 1")
+	log.Debug().Msg("message 2")
+	log.Warn().Msg("message 3")
+	log.Error().Msg("message 4")
 
 	// Check that file exists and has content
 	fileInfo, err := os.Stat(logPath)
@@ -170,15 +171,15 @@ func TestLogger_ConcurrentWrites(t *testing.T) {
 
 	// Write concurrently from multiple goroutines
 	done := make(chan bool)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		go func(id int) {
-			logger.Info().Int("goroutine", id).Msg("concurrent write")
+			GetLogger().Info().Int("goroutine", id).Msg("concurrent write")
 			done <- true
 		}(i)
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		<-done
 	}
 

@@ -145,12 +145,8 @@ func TestGetCommanderRecommendations(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Temporarily override the base URL for testing
-			originalURL := edhrecBaseURL
-			defer func() { edhrecBaseURL = originalURL }()
-
 			ctx := context.Background()
-			got, err := GetCommanderRecommendations(ctx, tt.commanderName)
+			got, err := getCommanderRecommendationsWithURL(ctx, tt.commanderName, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCommanderRecommendations() error = %v, wantErr %v", err, tt.wantErr)
@@ -216,13 +212,8 @@ func TestGetCombosForColors(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Temporarily override the base URL for testing
-			originalURL := edhrecBaseURL
-			edhrecBaseURL = server.URL
-			defer func() { edhrecBaseURL = originalURL }()
-
 			ctx := context.Background()
-			got, err := GetCombosForColors(ctx, tt.colors)
+			got, err := getCombosForColorsWithURL(ctx, tt.colors, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCombosForColors() error = %v, wantErr %v", err, tt.wantErr)

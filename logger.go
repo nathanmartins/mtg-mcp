@@ -7,12 +7,26 @@ import (
 	"github.com/rs/zerolog"
 )
 
-var logger zerolog.Logger
+type loggerInstance struct {
+	logger zerolog.Logger
+}
+
+func (l *loggerInstance) get() *zerolog.Logger {
+	return &l.logger
+}
+
+func newLoggerInstance() *loggerInstance {
+	return &loggerInstance{
+		logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
+	}
+}
+
+var loggerHolder = newLoggerInstance() //nolint:gochecknoglobals // logger needs to be accessible throughout the application
 
 // InitLogger initializes the global logger with both console and file output.
 func InitLogger(logFilePath string) error {
 	// Create log file
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return err
 	}
@@ -28,7 +42,7 @@ func InitLogger(logFilePath string) error {
 	multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
 
 	// Create logger
-	logger = zerolog.New(multi).
+	loggerHolder.logger = zerolog.New(multi).
 		With().
 		Timestamp().
 		Caller().
@@ -58,5 +72,5 @@ func SetLogLevel(level string) {
 
 // GetLogger returns the global logger.
 func GetLogger() *zerolog.Logger {
-	return &logger
+	return loggerHolder.get()
 }

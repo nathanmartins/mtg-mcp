@@ -8,9 +8,6 @@ import (
 	"strings"
 )
 
-var moxfieldBaseURL = "https://api.moxfield.com/v2"
-var moxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
-
 // MoxfieldDeck represents a deck from Moxfield.
 type MoxfieldDeck struct {
 	ID           string                       `json:"id"`
@@ -85,7 +82,11 @@ type MoxfieldSearchParams struct {
 
 // GetMoxfieldDeck fetches a deck by its public ID.
 func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error) {
-	url := fmt.Sprintf("%s/decks/all/%s", moxfieldBaseURL, publicID)
+	return getMoxfieldDeckWithURL(ctx, publicID, "https://api.moxfield.com/v2")
+}
+
+func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*MoxfieldDeck, error) {
+	url := fmt.Sprintf("%s/decks/all/%s", baseURL, publicID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -108,8 +109,8 @@ func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error
 	}
 
 	var deck MoxfieldDeck
-	if err := json.NewDecoder(resp.Body).Decode(&deck); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&deck); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
 	return &deck, nil
@@ -117,11 +118,21 @@ func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error
 
 // GetUserDecks fetches a user's deck list.
 func GetUserDecks(ctx context.Context, username string, pageSize int) (*MoxfieldUserDecksResponse, error) {
-	if pageSize <= 0 || pageSize > 100 {
-		pageSize = 100
+	return getUserDecksWithURL(ctx, username, pageSize, "https://api.moxfield.com/v2")
+}
+
+func getUserDecksWithURL(
+	ctx context.Context,
+	username string,
+	pageSize int,
+	baseURL string,
+) (*MoxfieldUserDecksResponse, error) {
+	const maxPageSize = 100
+	if pageSize <= 0 || pageSize > maxPageSize {
+		pageSize = maxPageSize
 	}
 
-	url := fmt.Sprintf("%s/users/%s/decks?pageSize=%d", moxfieldBaseURL, username, pageSize)
+	url := fmt.Sprintf("%s/users/%s/decks?pageSize=%d", baseURL, username, pageSize)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -144,8 +155,8 @@ func GetUserDecks(ctx context.Context, username string, pageSize int) (*Moxfield
 	}
 
 	var decksResp MoxfieldUserDecksResponse
-	if err := json.NewDecoder(resp.Body).Decode(&decksResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&decksResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
 	return &decksResp, nil
@@ -153,8 +164,18 @@ func GetUserDecks(ctx context.Context, username string, pageSize int) (*Moxfield
 
 // SearchMoxfieldDecks searches for decks on Moxfield.
 func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*MoxfieldSearchResponse, error) {
-	if params.PageSize <= 0 || params.PageSize > 100 {
-		params.PageSize = 20
+	return searchMoxfieldDecksWithURL(ctx, params, "https://api2.moxfield.com/v2/decks/search")
+}
+
+func searchMoxfieldDecksWithURL(
+	ctx context.Context,
+	params MoxfieldSearchParams,
+	searchURL string,
+) (*MoxfieldSearchResponse, error) {
+	const maxPageSize = 100
+	const defaultPageSize = 20
+	if params.PageSize <= 0 || params.PageSize > maxPageSize {
+		params.PageSize = defaultPageSize
 	}
 	if params.PageNumber < 1 {
 		params.PageNumber = 1
@@ -162,7 +183,7 @@ func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*Mox
 
 	// Build query parameters
 	url := fmt.Sprintf("%s?pageSize=%d&pageNumber=%d",
-		moxfieldSearchURL, params.PageSize, params.PageNumber)
+		searchURL, params.PageSize, params.PageNumber)
 
 	if params.Query != "" {
 		url += fmt.Sprintf("&board=commanders&query=%s", params.Query)
@@ -198,8 +219,8 @@ func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*Mox
 	}
 
 	var searchResp MoxfieldSearchResponse
-	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
-		return nil, fmt.Errorf("failed to decode search response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&searchResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode search response: %w", decodeErr)
 	}
 
 	return &searchResp, nil
@@ -217,8 +238,59 @@ func ExtractPublicIDFromURL(url string) string {
 	return url // Return as-is if no parsing needed
 }
 
-// FormatDeckForDisplay formats a Moxfield deck for text display.
-func FormatDeckForDisplay(deck *MoxfieldDeck) string {
+type deckCardGroups struct {
+	creatures     []string
+	instants      []string
+	sorceries     []string
+	artifacts     []string
+	enchantments  []string
+	planeswalkers []string
+	lands         []string
+	others        []string
+	totalCards    int
+}
+
+func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
+	groups := deckCardGroups{
+		creatures:     []string{},
+		instants:      []string{},
+		sorceries:     []string{},
+		artifacts:     []string{},
+		enchantments:  []string{},
+		planeswalkers: []string{},
+		lands:         []string{},
+		others:        []string{},
+	}
+
+	for _, entry := range mainboard {
+		cardLine := fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.Name)
+		groups.totalCards += entry.Quantity
+
+		typeLine := strings.ToLower(entry.Card.TypeLine)
+		switch {
+		case strings.Contains(typeLine, "creature"):
+			groups.creatures = append(groups.creatures, cardLine)
+		case strings.Contains(typeLine, "instant"):
+			groups.instants = append(groups.instants, cardLine)
+		case strings.Contains(typeLine, "sorcery"):
+			groups.sorceries = append(groups.sorceries, cardLine)
+		case strings.Contains(typeLine, "artifact"):
+			groups.artifacts = append(groups.artifacts, cardLine)
+		case strings.Contains(typeLine, "enchantment"):
+			groups.enchantments = append(groups.enchantments, cardLine)
+		case strings.Contains(typeLine, "planeswalker"):
+			groups.planeswalkers = append(groups.planeswalkers, cardLine)
+		case strings.Contains(typeLine, "land"):
+			groups.lands = append(groups.lands, cardLine)
+		default:
+			groups.others = append(groups.others, cardLine)
+		}
+	}
+
+	return groups
+}
+
+func formatDeckHeader(deck *MoxfieldDeck) string {
 	var output strings.Builder
 
 	output.WriteString(fmt.Sprintf("# %s\n\n", deck.Name))
@@ -239,7 +311,6 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 		output.WriteString(fmt.Sprintf("\n**Description:**\n%s\n", deck.Description))
 	}
 
-	// Commanders
 	if len(deck.Commanders) > 0 {
 		output.WriteString("\n## Commanders\n")
 		for _, entry := range deck.Commanders {
@@ -247,108 +318,45 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 		}
 	}
 
-	// Mainboard
-	totalCards := 0
+	return output.String()
+}
+
+func formatCardGroup(title string, cards []string) string {
+	if len(cards) == 0 {
+		return ""
+	}
+
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("**%s (%d):**\n", title, len(cards)))
+	for _, c := range cards {
+		output.WriteString(fmt.Sprintf("- %s\n", c))
+	}
+	output.WriteString("\n")
+
+	return output.String()
+}
+
+// FormatDeckForDisplay formats a Moxfield deck for text display.
+func FormatDeckForDisplay(deck *MoxfieldDeck) string {
+	var output strings.Builder
+
+	output.WriteString(formatDeckHeader(deck))
+
 	output.WriteString("\n## Mainboard\n")
 
-	// Group by card type
-	creatures := []string{}
-	instants := []string{}
-	sorceries := []string{}
-	artifacts := []string{}
-	enchantments := []string{}
-	planeswalkers := []string{}
-	lands := []string{}
-	others := []string{}
+	groups := groupDeckCards(deck.Mainboard)
 
-	for _, entry := range deck.Mainboard {
-		cardLine := fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.Name)
-		totalCards += entry.Quantity
+	output.WriteString(fmt.Sprintf("\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders)))
 
-		typeLine := strings.ToLower(entry.Card.TypeLine)
-		switch {
-		case strings.Contains(typeLine, "creature"):
-			creatures = append(creatures, cardLine)
-		case strings.Contains(typeLine, "instant"):
-			instants = append(instants, cardLine)
-		case strings.Contains(typeLine, "sorcery"):
-			sorceries = append(sorceries, cardLine)
-		case strings.Contains(typeLine, "artifact"):
-			artifacts = append(artifacts, cardLine)
-		case strings.Contains(typeLine, "enchantment"):
-			enchantments = append(enchantments, cardLine)
-		case strings.Contains(typeLine, "planeswalker"):
-			planeswalkers = append(planeswalkers, cardLine)
-		case strings.Contains(typeLine, "land"):
-			lands = append(lands, cardLine)
-		default:
-			others = append(others, cardLine)
-		}
-	}
-
-	output.WriteString(fmt.Sprintf("\n**Total Cards:** %d\n\n", totalCards+len(deck.Commanders)))
-
-	if len(creatures) > 0 {
-		output.WriteString(fmt.Sprintf("**Creatures (%d):**\n", len(creatures)))
-		for _, c := range creatures {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(instants) > 0 {
-		output.WriteString(fmt.Sprintf("**Instants (%d):**\n", len(instants)))
-		for _, c := range instants {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(sorceries) > 0 {
-		output.WriteString(fmt.Sprintf("**Sorceries (%d):**\n", len(sorceries)))
-		for _, c := range sorceries {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(artifacts) > 0 {
-		output.WriteString(fmt.Sprintf("**Artifacts (%d):**\n", len(artifacts)))
-		for _, c := range artifacts {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(enchantments) > 0 {
-		output.WriteString(fmt.Sprintf("**Enchantments (%d):**\n", len(enchantments)))
-		for _, c := range enchantments {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(planeswalkers) > 0 {
-		output.WriteString(fmt.Sprintf("**Planeswalkers (%d):**\n", len(planeswalkers)))
-		for _, c := range planeswalkers {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(lands) > 0 {
-		output.WriteString(fmt.Sprintf("**Lands (%d):**\n", len(lands)))
-		for _, c := range lands {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
-		output.WriteString("\n")
-	}
-
-	if len(others) > 0 {
-		output.WriteString(fmt.Sprintf("**Other (%d):**\n", len(others)))
-		for _, c := range others {
-			output.WriteString(fmt.Sprintf("- %s\n", c))
-		}
+	output.WriteString(formatCardGroup("Creatures", groups.creatures))
+	output.WriteString(formatCardGroup("Instants", groups.instants))
+	output.WriteString(formatCardGroup("Sorceries", groups.sorceries))
+	output.WriteString(formatCardGroup("Artifacts", groups.artifacts))
+	output.WriteString(formatCardGroup("Enchantments", groups.enchantments))
+	output.WriteString(formatCardGroup("Planeswalkers", groups.planeswalkers))
+	output.WriteString(formatCardGroup("Lands", groups.lands))
+	if len(groups.others) > 0 {
+		output.WriteString(formatCardGroup("Other", groups.others))
 	}
 
 	// Sideboard

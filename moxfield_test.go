@@ -121,13 +121,8 @@ func TestGetMoxfieldDeck(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Temporarily override base URL
-			originalURL := moxfieldBaseURL
-			moxfieldBaseURL = server.URL
-			defer func() { moxfieldBaseURL = originalURL }()
-
 			ctx := context.Background()
-			got, err := GetMoxfieldDeck(ctx, tt.publicID)
+			got, err := getMoxfieldDeckWithURL(ctx, tt.publicID, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetMoxfieldDeck() error = %v, wantErr %v", err, tt.wantErr)
@@ -215,12 +210,8 @@ func TestGetUserDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			originalURL := moxfieldBaseURL
-			moxfieldBaseURL = server.URL
-			defer func() { moxfieldBaseURL = originalURL }()
-
 			ctx := context.Background()
-			got, err := GetUserDecks(ctx, tt.username, tt.pageSize)
+			got, err := getUserDecksWithURL(ctx, tt.username, tt.pageSize, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -331,12 +322,8 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			originalURL := moxfieldSearchURL
-			moxfieldSearchURL = server.URL
-			defer func() { moxfieldSearchURL = originalURL }()
-
 			ctx := context.Background()
-			got, err := SearchMoxfieldDecks(ctx, tt.params)
+			got, err := searchMoxfieldDecksWithURL(ctx, tt.params, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SearchMoxfieldDecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -405,10 +392,6 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 			}))
 			defer server.Close()
 
-			originalURL := moxfieldSearchURL
-			moxfieldSearchURL = server.URL
-			defer func() { moxfieldSearchURL = originalURL }()
-
 			params := MoxfieldSearchParams{
 				Query:      "test",
 				PageSize:   tt.inputPageSize,
@@ -416,7 +399,7 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			_, err := SearchMoxfieldDecks(ctx, params)
+			_, err := searchMoxfieldDecksWithURL(ctx, params, server.URL)
 			if err != nil {
 				t.Errorf("SearchMoxfieldDecks() unexpected error = %v", err)
 			}

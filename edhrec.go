@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var edhrecBaseURL = "https://json.edhrec.com/pages"
+const percentageMultiplier = 100.0
 
 // EDHRECResponse represents the top-level response structure.
 type EDHRECResponse struct {
@@ -103,8 +103,12 @@ func SanitizeCardName(name string) string {
 
 // GetCommanderRecommendations fetches EDHREC recommendations for a commander.
 func GetCommanderRecommendations(ctx context.Context, commanderName string) (*EDHRECData, error) {
+	return getCommanderRecommendationsWithURL(ctx, commanderName, "https://json.edhrec.com/pages")
+}
+
+func getCommanderRecommendationsWithURL(ctx context.Context, commanderName, baseURL string) (*EDHRECData, error) {
 	sanitized := SanitizeCardName(commanderName)
-	url := fmt.Sprintf("%s/commanders/%s.json", edhrecBaseURL, sanitized)
+	url := fmt.Sprintf("%s/commanders/%s.json", baseURL, sanitized)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -128,8 +132,8 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 	}
 
 	var edhrecResp EDHRECResponse
-	if err := json.NewDecoder(resp.Body).Decode(&edhrecResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&edhrecResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
 	return &edhrecResp.Container.JSONDict, nil
@@ -137,9 +141,13 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 
 // GetCombosForColors fetches combos for a color combination.
 func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, error) {
+	return getCombosForColorsWithURL(ctx, colors, "https://json.edhrec.com/pages")
+}
+
+func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*EDHRECComboData, error) {
 	// Color codes: w (white), u (blue), b (black), r (red), g (green)
 	// Examples: "wu" (azorius), "ubr" (grixis), "wubrg" (5-color)
-	url := fmt.Sprintf("%s/combos/%s.json", edhrecBaseURL, strings.ToLower(colors))
+	url := fmt.Sprintf("%s/combos/%s.json", baseURL, strings.ToLower(colors))
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -163,8 +171,8 @@ func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, e
 	}
 
 	var comboResp EDHRECComboResponse
-	if err := json.NewDecoder(resp.Body).Decode(&comboResp); err != nil {
-		return nil, fmt.Errorf("failed to decode combo response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&comboResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode combo response: %w", decodeErr)
 	}
 
 	return &comboResp.Container.JSONDict, nil
@@ -195,11 +203,11 @@ func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 			count = limit
 		}
 
-		for i := 0; i < count; i++ {
+		for i := range count {
 			card := cardList.CardViews[i]
 
 			// Calculate percentage
-			percentage := float64(card.Inclusion) / float64(data.NumDecks) * 100
+			percentage := float64(card.Inclusion) / float64(data.NumDecks) * percentageMultiplier
 
 			output.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, card.Name))
 			output.WriteString(fmt.Sprintf("   - Inclusion: %d decks (%.1f%%)\n", card.Inclusion, percentage))
@@ -235,7 +243,7 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 		count = limit
 	}
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		combo := data.ComboCounts[i]
 
 		output.WriteString(fmt.Sprintf("%d. **Combo #%d** (Rank #%d)\n", i+1, i+1, combo.Rank))
@@ -263,8 +271,17 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 
 // GetTopCardsForCategory fetches top cards for a specific category.
 func GetTopCardsForCategory(ctx context.Context, category string, page int) ([]EDHRECCardView, error) {
+	return getTopCardsForCategoryWithURL(ctx, category, page, "https://json.edhrec.com/pages")
+}
+
+func getTopCardsForCategoryWithURL(
+	ctx context.Context,
+	category string,
+	page int,
+	baseURL string,
+) ([]EDHRECCardView, error) {
 	// Categories: salt, commanders, themes, etc.
-	url := fmt.Sprintf("%s/top/%s--%d.json", edhrecBaseURL, category, page)
+	url := fmt.Sprintf("%s/top/%s--%d.json", baseURL, category, page)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -288,8 +305,8 @@ func GetTopCardsForCategory(ctx context.Context, category string, page int) ([]E
 	}
 
 	var edhrecResp EDHRECResponse
-	if err := json.NewDecoder(resp.Body).Decode(&edhrecResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&edhrecResp); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
 	}
 
 	// Extract cards from all card lists
