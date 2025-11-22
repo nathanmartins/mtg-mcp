@@ -348,7 +348,11 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 					t.Errorf("SearchMoxfieldDecks() deck count = %v, want %v", len(got.Data), len(tt.mockResponse.Data))
 				}
 				if got.TotalResults != tt.mockResponse.TotalResults {
-					t.Errorf("SearchMoxfieldDecks() total results = %v, want %v", got.TotalResults, tt.mockResponse.TotalResults)
+					t.Errorf(
+						"SearchMoxfieldDecks() total results = %v, want %v",
+						got.TotalResults,
+						tt.mockResponse.TotalResults,
+					)
 				}
 			}
 		})

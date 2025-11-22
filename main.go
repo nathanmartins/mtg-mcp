@@ -85,8 +85,11 @@ func main() {
 // registerTools registers all MCP tools
 func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	// Tool 1: Search Cards
-	searchCardsTool := mcp.NewTool("search_cards",
-		mcp.WithDescription("Search for Magic: The Gathering cards by name, type, color, or other criteria using Scryfall search syntax"),
+	searchCardsTool := mcp.NewTool(
+		"search_cards",
+		mcp.WithDescription(
+			"Search for Magic: The Gathering cards by name, type, color, or other criteria using Scryfall search syntax",
+		),
 		mcp.WithString("query",
 			mcp.Required(),
 			mcp.Description("Search query (e.g., 'sol ring', 'c:blue type:creature', 'commander')"),
@@ -98,8 +101,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(searchCardsTool, s.handleSearchCards)
 
 	// Tool 2: Get Card Details
-	cardDetailsTool := mcp.NewTool("get_card_details",
-		mcp.WithDescription("Get detailed information about a specific Magic: The Gathering card including rules text, mana cost, type, and more"),
+	cardDetailsTool := mcp.NewTool(
+		"get_card_details",
+		mcp.WithDescription(
+			"Get detailed information about a specific Magic: The Gathering card including rules text, mana cost, type, and more",
+		),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Exact or fuzzy card name (e.g., 'Lightning Bolt', 'Mana Crypt')"),
@@ -108,8 +114,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(cardDetailsTool, s.handleGetCardDetails)
 
 	// Tool 3: Check Commander Legality
-	legalityTool := mcp.NewTool("check_commander_legality",
-		mcp.WithDescription("Check if a card is legal in Commander format and get its legality status across all formats"),
+	legalityTool := mcp.NewTool(
+		"check_commander_legality",
+		mcp.WithDescription(
+			"Check if a card is legal in Commander format and get its legality status across all formats",
+		),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Card name to check legality"),
@@ -128,8 +137,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(rulingsTool, s.handleGetRulings)
 
 	// Tool 5: Get Card Price
-	priceTool := mcp.NewTool("get_card_price",
-		mcp.WithDescription("Get current pricing for a Magic: The Gathering card in USD, EUR, and BRL (Brazilian Real via conversion)"),
+	priceTool := mcp.NewTool(
+		"get_card_price",
+		mcp.WithDescription(
+			"Get current pricing for a Magic: The Gathering card in USD, EUR, and BRL (Brazilian Real via conversion)",
+		),
 		mcp.WithString("name",
 			mcp.Required(),
 			mcp.Description("Card name to get pricing for"),
@@ -147,22 +159,31 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(bannedListTool, s.handleGetBannedList)
 
 	// Tool 7: Validate Deck
-	validateDeckTool := mcp.NewTool("validate_deck",
-		mcp.WithDescription("Validate a Commander deck for format legality (100 cards, singleton, color identity, banned cards)"),
+	validateDeckTool := mcp.NewTool(
+		"validate_deck",
+		mcp.WithDescription(
+			"Validate a Commander deck for format legality (100 cards, singleton, color identity, banned cards)",
+		),
 		mcp.WithString("commander",
 			mcp.Required(),
 			mcp.Description("Commander card name"),
 		),
-		mcp.WithString("decklist",
+		mcp.WithString(
+			"decklist",
 			mcp.Required(),
-			mcp.Description("Decklist as JSON array of card names or newline-separated card names with quantities (e.g., '1 Sol Ring')"),
+			mcp.Description(
+				"Decklist as JSON array of card names or newline-separated card names with quantities (e.g., '1 Sol Ring')",
+			),
 		),
 	)
 	mcpServer.AddTool(validateDeckTool, s.handleValidateDeck)
 
 	// Tool 8: Get Moxfield Deck
-	moxfieldDeckTool := mcp.NewTool("get_moxfield_deck",
-		mcp.WithDescription("Fetch a deck from Moxfield by URL or deck ID, includes full decklist, metadata, and statistics"),
+	moxfieldDeckTool := mcp.NewTool(
+		"get_moxfield_deck",
+		mcp.WithDescription(
+			"Fetch a deck from Moxfield by URL or deck ID, includes full decklist, metadata, and statistics",
+		),
 		mcp.WithString("deck_id",
 			mcp.Required(),
 			mcp.Description("Moxfield deck ID or full URL (e.g., 'abc123' or 'https://www.moxfield.com/decks/abc123')"),
@@ -184,8 +205,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(moxfieldUserDecksTool, s.handleGetMoxfieldUserDecks)
 
 	// Tool 10: Search Moxfield Decks
-	searchMoxfieldDecksTool := mcp.NewTool("search_moxfield_decks",
-		mcp.WithDescription("Search for decks on Moxfield by commander name or other criteria, returns popular decks sorted by views/likes"),
+	searchMoxfieldDecksTool := mcp.NewTool(
+		"search_moxfield_decks",
+		mcp.WithDescription(
+			"Search for decks on Moxfield by commander name or other criteria, returns popular decks sorted by views/likes",
+		),
 		mcp.WithString("commander",
 			mcp.Required(),
 			mcp.Description("Commander card name to search for (e.g., 'Atraxa, Praetors Voice')"),
@@ -206,8 +230,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(searchMoxfieldDecksTool, s.handleSearchMoxfieldDecks)
 
 	// Tool 11: Get EDHREC Recommendations
-	edhrecRecommendationsTool := mcp.NewTool("get_edhrec_recommendations",
-		mcp.WithDescription("Get EDHREC card recommendations for a specific commander, including high synergy cards, top cards, and statistics"),
+	edhrecRecommendationsTool := mcp.NewTool(
+		"get_edhrec_recommendations",
+		mcp.WithDescription(
+			"Get EDHREC card recommendations for a specific commander, including high synergy cards, top cards, and statistics",
+		),
 		mcp.WithString("commander",
 			mcp.Required(),
 			mcp.Description("Commander card name (e.g., 'Atraxa, Praetors Voice')"),
@@ -221,9 +248,12 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	// Tool 12: Get EDHREC Combos
 	edhrecCombosTool := mcp.NewTool("get_edhrec_combos",
 		mcp.WithDescription("Get popular card combos for a color combination from EDHREC"),
-		mcp.WithString("colors",
+		mcp.WithString(
+			"colors",
 			mcp.Required(),
-			mcp.Description("Color combination (w=white, u=blue, b=black, r=red, g=green, e.g., 'wu' for Azorius, 'wubrg' for 5-color)"),
+			mcp.Description(
+				"Color combination (w=white, u=blue, b=black, r=red, g=green, e.g., 'wu' for Azorius, 'wubrg' for 5-color)",
+			),
 		),
 		mcp.WithNumber("limit",
 			mcp.Description("Maximum combos to show (default: 10)"),
@@ -255,7 +285,10 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 
 // Tool Handlers
 
-func (s *MTGCommanderServer) handleSearchCards(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleSearchCards(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	query, err := request.RequireString("query")
 	if err != nil {
 		logger.Error().Err(err).Str("tool", "search_cards").Msg("Missing required query parameter")
@@ -332,7 +365,10 @@ func (s *MTGCommanderServer) handleSearchCards(ctx context.Context, request mcp.
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetCardDetails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetCardDetails(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -348,7 +384,9 @@ func (s *MTGCommanderServer) handleGetCardDetails(ctx context.Context, request m
 	var output strings.Builder
 	output.WriteString(fmt.Sprintf("# %s %s\n\n", card.Name, card.ManaCost))
 	output.WriteString(fmt.Sprintf("**Type:** %s\n", card.TypeLine))
-	output.WriteString(fmt.Sprintf("**Set:** %s (%s) #%s\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber))
+	output.WriteString(
+		fmt.Sprintf("**Set:** %s (%s) #%s\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber),
+	)
 	output.WriteString(fmt.Sprintf("**Rarity:** %s\n\n", card.Rarity))
 
 	if card.OracleText != "" {
@@ -390,7 +428,10 @@ func (s *MTGCommanderServer) handleGetCardDetails(ctx context.Context, request m
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleCheckLegality(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleCheckLegality(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -431,7 +472,10 @@ func (s *MTGCommanderServer) handleCheckLegality(ctx context.Context, request mc
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetRulings(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetRulings(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -465,7 +509,10 @@ func (s *MTGCommanderServer) handleGetRulings(ctx context.Context, request mcp.C
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetPrice(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetPrice(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -499,7 +546,9 @@ func (s *MTGCommanderServer) handleGetPrice(ctx context.Context, request mcp.Cal
 
 	var output strings.Builder
 	output.WriteString(fmt.Sprintf("# Pricing for %s\n", card.Name))
-	output.WriteString(fmt.Sprintf("Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber))
+	output.WriteString(
+		fmt.Sprintf("Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber),
+	)
 
 	// Get exchange rate for BRL
 	usdToBRL, err := getUSDToBRLRate(ctx)
@@ -518,7 +567,9 @@ func (s *MTGCommanderServer) handleGetPrice(ctx context.Context, request mcp.Cal
 
 	if card.Prices.USDFoil != "" {
 		output.WriteString(fmt.Sprintf("**USD (Foil):** $%s\n", card.Prices.USDFoil))
-		output.WriteString(fmt.Sprintf("**BRL (Foil):** R$ %.2f (converted)\n", convertToBRL(card.Prices.USDFoil, usdToBRL)))
+		output.WriteString(
+			fmt.Sprintf("**BRL (Foil):** R$ %.2f (converted)\n", convertToBRL(card.Prices.USDFoil, usdToBRL)),
+		)
 		hasPricing = true
 	}
 
@@ -547,7 +598,10 @@ func (s *MTGCommanderServer) handleGetPrice(ctx context.Context, request mcp.Cal
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetBannedList(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetBannedList(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	// Search for banned cards in Commander
 	searchQuery := "banned:commander"
 	result, err := s.scryfallClient.SearchCards(ctx, searchQuery, scryfall.SearchCardsOptions{
@@ -571,7 +625,10 @@ func (s *MTGCommanderServer) handleGetBannedList(ctx context.Context, request mc
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleValidateDeck(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	commanderName, err := request.RequireString("commander")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -637,7 +694,9 @@ func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp
 	canBeCommander := isLegendary || strings.Contains(strings.ToLower(commander.OracleText), "can be your commander")
 
 	if !canBeCommander {
-		output.WriteString("❌ **ERROR:** This card cannot be a commander (must be legendary or have special text allowing it)!\n\n")
+		output.WriteString(
+			"❌ **ERROR:** This card cannot be a commander (must be legendary or have special text allowing it)!\n\n",
+		)
 	}
 
 	// Check deck size
@@ -685,12 +744,17 @@ func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp
 		}
 	}
 
-	output.WriteString("\n*Note: Full color identity and banned card validation requires checking each card individually, which may take some time.*")
+	output.WriteString(
+		"\n*Note: Full color identity and banned card validation requires checking each card individually, which may take some time.*",
+	)
 
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetMoxfieldDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetMoxfieldDeck(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	deckID, err := request.RequireString("deck_id")
 	if err != nil {
 		logger.Error().Err(err).Str("tool", "get_moxfield_deck").Msg("Missing deck_id parameter")
@@ -727,7 +791,10 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(ctx context.Context, request 
 	return mcp.NewToolResultText(output), nil
 }
 
-func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	username, err := request.RequireString("username")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -752,7 +819,9 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(ctx context.Context, req
 	var output strings.Builder
 	output.WriteString(fmt.Sprintf("# Decks by %s\n\n", username))
 	output.WriteString(fmt.Sprintf("**Total Decks:** %d\n", decks.TotalResults))
-	output.WriteString(fmt.Sprintf("**Showing:** %d decks (Page %d of %d)\n\n", len(decks.Data), decks.PageNumber, decks.TotalPages))
+	output.WriteString(
+		fmt.Sprintf("**Showing:** %d decks (Page %d of %d)\n\n", len(decks.Data), decks.PageNumber, decks.TotalPages),
+	)
 
 	for i, deck := range decks.Data {
 		output.WriteString(fmt.Sprintf("%d. **%s** (%s)\n", i+1, deck.Name, deck.Format))
@@ -764,7 +833,10 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(ctx context.Context, req
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleSearchMoxfieldDecks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString("commander")
 	if err != nil {
 		logger.Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
@@ -836,7 +908,14 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(ctx context.Context, requ
 	output.WriteString(fmt.Sprintf("# Moxfield Decks for %s\n\n", commander))
 	output.WriteString(fmt.Sprintf("**Format:** %s\n", format))
 	output.WriteString(fmt.Sprintf("**Total Results:** %d\n", results.TotalResults))
-	output.WriteString(fmt.Sprintf("**Showing:** %d decks (Page %d of %d)\n\n", len(results.Data), results.PageNumber, results.TotalPages))
+	output.WriteString(
+		fmt.Sprintf(
+			"**Showing:** %d decks (Page %d of %d)\n\n",
+			len(results.Data),
+			results.PageNumber,
+			results.TotalPages,
+		),
+	)
 
 	if len(results.Data) == 0 {
 		output.WriteString("No decks found for this commander.\n")
@@ -859,7 +938,10 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(ctx context.Context, requ
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetEDHRECRecommendations(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString("commander")
 	if err != nil {
 		logger.Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
@@ -901,7 +983,10 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(ctx context.Context,
 	return mcp.NewToolResultText(output), nil
 }
 
-func (s *MTGCommanderServer) handleGetEDHRECCombos(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *MTGCommanderServer) handleGetEDHRECCombos(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
 	colors, err := request.RequireString("colors")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -926,7 +1011,10 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(ctx context.Context, request 
 
 // Resource Handlers
 
-func (s *MTGCommanderServer) handleCommanderRules(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func (s *MTGCommanderServer) handleCommanderRules(
+	ctx context.Context,
+	request mcp.ReadResourceRequest,
+) ([]mcp.ResourceContents, error) {
 	rules := `# Commander Format Rules
 
 ## Overview
@@ -968,7 +1056,10 @@ Commander is a multiplayer format for Magic: The Gathering, emphasizing social i
 	}, nil
 }
 
-func (s *MTGCommanderServer) handleBannedListResource(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+func (s *MTGCommanderServer) handleBannedListResource(
+	ctx context.Context,
+	request mcp.ReadResourceRequest,
+) ([]mcp.ResourceContents, error) {
 	// Fetch current banned list from Scryfall
 	result, err := s.scryfallClient.SearchCards(ctx, "banned:commander", scryfall.SearchCardsOptions{
 		Order: "name",
