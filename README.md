@@ -1,12 +1,14 @@
 # MTG Commander MCP Server
 
 <!-- markdownlint-disable-next-line MD013 -->
-[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml) [![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml) [![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml) 
+[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml) [![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml) 
+
+<!-- markdownlint-disable-next-line MD013 -->
+[![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml)  ![Coverage](https://img.shields.io/badge/Coverage-0%25-red) 
 
 <!-- markdownlint-disable-next-line MD013 -->
 [![Dependabot Updates](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates)
 
-![Coverage](https://img.shields.io/badge/Coverage-0%25-red)
 
 A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card
 information, rulings, pricing, and deck validation tools.
