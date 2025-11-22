@@ -104,7 +104,7 @@ A Model Context Protocol (MCP) server for Magic: The Gathering Commander format,
 
 ```bash
 # Clone or navigate to the project directory
-cd nsm-mtg-claude
+cd mtg-mcp
 
 # Install dependencies
 go mod tidy
@@ -177,13 +177,13 @@ To use this server with Claude Desktop, add the following configuration to your 
 {
   "mcpServers": {
     "mtg-commander": {
-      "command": "/absolute/path/to/nsm-mtg-claude/mtg-commander-server"
+      "command": "/absolute/path/to/mtg-mcp/mtg-commander-server"
     }
   }
 }
 ```
 
-Replace `/absolute/path/to/nsm-mtg-claude/` with the actual path to the binary.
+Replace `/absolute/path/to/mtg-mcp/` with the actual path to the binary.
 
 After adding the configuration, restart Claude Desktop.
 
@@ -256,7 +256,7 @@ Once connected to Claude Desktop, you can ask questions like:
 ## Project Structure
 
 ```
-nsm-mtg-claude/
+mtg-mcp/
 ├── main.go                 # Core MCP server implementation
 ├── logger.go               # Structured logging configuration (zerolog)
 ├── edhrec.go               # EDHREC API integration

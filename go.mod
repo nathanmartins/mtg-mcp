@@ -1,4 +1,4 @@
-module github.com/nathanmartins/nsm-mtg-claude
+module github.com/nathanmartins/mtg-mcp
 
 go 1.25.4
 
