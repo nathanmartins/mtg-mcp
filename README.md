@@ -6,6 +6,8 @@ A Model Context Protocol (MCP) server for Magic: The Gathering Commander format,
 
 ### Tools (AI-Callable Functions)
 
+#### Scryfall Card Data (7 tools)
+
 1. **search_cards** - Search for MTG cards using Scryfall search syntax
    - Supports advanced queries (colors, types, abilities, etc.)
    - Returns up to 50 results with full card details
@@ -45,6 +47,38 @@ A Model Context Protocol (MCP) server for Magic: The Gathering Commander format,
    - Commander legality check
    - Color identity validation
    - Supports JSON array or text format decklists
+
+#### Moxfield Integration (2 tools)
+
+8. **get_moxfield_deck** - Fetch complete deck from Moxfield
+   - Accepts deck URL or public ID
+   - Full decklist with card types organized
+   - Deck metadata (views, likes, comments, author)
+   - Commanders, mainboard, sideboard, maybeboard
+   - Last updated timestamp
+
+9. **get_moxfield_user_decks** - Get user's deck list from Moxfield
+   - List all decks for a Moxfield user
+   - Paginated results (up to 100 per page)
+   - Deck summaries with views and likes
+   - Format and public URL for each deck
+
+#### EDHREC Meta Data (2 tools)
+
+10. **get_edhrec_recommendations** - Get EDHREC recommendations for a commander
+    - High synergy cards with synergy scores
+    - Most popular cards by inclusion rate
+    - New cards trending for the commander
+    - Card categories (creatures, instants, artifacts, etc.)
+    - Deck count and meta statistics
+    - Salt scores for controversial cards
+
+11. **get_edhrec_combos** - Get popular combos for color combinations
+    - Combo cards and prerequisites
+    - Combo results (e.g., "Infinite mana", "Win the game")
+    - Usage statistics and percentages
+    - Ranked by popularity
+    - Color identity filtering (w/u/b/r/g)
 
 ### Resources (Data Sources)
 
@@ -120,13 +154,24 @@ After adding the configuration, restart Claude Desktop.
 
 Once connected to Claude Desktop, you can ask questions like:
 
+**Card Data:**
 - "Search for blue counterspells in Commander"
 - "Is Mana Crypt legal in Commander?"
 - "What are the official rulings for Doubling Season?"
 - "How much does Sol Ring cost in BRL?"
 - "Show me the current Commander banned list"
 - "Validate my Commander deck with Atraxa as commander"
-- "Find legendary creatures with white and blue in their color identity"
+
+**Moxfield:**
+- "Fetch this Moxfield deck: https://www.moxfield.com/decks/abc123"
+- "Show me decks by user JohnDoe on Moxfield"
+- "What's in the mainboard of Moxfield deck xyz789?"
+
+**EDHREC:**
+- "What are the best cards for Atraxa, Praetors' Voice according to EDHREC?"
+- "Show me popular combos in Dimir colors (ub)"
+- "What are high synergy cards for Meren of Clan Nel Toth?"
+- "Get me the top 5-color combos for WUBRG"
 
 ## Architecture
 
@@ -155,6 +200,19 @@ Once connected to Claude Desktop, you can ask questions like:
    - BRL conversion: Real-time exchange rates via Frankfurter API
    - Note: Prices are indicative and may not reflect Brazilian market conditions
 
+4. **Moxfield:** Unofficial API (https://api.moxfield.com)
+   - Deck data and user profiles
+   - Metadata including views, likes, comments
+   - **Note:** No official public API; be respectful of rate limits
+   - Contact support@moxfield.com for authorized access
+
+5. **EDHREC:** Unofficial JSON endpoints (https://json.edhrec.com)
+   - Card recommendations and synergies
+   - Meta statistics and popularity data
+   - Combo database
+   - **Rate limit:** Recommend 1 request/second
+   - Cached data (may not be real-time)
+
 ## Project Structure
 
 ```
@@ -171,9 +229,9 @@ nsm-mtg-claude/
 
 Key dependencies (automatically managed by `go mod`):
 
-- `github.com/mark3labs/mcp-go` - MCP server framework
-- `github.com/BlueMonday/go-scryfall` - Scryfall API client
-- `go.uber.org/ratelimit` - Rate limiting (via scryfall client)
+- `github.com/mark3labs/mcp-go` v0.43.0 - MCP server framework
+- `github.com/BlueMonday/go-scryfall` v0.9.1 - Scryfall API client
+- `go.uber.org/ratelimit` v0.2.0 - Rate limiting (via scryfall client)
 
 ## Development
 
@@ -210,14 +268,17 @@ Key dependencies (automatically managed by `go mod`):
 
 Potential improvements:
 
+- [x] Moxfield deck fetching and user deck lists
+- [x] EDHREC card recommendations and combo database
 - [ ] Direct LigaMagic integration for accurate BRL pricing
 - [ ] Caching layer for frequently accessed cards
 - [ ] Bulk deck validation with full color identity checking
 - [ ] Support for other formats (Modern, Standard, etc.)
 - [ ] Card image retrieval
 - [ ] Price history tracking
-- [ ] Deck building suggestions
+- [ ] Deck building suggestions based on EDHREC data
 - [ ] Commander power level estimation (EDH brackets)
+- [ ] Archidekt integration for additional deck sources
 
 ## Contributing
 

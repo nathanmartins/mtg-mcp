@@ -133,6 +133,55 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		),
 	)
 	mcpServer.AddTool(validateDeckTool, s.handleValidateDeck)
+
+	// Tool 8: Get Moxfield Deck
+	moxfieldDeckTool := mcp.NewTool("get_moxfield_deck",
+		mcp.WithDescription("Fetch a deck from Moxfield by URL or deck ID, includes full decklist, metadata, and statistics"),
+		mcp.WithString("deck_id",
+			mcp.Required(),
+			mcp.Description("Moxfield deck ID or full URL (e.g., 'abc123' or 'https://www.moxfield.com/decks/abc123')"),
+		),
+	)
+	mcpServer.AddTool(moxfieldDeckTool, s.handleGetMoxfieldDeck)
+
+	// Tool 9: Get User Decks from Moxfield
+	moxfieldUserDecksTool := mcp.NewTool("get_moxfield_user_decks",
+		mcp.WithDescription("Get a list of decks for a specific Moxfield user"),
+		mcp.WithString("username",
+			mcp.Required(),
+			mcp.Description("Moxfield username"),
+		),
+		mcp.WithNumber("page_size",
+			mcp.Description("Number of decks to return (default: 20, max: 100)"),
+		),
+	)
+	mcpServer.AddTool(moxfieldUserDecksTool, s.handleGetMoxfieldUserDecks)
+
+	// Tool 10: Get EDHREC Recommendations
+	edhrecRecommendationsTool := mcp.NewTool("get_edhrec_recommendations",
+		mcp.WithDescription("Get EDHREC card recommendations for a specific commander, including high synergy cards, top cards, and statistics"),
+		mcp.WithString("commander",
+			mcp.Required(),
+			mcp.Description("Commander card name (e.g., 'Atraxa, Praetors Voice')"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Maximum cards to show per category (default: 10)"),
+		),
+	)
+	mcpServer.AddTool(edhrecRecommendationsTool, s.handleGetEDHRECRecommendations)
+
+	// Tool 11: Get EDHREC Combos
+	edhrecCombosTool := mcp.NewTool("get_edhrec_combos",
+		mcp.WithDescription("Get popular card combos for a color combination from EDHREC"),
+		mcp.WithString("colors",
+			mcp.Required(),
+			mcp.Description("Color combination (w=white, u=blue, b=black, r=red, g=green, e.g., 'wu' for Azorius, 'wubrg' for 5-color)"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Maximum combos to show (default: 10)"),
+		),
+	)
+	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 }
 
 // registerResources registers MCP resources
@@ -564,6 +613,107 @@ func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp
 	output.WriteString("\n*Note: Full color identity and banned card validation requires checking each card individually, which may take some time.*")
 
 	return mcp.NewToolResultText(output.String()), nil
+}
+
+func (s *MTGCommanderServer) handleGetMoxfieldDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	deckID, err := request.RequireString("deck_id")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	// Extract public ID if URL was provided
+	publicID := ExtractPublicIDFromURL(deckID)
+
+	deck, err := GetMoxfieldDeck(ctx, publicID)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Moxfield deck: %v", err)), nil
+	}
+
+	output := FormatDeckForDisplay(deck)
+	return mcp.NewToolResultText(output), nil
+}
+
+func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	username, err := request.RequireString("username")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	pageSize := 20
+	args := request.GetArguments()
+	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
+		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
+			pageSize = int(pageSizeFloat)
+			if pageSize > 100 {
+				pageSize = 100
+			}
+		}
+	}
+
+	decks, err := GetUserDecks(ctx, username, pageSize)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch user decks: %v", err)), nil
+	}
+
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("# Decks by %s\n\n", username))
+	output.WriteString(fmt.Sprintf("**Total Decks:** %d\n", decks.TotalResults))
+	output.WriteString(fmt.Sprintf("**Showing:** %d decks (Page %d of %d)\n\n", len(decks.Data), decks.PageNumber, decks.TotalPages))
+
+	for i, deck := range decks.Data {
+		output.WriteString(fmt.Sprintf("%d. **%s** (%s)\n", i+1, deck.Name, deck.Format))
+		output.WriteString(fmt.Sprintf("   - Deck ID: %s\n", deck.PublicID))
+		output.WriteString(fmt.Sprintf("   - Views: %d | Likes: %d\n", deck.ViewCount, deck.LikeCount))
+		output.WriteString(fmt.Sprintf("   - URL: %s\n\n", deck.PublicURL))
+	}
+
+	return mcp.NewToolResultText(output.String()), nil
+}
+
+func (s *MTGCommanderServer) handleGetEDHRECRecommendations(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	commander, err := request.RequireString("commander")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	limit := 10
+	args := request.GetArguments()
+	if limitVal, hasLimit := args["limit"]; hasLimit {
+		if limitFloat, ok := limitVal.(float64); ok {
+			limit = int(limitFloat)
+		}
+	}
+
+	data, err := GetCommanderRecommendations(ctx, commander)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC recommendations: %v", err)), nil
+	}
+
+	output := FormatCommanderRecsForDisplay(data, limit)
+	return mcp.NewToolResultText(output), nil
+}
+
+func (s *MTGCommanderServer) handleGetEDHRECCombos(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	colors, err := request.RequireString("colors")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	limit := 10
+	args := request.GetArguments()
+	if limitVal, hasLimit := args["limit"]; hasLimit {
+		if limitFloat, ok := limitVal.(float64); ok {
+			limit = int(limitFloat)
+		}
+	}
+
+	data, err := GetCombosForColors(ctx, colors)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC combos: %v", err)), nil
+	}
+
+	output := FormatCombosForDisplay(data, limit)
+	return mcp.NewToolResultText(output), nil
 }
 
 // Resource Handlers
