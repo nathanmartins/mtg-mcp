@@ -1,13 +1,6 @@
 # MTG Commander MCP Server
 
-[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml)
-
-
-[![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml)
-
-[![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml)
-
-[![Dependabot Updates](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates)
+[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml) [![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml) [![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml) [![Dependabot Updates](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates)
 
 A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card
 information, rulings, pricing, and deck validation tools.
