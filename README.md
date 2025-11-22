@@ -1,5 +1,7 @@
 # MTG Commander MCP Server
 
+[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml)
+
 A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card information, rulings, pricing, and deck validation tools.
 
 ## Features
@@ -130,6 +132,7 @@ The server uses stdio transport for communication with MCP clients like Claude D
 To use this server with Claude Desktop, add the following configuration to your `claude_desktop_config.json`:
 
 **Location:**
+
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
@@ -165,6 +168,7 @@ claude mcp add --transport stdio mtg-commander /absolute/path/to/mtg-mcp/mtg-com
 Edit the global MCP configuration file:
 
 **File location:**
+
 - macOS: `~/.claude/servers.json`
 - Windows: `%APPDATA%\ClaudeCode\servers.json`
 - Linux: `~/.config/ClaudeCode/servers.json`
@@ -196,6 +200,7 @@ You should see `mtg-commander` in the list of available servers.
 Once connected to Claude Desktop, you can ask questions like:
 
 **Card Data:**
+
 - "Search for blue counterspells in Commander"
 - "Is Mana Crypt legal in Commander?"
 - "What are the official rulings for Doubling Season?"
@@ -204,11 +209,13 @@ Once connected to Claude Desktop, you can ask questions like:
 - "Validate my Commander deck with Atraxa as commander"
 
 **Moxfield:**
-- "Fetch this Moxfield deck: https://www.moxfield.com/decks/abc123"
+
+- "Fetch this Moxfield deck: <https://www.moxfield.com/decks/abc123>"
 - "Show me decks by user JohnDoe on Moxfield"
 - "What's in the mainboard of Moxfield deck xyz789?"
 
 **EDHREC:**
+
 - "What are the best cards for Atraxa, Praetors' Voice according to EDHREC?"
 - "Show me popular combos in Dimir colors (ub)"
 - "What are high synergy cards for Meren of Clan Nel Toth?"
@@ -234,7 +241,7 @@ Once connected to Claude Desktop, you can ask questions like:
    - Rate-limited to 10 requests/second (built into client)
 
 2. **Commander Rules:** Official format rules embedded in server
-   - Source: https://mtgcommander.net
+   - Source: <https://mtgcommander.net>
    - Format managed by Wizards of the Coast
 
 3. **Pricing:**
@@ -242,13 +249,13 @@ Once connected to Claude Desktop, you can ask questions like:
    - BRL conversion: Real-time exchange rates via Frankfurter API
    - Note: Prices are indicative and may not reflect Brazilian market conditions
 
-4. **Moxfield:** Unofficial API (https://api.moxfield.com)
+4. **Moxfield:** Unofficial API (<https://api.moxfield.com>)
    - Deck data and user profiles
    - Metadata including views, likes, comments
    - **Note:** No official public API; be respectful of rate limits
-   - Contact support@moxfield.com for authorized access
+   - Contact <support@moxfield.com> for authorized access
 
-5. **EDHREC:** Unofficial JSON endpoints (https://json.edhrec.com)
+5. **EDHREC:** Unofficial JSON endpoints (<https://json.edhrec.com>)
    - Card recommendations and synergies
    - Meta statistics and popularity data
    - Combo database
@@ -286,18 +293,22 @@ Key dependencies (automatically managed by `go mod`):
 
 1. Define the tool in `registerTools()` using `mcp.NewTool()`
 2. Create a handler function with signature:
+
    ```go
    func (s *MTGCommanderServer) handleToolName(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
    ```
+
 3. Register with `mcpServer.AddTool()`
 
 ### Adding New Resources
 
 1. Define the resource in `registerResources()` using `mcp.NewResource()`
 2. Create a handler function with signature:
+
    ```go
    func (s *MTGCommanderServer) handleResourceName(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error)
    ```
+
 3. Register with `mcpServer.AddResource()`
 
 ## Limitations
@@ -347,7 +358,8 @@ This project is provided as-is for personal use.
 ## Support
 
 For issues or questions:
-- Check Scryfall API status: https://scryfall.com/docs/api
+
+- Check Scryfall API status: <https://scryfall.com/docs/api>
 - Verify MCP server is running: Check Claude Desktop logs
 - Review configuration: Ensure correct binary path in `claude_desktop_config.json`
 
