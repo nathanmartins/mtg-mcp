@@ -12,12 +12,12 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// MTGCommanderServer wraps the MCP server with MTG-specific functionality
+// MTGCommanderServer wraps the MCP server with MTG-specific functionality.
 type MTGCommanderServer struct {
 	scryfallClient *scryfall.Client
 }
 
-// NewMTGCommanderServer creates a new MTG Commander MCP server
+// NewMTGCommanderServer creates a new MTG Commander MCP server.
 func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 	client, err := scryfall.NewClient()
 	if err != nil {
@@ -82,7 +82,7 @@ func main() {
 	}
 }
 
-// registerTools registers all MCP tools
+// registerTools registers all MCP tools.
 func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	// Tool 1: Search Cards
 	searchCardsTool := mcp.NewTool(
@@ -262,7 +262,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 }
 
-// registerResources registers MCP resources
+// registerResources registers MCP resources.
 func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 	// Resource 1: Commander Rules
 	rulesResource := mcp.NewResource(
@@ -530,8 +530,11 @@ func (s *MTGCommanderServer) handleGetPrice(
 	if setCode != "" {
 		// Search for specific set
 		searchQuery := fmt.Sprintf(`!"%s" set:%s`, name, setCode)
-		result, err := s.scryfallClient.SearchCards(ctx, searchQuery, scryfall.SearchCardsOptions{})
-		if err != nil || len(result.Cards) == 0 {
+		result, searchErr := s.scryfallClient.SearchCards(ctx, searchQuery, scryfall.SearchCardsOptions{})
+		if searchErr != nil {
+			return nil, fmt.Errorf("failed to search for card: %w", searchErr)
+		}
+		if len(result.Cards) == 0 {
 			return mcp.NewToolResultError(fmt.Sprintf("Card not found in set %s", setCode)), nil
 		}
 		card = result.Cards[0]
@@ -600,7 +603,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 
 func (s *MTGCommanderServer) handleGetBannedList(
 	ctx context.Context,
-	request mcp.CallToolRequest,
+	_ mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
 	// Search for banned cards in Commander
 	searchQuery := "banned:commander"
@@ -1012,7 +1015,7 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(
 // Resource Handlers
 
 func (s *MTGCommanderServer) handleCommanderRules(
-	ctx context.Context,
+	_ context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
 	rules := `# Commander Format Rules

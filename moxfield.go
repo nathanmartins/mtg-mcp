@@ -11,7 +11,7 @@ import (
 var moxfieldBaseURL = "https://api.moxfield.com/v2"
 var moxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
 
-// MoxfieldDeck represents a deck from Moxfield
+// MoxfieldDeck represents a deck from Moxfield.
 type MoxfieldDeck struct {
 	ID           string                       `json:"id"`
 	PublicID     string                       `json:"publicId"`
@@ -30,13 +30,13 @@ type MoxfieldDeck struct {
 	Authors      []string                     `json:"authors"`
 }
 
-// MoxfieldCardEntry represents a card in a Moxfield deck
+// MoxfieldCardEntry represents a card in a Moxfield deck.
 type MoxfieldCardEntry struct {
 	Quantity int              `json:"quantity"`
 	Card     MoxfieldCardInfo `json:"card"`
 }
 
-// MoxfieldCardInfo represents card information
+// MoxfieldCardInfo represents card information.
 type MoxfieldCardInfo struct {
 	Name     string `json:"name"`
 	Set      string `json:"set"`
@@ -45,7 +45,7 @@ type MoxfieldCardInfo struct {
 	Rarity   string `json:"rarity"`
 }
 
-// MoxfieldUserDecksResponse represents paginated user decks
+// MoxfieldUserDecksResponse represents paginated user decks.
 type MoxfieldUserDecksResponse struct {
 	PageNumber   int                   `json:"pageNumber"`
 	PageSize     int                   `json:"pageSize"`
@@ -54,7 +54,7 @@ type MoxfieldUserDecksResponse struct {
 	Data         []MoxfieldDeckSummary `json:"data"`
 }
 
-// MoxfieldDeckSummary represents a deck summary in list view
+// MoxfieldDeckSummary represents a deck summary in list view.
 type MoxfieldDeckSummary struct {
 	PublicID  string `json:"publicId"`
 	Name      string `json:"name"`
@@ -64,7 +64,7 @@ type MoxfieldDeckSummary struct {
 	LikeCount int    `json:"likeCount"`
 }
 
-// MoxfieldSearchResponse represents search results from Moxfield
+// MoxfieldSearchResponse represents search results from Moxfield.
 type MoxfieldSearchResponse struct {
 	PageNumber   int                   `json:"pageNumber"`
 	PageSize     int                   `json:"pageSize"`
@@ -73,7 +73,7 @@ type MoxfieldSearchResponse struct {
 	Data         []MoxfieldDeckSummary `json:"data"`
 }
 
-// MoxfieldSearchParams represents search parameters
+// MoxfieldSearchParams represents search parameters.
 type MoxfieldSearchParams struct {
 	Query         string
 	Format        string
@@ -83,7 +83,7 @@ type MoxfieldSearchParams struct {
 	PageNumber    int
 }
 
-// GetMoxfieldDeck fetches a deck by its public ID
+// GetMoxfieldDeck fetches a deck by its public ID.
 func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error) {
 	url := fmt.Sprintf("%s/decks/all/%s", moxfieldBaseURL, publicID)
 
@@ -115,7 +115,7 @@ func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error
 	return &deck, nil
 }
 
-// GetUserDecks fetches a user's deck list
+// GetUserDecks fetches a user's deck list.
 func GetUserDecks(ctx context.Context, username string, pageSize int) (*MoxfieldUserDecksResponse, error) {
 	if pageSize <= 0 || pageSize > 100 {
 		pageSize = 100
@@ -151,7 +151,7 @@ func GetUserDecks(ctx context.Context, username string, pageSize int) (*Moxfield
 	return &decksResp, nil
 }
 
-// SearchMoxfieldDecks searches for decks on Moxfield
+// SearchMoxfieldDecks searches for decks on Moxfield.
 func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*MoxfieldSearchResponse, error) {
 	if params.PageSize <= 0 || params.PageSize > 100 {
 		params.PageSize = 20
@@ -205,7 +205,7 @@ func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*Mox
 	return &searchResp, nil
 }
 
-// ExtractPublicIDFromURL extracts the public ID from a Moxfield URL
+// ExtractPublicIDFromURL extracts the public ID from a Moxfield URL.
 func ExtractPublicIDFromURL(url string) string {
 	// Expected format: https://www.moxfield.com/decks/{publicId}
 	parts := strings.Split(url, "/")
@@ -217,7 +217,7 @@ func ExtractPublicIDFromURL(url string) string {
 	return url // Return as-is if no parsing needed
 }
 
-// FormatDeckForDisplay formats a Moxfield deck for text display
+// FormatDeckForDisplay formats a Moxfield deck for text display.
 func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 	var output strings.Builder
 
@@ -266,21 +266,22 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 		totalCards += entry.Quantity
 
 		typeLine := strings.ToLower(entry.Card.TypeLine)
-		if strings.Contains(typeLine, "creature") {
+		switch {
+		case strings.Contains(typeLine, "creature"):
 			creatures = append(creatures, cardLine)
-		} else if strings.Contains(typeLine, "instant") {
+		case strings.Contains(typeLine, "instant"):
 			instants = append(instants, cardLine)
-		} else if strings.Contains(typeLine, "sorcery") {
+		case strings.Contains(typeLine, "sorcery"):
 			sorceries = append(sorceries, cardLine)
-		} else if strings.Contains(typeLine, "artifact") {
+		case strings.Contains(typeLine, "artifact"):
 			artifacts = append(artifacts, cardLine)
-		} else if strings.Contains(typeLine, "enchantment") {
+		case strings.Contains(typeLine, "enchantment"):
 			enchantments = append(enchantments, cardLine)
-		} else if strings.Contains(typeLine, "planeswalker") {
+		case strings.Contains(typeLine, "planeswalker"):
 			planeswalkers = append(planeswalkers, cardLine)
-		} else if strings.Contains(typeLine, "land") {
+		case strings.Contains(typeLine, "land"):
 			lands = append(lands, cardLine)
-		} else {
+		default:
 			others = append(others, cardLine)
 		}
 	}

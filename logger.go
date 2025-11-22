@@ -9,7 +9,7 @@ import (
 
 var logger zerolog.Logger
 
-// InitLogger initializes the global logger with both console and file output
+// InitLogger initializes the global logger with both console and file output.
 func InitLogger(logFilePath string) error {
 	// Create log file
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -40,7 +40,7 @@ func InitLogger(logFilePath string) error {
 	return nil
 }
 
-// SetLogLevel sets the global log level
+// SetLogLevel sets the global log level.
 func SetLogLevel(level string) {
 	switch level {
 	case "debug":
@@ -56,7 +56,7 @@ func SetLogLevel(level string) {
 	}
 }
 
-// GetLogger returns the global logger
+// GetLogger returns the global logger.
 func GetLogger() *zerolog.Logger {
 	return &logger
 }

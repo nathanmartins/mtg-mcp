@@ -79,7 +79,7 @@ func TestHTTPGet(t *testing.T) {
 
 func TestHTTPGet_ContextCancellation(t *testing.T) {
 	// Create a server that delays response
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"ok"}`))
@@ -98,7 +98,7 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 
 func TestHTTPGet_Timeout(t *testing.T) {
 	// Create a server that delays longer than the timeout
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(15 * time.Second) // Longer than 10 second timeout
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{"status":"ok"}`))

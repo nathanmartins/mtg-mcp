@@ -11,24 +11,24 @@ import (
 
 var edhrecBaseURL = "https://json.edhrec.com/pages"
 
-// EDHRECResponse represents the top-level response structure
+// EDHRECResponse represents the top-level response structure.
 type EDHRECResponse struct {
 	Container EDHRECContainer `json:"container"`
 }
 
-// EDHRECContainer wraps the JSON dictionary
+// EDHRECContainer wraps the JSON dictionary.
 type EDHRECContainer struct {
 	JSONDict EDHRECData `json:"json_dict"`
 }
 
-// EDHRECData contains the main data structure
+// EDHRECData contains the main data structure.
 type EDHRECData struct {
 	Card      EDHRECCardInfo   `json:"card"`
 	CardLists []EDHRECCardList `json:"cardlists"`
 	NumDecks  int              `json:"num_decks"`
 }
 
-// EDHRECCardInfo represents commander information
+// EDHRECCardInfo represents commander information.
 type EDHRECCardInfo struct {
 	Name      string   `json:"name"`
 	Sanitized string   `json:"sanitized"`
@@ -36,14 +36,14 @@ type EDHRECCardInfo struct {
 	NumDecks  int      `json:"num_decks"`
 }
 
-// EDHRECCardList represents a category of cards
+// EDHRECCardList represents a category of cards.
 type EDHRECCardList struct {
 	Header    string           `json:"header"`
 	Tag       string           `json:"tag"`
 	CardViews []EDHRECCardView `json:"cardviews"`
 }
 
-// EDHRECCardView represents a card with statistics
+// EDHRECCardView represents a card with statistics.
 type EDHRECCardView struct {
 	Name      string             `json:"name"`
 	Sanitized string             `json:"sanitized"`
@@ -55,22 +55,22 @@ type EDHRECCardView struct {
 	Prices    map[string]float64 `json:"prices"`
 }
 
-// EDHRECComboResponse represents combo data
+// EDHRECComboResponse represents combo data.
 type EDHRECComboResponse struct {
 	Container EDHRECComboContainer `json:"container"`
 }
 
-// EDHRECComboContainer wraps combo data
+// EDHRECComboContainer wraps combo data.
 type EDHRECComboContainer struct {
 	JSONDict EDHRECComboData `json:"json_dict"`
 }
 
-// EDHRECComboData contains combo information
+// EDHRECComboData contains combo information.
 type EDHRECComboData struct {
 	ComboCounts []EDHRECCombo `json:"combocounts"`
 }
 
-// EDHRECCombo represents a card combo
+// EDHRECCombo represents a card combo.
 type EDHRECCombo struct {
 	ComboID    string   `json:"comboId"`
 	Colors     string   `json:"colors"`
@@ -82,7 +82,7 @@ type EDHRECCombo struct {
 	Results    []string `json:"results"`
 }
 
-// SanitizeCardName converts a card name to EDHREC URL format
+// SanitizeCardName converts a card name to EDHREC URL format.
 func SanitizeCardName(name string) string {
 	// Lowercase
 	sanitized := strings.ToLower(name)
@@ -101,7 +101,7 @@ func SanitizeCardName(name string) string {
 	return sanitized
 }
 
-// GetCommanderRecommendations fetches EDHREC recommendations for a commander
+// GetCommanderRecommendations fetches EDHREC recommendations for a commander.
 func GetCommanderRecommendations(ctx context.Context, commanderName string) (*EDHRECData, error) {
 	sanitized := SanitizeCardName(commanderName)
 	url := fmt.Sprintf("%s/commanders/%s.json", edhrecBaseURL, sanitized)
@@ -135,7 +135,7 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 	return &edhrecResp.Container.JSONDict, nil
 }
 
-// GetCombosForColors fetches combos for a color combination
+// GetCombosForColors fetches combos for a color combination.
 func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, error) {
 	// Color codes: w (white), u (blue), b (black), r (red), g (green)
 	// Examples: "wu" (azorius), "ubr" (grixis), "wubrg" (5-color)
@@ -170,7 +170,7 @@ func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, e
 	return &comboResp.Container.JSONDict, nil
 }
 
-// FormatCommanderRecsForDisplay formats EDHREC recommendations for text display
+// FormatCommanderRecsForDisplay formats EDHREC recommendations for text display.
 func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 	var output strings.Builder
 
@@ -223,7 +223,7 @@ func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 	return output.String()
 }
 
-// FormatCombosForDisplay formats combo data for text display
+// FormatCombosForDisplay formats combo data for text display.
 func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	var output strings.Builder
 
@@ -261,7 +261,7 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	return output.String()
 }
 
-// GetTopCardsForCategory fetches top cards for a specific category
+// GetTopCardsForCategory fetches top cards for a specific category.
 func GetTopCardsForCategory(ctx context.Context, category string, page int) ([]EDHRECCardView, error) {
 	// Categories: salt, commanders, themes, etc.
 	url := fmt.Sprintf("%s/top/%s--%d.json", edhrecBaseURL, category, page)
