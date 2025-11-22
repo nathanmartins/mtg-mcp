@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
+	"os"
 	"strings"
 
 	scryfall "github.com/BlueMonday/go-scryfall"
@@ -30,13 +30,31 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 }
 
 func main() {
-	// Create MTG Commander server instance
-	mtgServer, err := NewMTGCommanderServer()
-	if err != nil {
-		log.Fatalf("Failed to create MTG Commander server: %v", err)
+	// Initialize logger
+	logFilePath := "mtg-commander-server.log"
+	if err := InitLogger(logFilePath); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		os.Exit(1)
 	}
 
+	logger.Info().Msg("Initializing MTG Commander MCP Server")
+
+	// Check for log level flag
+	if len(os.Args) > 1 && os.Args[1] == "--debug" {
+		SetLogLevel("debug")
+		logger.Debug().Msg("Debug logging enabled")
+	}
+
+	// Create MTG Commander server instance
+	logger.Info().Msg("Creating MTG Commander server instance")
+	mtgServer, err := NewMTGCommanderServer()
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to create MTG Commander server")
+	}
+	logger.Info().Msg("MTG Commander server instance created successfully")
+
 	// Create MCP server
+	logger.Info().Msg("Creating MCP server")
 	mcpServer := server.NewMCPServer(
 		"MTG Commander Assistant",
 		"1.0.0",
@@ -44,15 +62,23 @@ func main() {
 	)
 
 	// Register all tools
+	logger.Info().Msg("Registering MCP tools")
 	mtgServer.registerTools(mcpServer)
+	logger.Info().Int("tool_count", 11).Msg("All tools registered successfully")
 
 	// Register resources
+	logger.Info().Msg("Registering MCP resources")
 	mtgServer.registerResources(mcpServer)
+	logger.Info().Int("resource_count", 2).Msg("All resources registered successfully")
 
 	// Start server with stdio transport
-	log.Println("Starting MTG Commander MCP Server...")
+	logger.Info().
+		Str("transport", "stdio").
+		Str("log_file", logFilePath).
+		Msg("Starting MTG Commander MCP Server")
+
 	if err := server.ServeStdio(mcpServer); err != nil {
-		log.Fatalf("Server error: %v", err)
+		logger.Fatal().Err(err).Msg("Server error")
 	}
 }
 
@@ -210,6 +236,7 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 func (s *MTGCommanderServer) handleSearchCards(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	query, err := request.RequireString("query")
 	if err != nil {
+		logger.Error().Err(err).Str("tool", "search_cards").Msg("Missing required query parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -224,6 +251,12 @@ func (s *MTGCommanderServer) handleSearchCards(ctx context.Context, request mcp.
 		}
 	}
 
+	logger.Info().
+		Str("tool", "search_cards").
+		Str("query", query).
+		Int("limit", limit).
+		Msg("Searching for cards")
+
 	// Search cards using Scryfall
 	searchOpts := scryfall.SearchCardsOptions{
 		Unique: "cards",
@@ -232,12 +265,28 @@ func (s *MTGCommanderServer) handleSearchCards(ctx context.Context, request mcp.
 
 	result, err := s.scryfallClient.SearchCards(ctx, query, searchOpts)
 	if err != nil {
+		logger.Error().
+			Err(err).
+			Str("tool", "search_cards").
+			Str("query", query).
+			Msg("Scryfall search failed")
 		return mcp.NewToolResultError(fmt.Sprintf("Search failed: %v", err)), nil
 	}
 
 	if len(result.Cards) == 0 {
+		logger.Info().
+			Str("tool", "search_cards").
+			Str("query", query).
+			Msg("No cards found")
 		return mcp.NewToolResultText("No cards found matching your query."), nil
 	}
+
+	logger.Info().
+		Str("tool", "search_cards").
+		Str("query", query).
+		Int("results_found", result.TotalCards).
+		Int("results_returned", len(result.Cards)).
+		Msg("Search completed successfully")
 
 	// Limit results
 	if len(result.Cards) > limit {
@@ -430,7 +479,7 @@ func (s *MTGCommanderServer) handleGetPrice(ctx context.Context, request mcp.Cal
 	// Get exchange rate for BRL
 	usdToBRL, err := getUSDToBRLRate(ctx)
 	if err != nil {
-		log.Printf("Failed to get exchange rate: %v", err)
+		logger.Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
 		usdToBRL = 5.40 // Fallback rate
 	}
 
@@ -618,16 +667,35 @@ func (s *MTGCommanderServer) handleValidateDeck(ctx context.Context, request mcp
 func (s *MTGCommanderServer) handleGetMoxfieldDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	deckID, err := request.RequireString("deck_id")
 	if err != nil {
+		logger.Error().Err(err).Str("tool", "get_moxfield_deck").Msg("Missing deck_id parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	// Extract public ID if URL was provided
 	publicID := ExtractPublicIDFromURL(deckID)
 
+	logger.Info().
+		Str("tool", "get_moxfield_deck").
+		Str("deck_id", publicID).
+		Msg("Fetching Moxfield deck")
+
 	deck, err := GetMoxfieldDeck(ctx, publicID)
 	if err != nil {
+		logger.Error().
+			Err(err).
+			Str("tool", "get_moxfield_deck").
+			Str("deck_id", publicID).
+			Msg("Failed to fetch Moxfield deck")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Moxfield deck: %v", err)), nil
 	}
+
+	logger.Info().
+		Str("tool", "get_moxfield_deck").
+		Str("deck_id", publicID).
+		Str("deck_name", deck.Name).
+		Str("format", deck.Format).
+		Int("mainboard_cards", len(deck.Mainboard)).
+		Msg("Successfully fetched Moxfield deck")
 
 	output := FormatDeckForDisplay(deck)
 	return mcp.NewToolResultText(output), nil
@@ -673,6 +741,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(ctx context.Context, req
 func (s *MTGCommanderServer) handleGetEDHRECRecommendations(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString("commander")
 	if err != nil {
+		logger.Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -684,10 +753,28 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(ctx context.Context,
 		}
 	}
 
+	logger.Info().
+		Str("tool", "get_edhrec_recommendations").
+		Str("commander", commander).
+		Int("limit", limit).
+		Msg("Fetching EDHREC recommendations")
+
 	data, err := GetCommanderRecommendations(ctx, commander)
 	if err != nil {
+		logger.Error().
+			Err(err).
+			Str("tool", "get_edhrec_recommendations").
+			Str("commander", commander).
+			Msg("Failed to fetch EDHREC recommendations")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC recommendations: %v", err)), nil
 	}
+
+	logger.Info().
+		Str("tool", "get_edhrec_recommendations").
+		Str("commander", commander).
+		Int("num_decks", data.NumDecks).
+		Int("card_lists", len(data.CardLists)).
+		Msg("Successfully fetched EDHREC recommendations")
 
 	output := FormatCommanderRecsForDisplay(data, limit)
 	return mcp.NewToolResultText(output), nil
