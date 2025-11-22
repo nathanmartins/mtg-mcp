@@ -5,6 +5,10 @@
 *.so
 *.dylib
 mtg-commander-server
+mtg-chat
+
+# Log files
+*.log
 
 # Test binary, built with `go test -c`
 *.test
