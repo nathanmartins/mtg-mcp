@@ -411,7 +411,7 @@ func TestFormatDeckForDisplay(t *testing.T) {
 	deck := &MoxfieldDeck{
 		Name:         "Test Deck",
 		Format:       "commander",
-		Authors:      []string{"Author1", "Author2"},
+		Authors:      []interface{}{"Author1", "Author2"},
 		ViewCount:    1000,
 		LikeCount:    100,
 		CommentCount: 50,

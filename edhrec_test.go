@@ -172,20 +172,22 @@ func TestGetCombosForColors(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name:   "dimir combos",
-			colors: "ub",
+			name:   "colorless combos",
+			colors: "colorless",
 			mockResponse: EDHRECComboResponse{
 				Container: EDHRECComboContainer{
 					JSONDict: EDHRECComboData{
-						ComboCounts: []EDHRECCombo{
+						CardLists: []EDHRECComboList{
 							{
-								ComboID:    "combo-1",
-								Colors:     "UB",
-								Count:      1000,
-								Percentage: 15.5,
-								Rank:       1,
-								CardNames:  []string{"Thassa's Oracle", "Demonic Consultation"},
-								Results:    []string{"Win the game"},
+								Header: "Basalt Monolith + Forsaken Monument",
+								CardViews: []EDHRECCardView{
+									{Name: "Basalt Monolith"},
+									{Name: "Forsaken Monument"},
+								},
+								Combo: &EDHRECCombo{
+									ComboID: "combo-1",
+									Results: []string{"Infinite colorless mana"},
+								},
 							},
 						},
 					},
@@ -221,9 +223,9 @@ func TestGetCombosForColors(t *testing.T) {
 			}
 
 			if !tt.wantErr && got != nil {
-				if len(got.ComboCounts) != len(tt.mockResponse.Container.JSONDict.ComboCounts) {
+				if len(got.CardLists) != len(tt.mockResponse.Container.JSONDict.CardLists) {
 					t.Errorf("GetCombosForColors() combo count = %v, want %v",
-						len(got.ComboCounts), len(tt.mockResponse.Container.JSONDict.ComboCounts))
+						len(got.CardLists), len(tt.mockResponse.Container.JSONDict.CardLists))
 				}
 			}
 		})
@@ -314,22 +316,28 @@ func TestFormatCommanderRecsForDisplay(t *testing.T) {
 
 func TestFormatCombosForDisplay(t *testing.T) {
 	data := &EDHRECComboData{
-		ComboCounts: []EDHRECCombo{
+		CardLists: []EDHRECComboList{
 			{
-				Rank:       1,
-				CardNames:  []string{"Card A", "Card B"},
-				Colors:     "ub",
-				Count:      1000,
-				Percentage: 15.5,
-				Results:    []string{"Win the game", "Infinite mana"},
+				Header: "Card A + Card B (1000 decks)",
+				CardViews: []EDHRECCardView{
+					{Name: "Card A"},
+					{Name: "Card B"},
+				},
+				Combo: &EDHRECCombo{
+					ComboID: "123-456",
+					Results: []string{"Win the game", "Infinite mana"},
+				},
 			},
 			{
-				Rank:       2,
-				CardNames:  []string{"Card C", "Card D"},
-				Colors:     "rg",
-				Count:      500,
-				Percentage: 7.8,
-				Results:    []string{"Infinite tokens"},
+				Header: "Card C + Card D (500 decks)",
+				CardViews: []EDHRECCardView{
+					{Name: "Card C"},
+					{Name: "Card D"},
+				},
+				Combo: &EDHRECCombo{
+					ComboID: "789-012",
+					Results: []string{"Infinite tokens"},
+				},
 			},
 		},
 	}
@@ -346,9 +354,7 @@ func TestFormatCombosForDisplay(t *testing.T) {
 			limit: 1,
 			wantContains: []string{
 				"Popular Combos",
-				"Combo #1",
 				"Card A + Card B",
-				"UB",
 				"1000 decks",
 				"Win the game",
 			},
@@ -358,9 +364,9 @@ func TestFormatCombosForDisplay(t *testing.T) {
 			data:  data,
 			limit: 0,
 			wantContains: []string{
-				"Combo #1",
-				"Combo #2",
+				"Card A + Card B",
 				"Card C + Card D",
+				"500 decks",
 			},
 		},
 	}
@@ -375,8 +381,8 @@ func TestFormatCombosForDisplay(t *testing.T) {
 				}
 			}
 
-			if tt.limit == 1 && strings.Contains(got, "Combo #2") {
-				t.Error("FormatCombosForDisplay() should limit combos but found Combo #2")
+			if tt.limit == 1 && strings.Contains(got, "Card C + Card D") {
+				t.Error("FormatCombosForDisplay() should limit combos but found second combo")
 			}
 		})
 	}

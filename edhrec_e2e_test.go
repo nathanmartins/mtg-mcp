@@ -61,30 +61,34 @@ func TestEDHRECCombosE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Test with Dimir (UB) color combination
-	data, err := GetCombosForColors(ctx, "ub")
+	// Test with colorless which typically has well-known combos
+	data, err := GetCombosForColors(ctx, "colorless")
 	if err != nil {
 		t.Fatalf("GetCombosForColors() failed: %v", err)
 	}
 
-	// Verify response structure
-	if len(data.ComboCounts) == 0 {
-		t.Logf("Warning: No combos returned for UB colors (EDHREC combo data might be temporarily unavailable)")
-		t.Skip("Skipping combo validation due to empty response")
-		return
+	// Verify response structure (new format uses CardLists)
+	if len(data.CardLists) == 0 {
+		t.Fatal("Expected at least one combo in colorless")
 	}
 
 	// Check first combo structure
-	combo := data.ComboCounts[0]
-	if len(combo.CardNames) == 0 {
-		t.Error("Expected combo to have card names")
+	comboList := data.CardLists[0]
+	if len(comboList.CardViews) == 0 {
+		t.Error("Expected combo to have card views")
 	}
 
-	if combo.Count == 0 {
-		t.Error("Expected combo count to be greater than 0")
+	if comboList.Header == "" {
+		t.Error("Expected combo to have a header")
 	}
 
-	t.Logf("✓ Successfully fetched %d combos for UB colors", len(data.ComboCounts))
+	// Verify we have actual card names
+	if len(comboList.CardViews) > 0 && comboList.CardViews[0].Name == "" {
+		t.Error("Expected card view to have a name")
+	}
+
+	t.Logf("✓ Successfully fetched %d combos for colorless", len(data.CardLists))
+	t.Logf("  First combo: %s", comboList.Header)
 }
 
 // TestEDHRECSanitizationE2E tests that card name sanitization works with real API.

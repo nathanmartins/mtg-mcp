@@ -67,19 +67,21 @@ type EDHRECComboContainer struct {
 
 // EDHRECComboData contains combo information.
 type EDHRECComboData struct {
-	ComboCounts []EDHRECCombo `json:"combocounts"`
+	CardLists []EDHRECComboList `json:"cardlists"`
+}
+
+// EDHRECComboList represents a combo entry in the new format.
+type EDHRECComboList struct {
+	Header    string           `json:"header"`
+	CardViews []EDHRECCardView `json:"cardviews"`
+	Combo     *EDHRECCombo     `json:"combo,omitempty"`
 }
 
 // EDHRECCombo represents a card combo.
 type EDHRECCombo struct {
-	ComboID    string   `json:"comboId"`
-	Colors     string   `json:"colors"`
-	Count      int      `json:"count"`
-	Percentage float64  `json:"percentage"`
-	Rank       int      `json:"rank"`
-	CardIDs    []string `json:"cardIds"`
-	CardNames  []string `json:"cardNames"`
-	Results    []string `json:"results"`
+	ComboID string   `json:"comboId"`
+	Cards   []string `json:"cards"`
+	Results []string `json:"results"`
 }
 
 // SanitizeCardName converts a card name to EDHREC URL format.
@@ -238,34 +240,35 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	var output strings.Builder
 
 	output.WriteString("# Popular Combos\n\n")
-	output.WriteString(fmt.Sprintf("**Total Combos:** %d\n\n", len(data.ComboCounts)))
+	output.WriteString(fmt.Sprintf("**Total Combos:** %d\n\n", len(data.CardLists)))
 
-	count := len(data.ComboCounts)
+	count := len(data.CardLists)
 	if limit > 0 && count > limit {
 		count = limit
 	}
 
 	for i := range count {
-		combo := data.ComboCounts[i]
+		comboList := data.CardLists[i]
 
-		output.WriteString(fmt.Sprintf("%d. **Combo #%d** (Rank #%d)\n", i+1, i+1, combo.Rank))
+		output.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, comboList.Header))
 
-		if len(combo.CardNames) > 0 {
-			output.WriteString(fmt.Sprintf("   **Cards:** %s\n", strings.Join(combo.CardNames, " + ")))
+		if len(comboList.CardViews) > 0 {
+			cardNames := make([]string, len(comboList.CardViews))
+			for j, card := range comboList.CardViews {
+				cardNames[j] = card.Name
+			}
+			output.WriteString(fmt.Sprintf("   **Cards:** %s\n", strings.Join(cardNames, " + ")))
 		}
 
-		output.WriteString(fmt.Sprintf("   **Colors:** %s\n", strings.ToUpper(combo.Colors)))
-		output.WriteString(fmt.Sprintf("   **Used in:** %d decks (%.2f%%)\n", combo.Count, combo.Percentage))
-
-		if len(combo.Results) > 0 {
-			output.WriteString(fmt.Sprintf("   **Results:** %s\n", strings.Join(combo.Results, ", ")))
+		if comboList.Combo != nil && len(comboList.Combo.Results) > 0 {
+			output.WriteString(fmt.Sprintf("   **Results:** %s\n", strings.Join(comboList.Combo.Results, ", ")))
 		}
 
 		output.WriteString("\n")
 	}
 
-	if len(data.ComboCounts) > count {
-		output.WriteString(fmt.Sprintf("*...and %d more combos*\n", len(data.ComboCounts)-count))
+	if len(data.CardLists) > count {
+		output.WriteString(fmt.Sprintf("*...and %d more combos*\n", len(data.CardLists)-count))
 	}
 
 	return output.String()
