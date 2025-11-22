@@ -114,7 +114,7 @@ information, rulings, pricing, and deck validation tools.
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.25 or later
 - Internet connection (for Scryfall API and currency conversion)
 
 ### Building from Source
@@ -474,7 +474,6 @@ Potential improvements:
 - [ ] Direct LigaMagic integration for accurate BRL pricing
 - [ ] Caching layer for frequently accessed cards
 - [ ] Bulk deck validation with full color identity checking
-- [ ] Support for other formats (Modern, Standard, etc.)
 - [ ] Card image retrieval
 - [ ] Price history tracking
 - [ ] Deck building suggestions based on EDHREC data

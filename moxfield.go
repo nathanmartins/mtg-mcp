@@ -24,7 +24,7 @@ type MoxfieldDeck struct {
 	ViewCount    int                          `json:"viewCount"`
 	LikeCount    int                          `json:"likeCount"`
 	CommentCount int                          `json:"commentCount"`
-	Authors      []string                     `json:"authors"`
+	Authors      interface{}                  `json:"authors,omitempty"` // Can be string slice or object
 }
 
 // MoxfieldCardEntry represents a card in a Moxfield deck.
@@ -302,8 +302,19 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 	output.WriteString(fmt.Sprintf("# %s\n\n", deck.Name))
 	output.WriteString(fmt.Sprintf("**Format:** %s\n", deck.Format))
 
-	if len(deck.Authors) > 0 {
-		output.WriteString(fmt.Sprintf("**Author:** %s\n", strings.Join(deck.Authors, ", ")))
+	// Authors field can be either []string or an object, handle gracefully
+	if deck.Authors != nil {
+		if authors, ok := deck.Authors.([]interface{}); ok && len(authors) > 0 {
+			authorStrs := make([]string, 0, len(authors))
+			for _, author := range authors {
+				if authorStr, ok := author.(string); ok {
+					authorStrs = append(authorStrs, authorStr)
+				}
+			}
+			if len(authorStrs) > 0 {
+				output.WriteString(fmt.Sprintf("**Author:** %s\n", strings.Join(authorStrs, ", ")))
+			}
+		}
 	}
 
 	output.WriteString(fmt.Sprintf("**Views:** %d | **Likes:** %d | **Comments:** %d\n",
