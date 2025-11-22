@@ -1,0 +1,82 @@
+name: E2E Tests & Coverage
+
+on: # yamllint disable-line rule:truthy
+  workflow_dispatch: # Manual trigger only
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash -Eeuo pipefail {0}
+
+jobs:
+  e2e-and-coverage:
+    name: E2E Tests & Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Go mod download
+        run: go mod download -x
+
+      - name: Go Build
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null
+
+      - name: Run unit tests
+        run: |
+          echo "::group::Unit Tests"
+          go test -short -v ./...
+          echo "::endgroup::"
+
+      - name: Run all tests with coverage (unit + E2E)
+        run: |
+          echo "::group::Full Test Suite with Coverage"
+          go test -coverprofile=coverage.out -covermode=atomic -v -timeout 5m ./... 2>&1 | tee e2e-tests.log
+          echo "::endgroup::"
+        env:
+          GO_TEST_TIMEOUT_SCALE: 2
+
+      - name: Generate coverage badge
+        uses: tj-actions/coverage-badge-go@5875b0581e5ddfd2b1ad651f5a29c33f6f9754ba # v2.2.2
+        with:
+          filename: coverage.out
+          green: 80
+          yellow: 60
+
+      - name: Commit coverage badge
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add README.md
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to coverage badge"
+          else
+            git commit -m "chore: update coverage badge
+
+            🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+            Co-Authored-By: Claude <noreply@anthropic.com>"
+            git push
+            echo "Coverage badge updated and committed"
+          fi
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@ea054f6ae3c2f17475dc1e4e05d51ffcfae7c8e7 # v4.6.0
+        with:
+          name: e2e-test-logs
+          path: e2e-tests.log
+          retention-days: 7

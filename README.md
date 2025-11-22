@@ -1,7 +1,7 @@
 # MTG Commander MCP Server
 
 <!-- markdownlint-disable-next-line MD013 -->
-[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml) [![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml) [![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml) [![Dependabot Updates](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates)
+[![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml) [![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml) [![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml) [![Dependabot Updates](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/dependabot/dependabot-updates) ![Coverage](https://img.shields.io/badge/Coverage-0%25-red)
 
 A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card
 information, rulings, pricing, and deck validation tools.
@@ -277,24 +277,31 @@ Once connected to Claude Desktop, you can ask questions like:
 
 ```text
 mtg-mcp/
-├── main.go                 # Core MCP server implementation
-├── logger.go               # Structured logging configuration (zerolog)
-├── edhrec.go               # EDHREC API integration
-├── moxfield.go             # Moxfield API integration
-├── http.go                 # HTTP utilities for API calls
-├── *_test.go               # Unit test files
-│   ├── edhrec_test.go      # Tests for EDHREC functionality
-│   ├── moxfield_test.go    # Tests for Moxfield functionality
-│   ├── http_test.go        # Tests for HTTP utilities
-│   └── logger_test.go      # Tests for logger
-├── .github/                # GitHub Actions workflows
+├── main.go                  # Core MCP server implementation
+├── logger.go                # Structured logging configuration (zerolog)
+├── edhrec.go                # EDHREC API integration
+├── moxfield.go              # Moxfield API integration
+├── http.go                  # HTTP utilities for API calls
+├── *_test.go                # Unit test files (with httptest mocks)
+│   ├── edhrec_test.go       # Tests for EDHREC functionality
+│   ├── moxfield_test.go     # Tests for Moxfield functionality
+│   ├── http_test.go         # Tests for HTTP utilities
+│   └── logger_test.go       # Tests for logger
+├── *_e2e_test.go            # E2E test files (real API calls)
+│   ├── edhrec_e2e_test.go   # E2E tests for EDHREC API
+│   ├── moxfield_e2e_test.go # E2E tests for Moxfield API
+│   └── scryfall_e2e_test.go # E2E tests for Scryfall API
+├── .github/                 # GitHub Actions workflows
 │   └── workflows/
-│       └── ci.yaml         # CI pipeline with tests and linting
-├── go.mod                  # Go module dependencies
-├── go.sum                  # Dependency checksums
-├── mtg-commander-server    # Compiled MCP server binary
+│       ├── ci.yaml          # CI pipeline (unit tests + linting)
+│       ├── e2e.yaml         # Manual E2E tests + coverage workflow
+│       ├── cd.yaml          # Continuous deployment
+│       └── lint.yaml        # Code quality checks
+├── go.mod                   # Go module dependencies
+├── go.sum                   # Dependency checksums
+├── mtg-commander-server     # Compiled MCP server binary
 ├── mtg-commander-server.log # Server log file (JSON)
-└── README.md               # This file
+└── README.md                # This file
 ```
 
 ## Dependencies
@@ -313,15 +320,66 @@ Key dependencies (automatically managed by `go mod`):
 The project includes comprehensive unit tests with good coverage:
 
 ```bash
-# Run all tests
-go test -v ./...
+# Run all tests (unit tests only, skips E2E)
+go test -short -v ./...
 
 # Run tests with coverage
-go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+go test -short -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # View coverage report
 go tool cover -html=coverage.out
 ```
+
+### End-to-End (E2E) Tests
+
+E2E tests validate the integration with real external APIs (Scryfall, EDHREC, Moxfield) and are **not run automatically** in CI. They test:
+
+- Real API connectivity and response formats
+- Data structure validation with actual API responses
+- Card name sanitization with real EDHREC endpoints
+- Moxfield deck fetching and search
+- Scryfall card queries and pricing
+
+**Running E2E Tests Locally:**
+
+```bash
+# Run all tests including E2E (no -short flag)
+go test -v ./...
+
+# Run only E2E tests
+go test -v -run E2E ./...
+
+# Run with timeout for slower APIs
+go test -v -timeout 5m ./...
+```
+
+**Running E2E Tests via GitHub Actions:**
+
+E2E tests can be triggered manually through the GitHub Actions workflow:
+
+1. Go to the "Actions" tab in the repository
+2. Select "E2E Tests & Coverage" workflow
+3. Click "Run workflow"
+4. View test results, coverage, and logs
+
+The workflow:
+- Runs unit tests first for quick validation
+- Runs all tests including E2E (without `-short` flag)
+- Generates coverage badge and auto-commits to README
+- Has a 15-minute timeout to accommodate API calls
+- Uploads test logs as artifacts for debugging
+- Only runs when manually triggered (not on push/PR)
+
+**E2E Test Files:**
+- `edhrec_e2e_test.go` - EDHREC API integration tests
+- `moxfield_e2e_test.go` - Moxfield API integration tests
+- `scryfall_e2e_test.go` - Scryfall API integration tests
+
+**Note:** E2E tests make real API calls and are subject to:
+- API rate limits
+- Network latency
+- External API availability
+- Potential API changes
 
 ### Linting
 
@@ -361,12 +419,25 @@ golangci-lint run --fix
 
 ### Continuous Integration
 
-The project uses GitHub Actions for CI:
+The project uses GitHub Actions with two main workflows:
 
+**CI Workflow** (runs on push/PR):
 - **Build**: Compiles the project for Linux/amd64
-- **Test**: Runs all tests with race detection and coverage
+- **Test**: Runs unit tests (with `-short` flag) with race detection
 - **Lint**: Runs golangci-lint for code quality checks
-- **Coverage**: Uploads coverage reports to Codecov (optional)
+- Fast feedback loop for development (skips E2E tests)
+
+**E2E Tests & Coverage Workflow** (manual trigger only):
+- **Unit Tests**: Runs all unit tests first
+- **E2E Tests**: Runs full test suite including real API calls to Scryfall, EDHREC, and Moxfield
+- **Coverage**: Generates coverage report from full test suite
+- **Badge Generation**: Updates README with current coverage percentage
+- **Auto-commit**: Commits badge changes automatically
+- **Artifacts**: Uploads test logs for debugging (7-day retention)
+- **Timeout**: 15 minutes to accommodate external API calls
+- Uses [tj-actions/coverage-badge-go](https://github.com/tj-actions/coverage-badge-go)
+- Thresholds: Green ≥80%, Yellow ≥60%, Red <60%
+- Triggered via GitHub Actions UI → "E2E Tests & Coverage" → "Run workflow"
 
 ## Limitations
 
