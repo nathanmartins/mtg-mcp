@@ -156,9 +156,9 @@ func TestScryfallCommanderLegalityE2E(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			card, err := client.GetCardByName(ctx, tc.cardName, true, scryfall.GetCardByNameOptions{})
-			if err != nil {
-				t.Fatalf("GetCardByName() failed: %v", err)
+			card, cardErr := client.GetCardByName(ctx, tc.cardName, true, scryfall.GetCardByNameOptions{})
+			if cardErr != nil {
+				t.Fatalf("GetCardByName() failed: %v", cardErr)
 			}
 
 			// Check commander legality

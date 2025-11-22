@@ -332,7 +332,8 @@ go tool cover -html=coverage.out
 
 ### End-to-End (E2E) Tests
 
-E2E tests validate the integration with real external APIs (Scryfall, EDHREC, Moxfield) and are **not run automatically** in CI. They test:
+E2E tests validate the integration with real external APIs (Scryfall, EDHREC, Moxfield) and are **not run
+automatically** in CI. They test:
 
 - Real API connectivity and response formats
 - Data structure validation with actual API responses
@@ -363,6 +364,7 @@ E2E tests can be triggered manually through the GitHub Actions workflow:
 4. View test results, coverage, and logs
 
 The workflow:
+
 - Runs unit tests first for quick validation
 - Runs all tests including E2E (without `-short` flag)
 - Generates coverage badge and auto-commits to README
@@ -371,11 +373,13 @@ The workflow:
 - Only runs when manually triggered (not on push/PR)
 
 **E2E Test Files:**
+
 - `edhrec_e2e_test.go` - EDHREC API integration tests
 - `moxfield_e2e_test.go` - Moxfield API integration tests
 - `scryfall_e2e_test.go` - Scryfall API integration tests
 
 **Note:** E2E tests make real API calls and are subject to:
+
 - API rate limits
 - Network latency
 - External API availability
@@ -422,12 +426,14 @@ golangci-lint run --fix
 The project uses GitHub Actions with two main workflows:
 
 **CI Workflow** (runs on push/PR):
+
 - **Build**: Compiles the project for Linux/amd64
 - **Test**: Runs unit tests (with `-short` flag) with race detection
 - **Lint**: Runs golangci-lint for code quality checks
 - Fast feedback loop for development (skips E2E tests)
 
 **E2E Tests & Coverage Workflow** (manual trigger only):
+
 - **Unit Tests**: Runs all unit tests first
 - **E2E Tests**: Runs full test suite including real API calls to Scryfall, EDHREC, and Moxfield
 - **Coverage**: Generates coverage report from full test suite
