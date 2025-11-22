@@ -48,7 +48,7 @@ jobs:
           GO_TEST_TIMEOUT_SCALE: 2
 
       - name: Generate coverage badge
-        uses: tj-actions/coverage-badge-go@5875b0581e5ddfd2b1ad651f5a29c33f6f9754ba # v2.2.2
+        uses: tj-actions/coverage-badge-go@481919ec72da287775fef015fd9011dc75a5db05 # v3.0.0
         with:
           filename: coverage.out
           green: 80
@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload test logs
         if: always()
-        uses: actions/upload-artifact@ea054f6ae3c2f17475dc1e4e05d51ffcfae7c8e7 # v4.6.0
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: e2e-test-logs
           path: e2e-tests.log
