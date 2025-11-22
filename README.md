@@ -111,50 +111,13 @@ go mod tidy
 
 # Build the MCP server
 go build -o mtg-commander-server
-
-# Build the chat interface (optional)
-go build -o mtg-chat ./cmd/chat
 ```
 
-The compiled binaries will be:
-- `mtg-commander-server` - MCP server for use with Claude Desktop or other MCP clients
-- `mtg-chat` - Interactive TUI chat interface (optional)
+The compiled binary `mtg-commander-server` is an MCP server for use with Claude Desktop or other MCP clients.
 
 ## Usage
 
-### Option 1: Interactive Chat Interface (Recommended for Quick Use)
-
-The chat interface provides an interactive TUI (Terminal User Interface) for chatting with an AI assistant that has access to all MTG Commander tools.
-
-**Prerequisites:**
-- Set your API key:
-  ```bash
-  export ANTHROPIC_API_KEY=your_api_key_here
-  ```
-
-**Running:**
-```bash
-./mtg-chat
-```
-
-**Features:**
-- Beautiful terminal UI using Charmbracelet Bubble Tea
-- Direct integration with Claude API (Sonnet 3.5)
-- Automatic tool calling for MTG queries
-- Real-time responses with tool results
-- Type your questions and press Enter to send
-- Press Ctrl+C or Esc to quit
-
-**Example Interaction:**
-```
-You: What are the best cards for Atraxa according to EDHREC?
-Assistant: [Calls get_edhrec_recommendations tool and displays results]
-
-You: How much does Sol Ring cost in BRL?
-Assistant: [Calls get_card_price tool and displays price]
-```
-
-### Option 2: Running as MCP Server
+### Running as MCP Server
 
 The server uses stdio transport for communication with MCP clients like Claude Desktop:
 
@@ -259,8 +222,6 @@ Once connected to Claude Desktop, you can ask questions like:
 - **MCP Framework:** [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go)
 - **Card Data API:** [Scryfall API](https://scryfall.com/docs/api) via [go-scryfall](https://github.com/BlueMonday/go-scryfall)
 - **Currency Conversion:** [Frankfurter API](https://www.frankfurter.app/) (free, no API key)
-- **TUI Framework:** [Charmbracelet](https://github.com/charmbracelet) (Bubble Tea, Lip Gloss, Bubbles)
-- **LLM Integration:** [Anthropic Claude API](https://www.anthropic.com/api) (Sonnet 3.5)
 - **Logging:** [zerolog](https://github.com/rs/zerolog) for structured JSON logging
 - **Transport:** stdio (Model Context Protocol)
 
@@ -303,15 +264,9 @@ mtg-mcp/
 ├── edhrec.go               # EDHREC API integration
 ├── moxfield.go             # Moxfield API integration
 ├── http.go                 # HTTP utilities for API calls
-├── cmd/
-│   └── chat/
-│       ├── main.go         # TUI chat application (Bubble Tea)
-│       ├── claude.go       # Claude API client
-│       └── mcp_client.go   # MCP client for tool calling
 ├── go.mod                  # Go module dependencies
 ├── go.sum                  # Dependency checksums
 ├── mtg-commander-server    # Compiled MCP server binary
-├── mtg-chat                # Compiled chat interface binary
 ├── mtg-commander-server.log # Server log file (JSON)
 └── README.md               # This file
 ```
@@ -320,16 +275,10 @@ mtg-mcp/
 
 Key dependencies (automatically managed by `go mod`):
 
-**MCP Server:**
 - `github.com/mark3labs/mcp-go` v0.43.0 - MCP server and client framework
 - `github.com/BlueMonday/go-scryfall` v0.9.1 - Scryfall API client
 - `github.com/rs/zerolog` v1.34.0 - Structured JSON logging
 - `go.uber.org/ratelimit` v0.2.0 - Rate limiting (via scryfall client)
-
-**Chat Interface:**
-- `github.com/charmbracelet/bubbletea` v1.3.10 - TUI framework (Elm Architecture)
-- `github.com/charmbracelet/bubbles` v0.21.0 - TUI components (textarea, viewport)
-- `github.com/charmbracelet/lipgloss` v1.1.0 - Terminal styling
 
 ## Development
 
