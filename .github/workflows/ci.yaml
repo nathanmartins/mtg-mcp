@@ -1,0 +1,58 @@
+name: CI
+
+on: # yamllint disable-line rule:truthy
+  workflow_dispatch:
+  workflow_call: # Add this to allow other workflows to call this one
+  push:
+    branches: [ main ]
+    paths:
+      - "**.go"
+      - ".github/workflows/ci.yaml"
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "**.go"
+      - ".github/workflows/ci.yaml"
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -Eeuo pipefail {0}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        id: cache-go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version-file: 'go.mod'
+
+      - name: Go mod download
+        if: steps.cache-go.outputs.cache-hit != 'true'
+        run: go mod download -x
+
+      - name: Go Build
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@0a35821d5c230e903fcfe077583637dea1b27b47 # v9.0.0
+        with:
+          args: "--timeout=2m"
+          skip-save-cache: true
+          skip-cache: true
