@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-const moxfieldBaseURL = "https://api.moxfield.com/v2"
-const moxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
+var moxfieldBaseURL = "https://api.moxfield.com/v2"
+var moxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
 
 // MoxfieldDeck represents a deck from Moxfield
 type MoxfieldDeck struct {

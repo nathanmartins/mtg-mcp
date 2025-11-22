@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const edhrecBaseURL = "https://json.edhrec.com/pages"
+var edhrecBaseURL = "https://json.edhrec.com/pages"
 
 // EDHRECResponse represents the top-level response structure
 type EDHRECResponse struct {

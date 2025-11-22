@@ -1,18 +1,16 @@
 name: CI
 
-on: # yamllint disable-line rule:truthy
-  workflow_dispatch:
-  workflow_call: # Add this to allow other workflows to call this one
+on:
+  workflow_dispatch: # Manual trigger
+  workflow_call: # Call from another workflow
   push:
-    branches: [ main ]
+    branches: [master, main]
     paths:
-      - "**.go"
-      - ".github/workflows/ci.yaml"
+    - "**.go"
   pull_request:
-    branches: [ main ]
+    branches: [master, main]
     paths:
-      - "**.go"
-      - ".github/workflows/ci.yaml"
+    - "**.go"
 
 permissions:
   contents: read
@@ -22,7 +20,7 @@ defaults:
     shell: bash -Eeuo pipefail {0}
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,27 +30,53 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
-        with:
-          fetch-depth: 0
 
-      - name: Install Go
-        id: cache-go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
-        with:
-          go-version-file: 'go.mod'
+    - name: Check out code
+      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      with:
+        fetch-depth: 0
 
-      - name: Go mod download
-        if: steps.cache-go.outputs.cache-hit != 'true'
-        run: go mod download -x
+    - name: Restore cached CI Dependencies
+      id: cache-ci-dependencies-restore
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: |
+          /usr/local/bin/gotestfmt
+        key: ${{ runner.os }}-ci-dependencies
 
-      - name: Go Build
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null
+    - name: Install Go
+      id: cache-go
+      uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
+      with:
+        go-version-file: 'go.mod'
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
-        with:
-          args: "--timeout=2m"
-          skip-save-cache: true
-          skip-cache: true
+    - name: Install `gotestfmt`
+      if: steps.cache-ci-dependencies-restore.outputs.cache-hit != 'true'
+      run: go install github.com/gotesttools/gotestfmt/v2/cmd/gotestfmt@latest && mv /home/runner/go/bin/gotestfmt /usr/local/bin/
+
+    - name: Save CI dependencies
+      id: cache-ci-dependencies-save
+      if: steps.cache-ci-dependencies-restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: |
+          /usr/local/bin/gotestfmt
+        key: ${{ steps.cache-ci-dependencies-restore.outputs.cache-primary-key }}
+
+    - name: Go mod download
+      if: steps.cache-go.outputs.cache-hit != 'true'
+      run: go mod download -x
+
+    - name: Go Build
+      run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null
+
+    - name: Run tests
+      run: |
+        go test -json -v ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@e7fa5ac41e1cf5b7d48e45e42232ce7ada589601 # v9.1.0
+      with:
+        args: "--timeout=2m"
+        skip-save-cache: true
+        skip-cache: true
