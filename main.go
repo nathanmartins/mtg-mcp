@@ -640,6 +640,7 @@ func (s *MTGCommanderServer) handleGetBannedList(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
+// parseDecklistString converts a decklist from JSON or text format to card names.
 func parseDecklistString(decklistStr string) []string {
 	var cardNames []string
 
@@ -652,6 +653,7 @@ func parseDecklistString(decklistStr string) []string {
 	return cardNames
 }
 
+// parseTextDecklist parses a text-format decklist into card names.
 func parseTextDecklist(decklistStr string) []string {
 	var cardNames []string
 	lines := strings.Split(decklistStr, "\n")
@@ -667,6 +669,7 @@ func parseTextDecklist(decklistStr string) []string {
 	return cardNames
 }
 
+// parseCardLine extracts card name from a line, removing quantity prefix if present.
 func parseCardLine(line string) string {
 	// Remove quantity prefix (e.g., "1 Sol Ring" -> "Sol Ring")
 	parts := strings.SplitN(line, " ", defaultSplitLimit)
@@ -1134,6 +1137,7 @@ func (s *MTGCommanderServer) handleBannedListResource(
 
 // Helper functions
 
+// getUSDToBRLRate fetches the current USD to BRL exchange rate.
 func getUSDToBRLRate(ctx context.Context) (float64, error) {
 	// Use Frankfurter API for currency conversion (free, no API key needed)
 	resp, err := HTTPGet(ctx, "https://api.frankfurter.app/latest?from=USD&to=BRL")
@@ -1155,6 +1159,7 @@ func getUSDToBRLRate(ctx context.Context) (float64, error) {
 	return result.Rates.BRL, nil
 }
 
+// convertToBRL converts a USD price string to BRL using the given exchange rate.
 func convertToBRL(priceStr string, rate float64) float64 {
 	var price float64
 	_, _ = fmt.Sscanf(priceStr, "%f", &price)

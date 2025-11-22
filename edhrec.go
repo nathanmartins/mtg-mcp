@@ -106,6 +106,7 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 	return getCommanderRecommendationsWithURL(ctx, commanderName, "https://json.edhrec.com/pages")
 }
 
+// getCommanderRecommendationsWithURL fetches recommendations with a custom base URL.
 func getCommanderRecommendationsWithURL(ctx context.Context, commanderName, baseURL string) (*EDHRECData, error) {
 	sanitized := SanitizeCardName(commanderName)
 	url := fmt.Sprintf("%s/commanders/%s.json", baseURL, sanitized)
@@ -144,6 +145,7 @@ func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, e
 	return getCombosForColorsWithURL(ctx, colors, "https://json.edhrec.com/pages")
 }
 
+// getCombosForColorsWithURL fetches combos with a custom base URL.
 func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*EDHRECComboData, error) {
 	// Color codes: w (white), u (blue), b (black), r (red), g (green)
 	// Examples: "wu" (azorius), "ubr" (grixis), "wubrg" (5-color)
@@ -274,6 +276,7 @@ func GetTopCardsForCategory(ctx context.Context, category string, page int) ([]E
 	return getTopCardsForCategoryWithURL(ctx, category, page, "https://json.edhrec.com/pages")
 }
 
+// getTopCardsForCategoryWithURL fetches top cards with a custom base URL.
 func getTopCardsForCategoryWithURL(
 	ctx context.Context,
 	category string,

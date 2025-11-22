@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// loggerInstance wraps the zerolog logger for thread-safe access.
 type loggerInstance struct {
 	logger zerolog.Logger
 }
@@ -15,6 +16,7 @@ func (l *loggerInstance) get() *zerolog.Logger {
 	return &l.logger
 }
 
+// newLoggerInstance creates a new logger instance with default configuration.
 func newLoggerInstance() *loggerInstance {
 	return &loggerInstance{
 		logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),

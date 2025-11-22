@@ -85,6 +85,7 @@ func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error
 	return getMoxfieldDeckWithURL(ctx, publicID, "https://api.moxfield.com/v2")
 }
 
+// getMoxfieldDeckWithURL fetches a deck with a custom base URL.
 func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*MoxfieldDeck, error) {
 	url := fmt.Sprintf("%s/decks/all/%s", baseURL, publicID)
 
@@ -121,6 +122,7 @@ func GetUserDecks(ctx context.Context, username string, pageSize int) (*Moxfield
 	return getUserDecksWithURL(ctx, username, pageSize, "https://api.moxfield.com/v2")
 }
 
+// getUserDecksWithURL fetches user decks with a custom base URL.
 func getUserDecksWithURL(
 	ctx context.Context,
 	username string,
@@ -167,6 +169,7 @@ func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*Mox
 	return searchMoxfieldDecksWithURL(ctx, params, "https://api2.moxfield.com/v2/decks/search")
 }
 
+// searchMoxfieldDecksWithURL searches decks with a custom search URL.
 func searchMoxfieldDecksWithURL(
 	ctx context.Context,
 	params MoxfieldSearchParams,
@@ -238,6 +241,7 @@ func ExtractPublicIDFromURL(url string) string {
 	return url // Return as-is if no parsing needed
 }
 
+// deckCardGroups organizes deck cards by type for display formatting.
 type deckCardGroups struct {
 	creatures     []string
 	instants      []string
@@ -250,6 +254,7 @@ type deckCardGroups struct {
 	totalCards    int
 }
 
+// groupDeckCards categorizes mainboard cards by type.
 func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
 	groups := deckCardGroups{
 		creatures:     []string{},
@@ -290,6 +295,7 @@ func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
 	return groups
 }
 
+// formatDeckHeader formats deck metadata and commander information.
 func formatDeckHeader(deck *MoxfieldDeck) string {
 	var output strings.Builder
 
@@ -321,6 +327,7 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 	return output.String()
 }
 
+// formatCardGroup formats a category of cards with a title.
 func formatCardGroup(title string, cards []string) string {
 	if len(cards) == 0 {
 		return ""
