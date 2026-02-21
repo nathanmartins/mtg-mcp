@@ -1,6 +1,6 @@
 module github.com/nathanmartins/mtg-mcp
 
-go 1.25.4
+go 1.25
 
 require (
 	github.com/BlueMonday/go-scryfall v0.9.1
