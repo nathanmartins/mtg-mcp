@@ -99,7 +99,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func getUserDecksWithURL(
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func searchMoxfieldDecksWithURL(
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
 	if err != nil {
 		return nil, err
 	}
@@ -299,8 +299,8 @@ func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
 func formatDeckHeader(deck *MoxfieldDeck) string {
 	var output strings.Builder
 
-	output.WriteString(fmt.Sprintf("# %s\n\n", deck.Name))
-	output.WriteString(fmt.Sprintf("**Format:** %s\n", deck.Format))
+	fmt.Fprintf(&output, "# %s\n\n", deck.Name)
+	fmt.Fprintf(&output, "**Format:** %s\n", deck.Format)
 
 	// Authors field can be either []string or an object, handle gracefully
 	if deck.Authors != nil {
@@ -317,26 +317,26 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 		}
 
 		if len(authorStrs) > 0 {
-			output.WriteString(fmt.Sprintf("**Author:** %s\n", strings.Join(authorStrs, ", ")))
+			fmt.Fprintf(&output, "**Author:** %s\n", strings.Join(authorStrs, ", "))
 		}
 	}
 skipAuthors:
 
-	output.WriteString(fmt.Sprintf("**Views:** %d | **Likes:** %d | **Comments:** %d\n",
-		deck.ViewCount, deck.LikeCount, deck.CommentCount))
+	fmt.Fprintf(&output, "**Views:** %d | **Likes:** %d | **Comments:** %d\n",
+		deck.ViewCount, deck.LikeCount, deck.CommentCount)
 
 	if deck.LastUpdated != "" {
-		output.WriteString(fmt.Sprintf("**Last Updated:** %s\n", deck.LastUpdated))
+		fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.LastUpdated)
 	}
 
 	if deck.Description != "" {
-		output.WriteString(fmt.Sprintf("\n**Description:**\n%s\n", deck.Description))
+		fmt.Fprintf(&output, "\n**Description:**\n%s\n", deck.Description)
 	}
 
 	if len(deck.Commanders) > 0 {
 		output.WriteString("\n## Commanders\n")
 		for _, entry := range deck.Commanders {
-			output.WriteString(fmt.Sprintf("- %dx %s\n", entry.Quantity, entry.Card.Name))
+			fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
 		}
 	}
 
@@ -350,9 +350,9 @@ func formatCardGroup(title string, cards []string) string {
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("**%s (%d):**\n", title, len(cards)))
+	fmt.Fprintf(&output, "**%s (%d):**\n", title, len(cards))
 	for _, c := range cards {
-		output.WriteString(fmt.Sprintf("- %s\n", c))
+		fmt.Fprintf(&output, "- %s\n", c)
 	}
 	output.WriteString("\n")
 
@@ -369,7 +369,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 
 	groups := groupDeckCards(deck.Mainboard)
 
-	output.WriteString(fmt.Sprintf("\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders)))
+	fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders))
 
 	output.WriteString(formatCardGroup("Creatures", groups.creatures))
 	output.WriteString(formatCardGroup("Instants", groups.instants))
@@ -386,7 +386,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 	if len(deck.Sideboard) > 0 {
 		output.WriteString("\n## Sideboard\n")
 		for _, entry := range deck.Sideboard {
-			output.WriteString(fmt.Sprintf("- %dx %s\n", entry.Quantity, entry.Card.Name))
+			fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
 		}
 	}
 
@@ -394,7 +394,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 	if len(deck.Maybeboard) > 0 {
 		output.WriteString("\n## Maybeboard\n")
 		for _, entry := range deck.Maybeboard {
-			output.WriteString(fmt.Sprintf("- %dx %s\n", entry.Quantity, entry.Card.Name))
+			fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
 		}
 	}
 

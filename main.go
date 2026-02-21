@@ -362,16 +362,16 @@ func (s *MTGCommanderServer) handleSearchCards(
 
 	// Format results
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("Found %d cards (showing first %d):\n\n", result.TotalCards, len(result.Cards)))
+	fmt.Fprintf(&output, "Found %d cards (showing first %d):\n\n", result.TotalCards, len(result.Cards))
 
 	for i, card := range result.Cards {
-		output.WriteString(fmt.Sprintf("%d. **%s** %s\n", i+1, card.Name, card.ManaCost))
-		output.WriteString(fmt.Sprintf("   Type: %s\n", card.TypeLine))
+		fmt.Fprintf(&output, "%d. **%s** %s\n", i+1, card.Name, card.ManaCost)
+		fmt.Fprintf(&output, "   Type: %s\n", card.TypeLine)
 		if card.OracleText != "" {
-			output.WriteString(fmt.Sprintf("   Text: %s\n", card.OracleText))
+			fmt.Fprintf(&output, "   Text: %s\n", card.OracleText)
 		}
-		output.WriteString(fmt.Sprintf("   Set: %s (%s)\n", card.SetName, strings.ToUpper(card.Set)))
-		output.WriteString(fmt.Sprintf("   Commander Legal: %s\n\n", card.Legalities.Commander))
+		fmt.Fprintf(&output, "   Set: %s (%s)\n", card.SetName, strings.ToUpper(card.Set))
+		fmt.Fprintf(&output, "   Commander Legal: %s\n\n", card.Legalities.Commander)
 	}
 
 	return mcp.NewToolResultText(output.String()), nil
@@ -394,23 +394,21 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 
 	// Format card details
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("# %s %s\n\n", card.Name, card.ManaCost))
-	output.WriteString(fmt.Sprintf("**Type:** %s\n", card.TypeLine))
-	output.WriteString(
-		fmt.Sprintf("**Set:** %s (%s) #%s\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber),
-	)
-	output.WriteString(fmt.Sprintf("**Rarity:** %s\n\n", card.Rarity))
+	fmt.Fprintf(&output, "# %s %s\n\n", card.Name, card.ManaCost)
+	fmt.Fprintf(&output, "**Type:** %s\n", card.TypeLine)
+	fmt.Fprintf(&output, "**Set:** %s (%s) #%s\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
+	fmt.Fprintf(&output, "**Rarity:** %s\n\n", card.Rarity)
 
 	if card.OracleText != "" {
-		output.WriteString(fmt.Sprintf("**Oracle Text:**\n%s\n\n", card.OracleText))
+		fmt.Fprintf(&output, "**Oracle Text:**\n%s\n\n", card.OracleText)
 	}
 
 	if card.Power != nil && card.Toughness != nil {
-		output.WriteString(fmt.Sprintf("**Power/Toughness:** %s/%s\n", *card.Power, *card.Toughness))
+		fmt.Fprintf(&output, "**Power/Toughness:** %s/%s\n", *card.Power, *card.Toughness)
 	}
 
 	if card.Loyalty != nil {
-		output.WriteString(fmt.Sprintf("**Loyalty:** %s\n", *card.Loyalty))
+		fmt.Fprintf(&output, "**Loyalty:** %s\n", *card.Loyalty)
 	}
 
 	// Color Identity
@@ -419,23 +417,23 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 		for i, c := range card.ColorIdentity {
 			colors[i] = string(c)
 		}
-		output.WriteString(fmt.Sprintf("**Color Identity:** %s\n", strings.Join(colors, ", ")))
+		fmt.Fprintf(&output, "**Color Identity:** %s\n", strings.Join(colors, ", "))
 	}
 
 	// Legalities
 	output.WriteString("\n**Format Legalities:**\n")
-	output.WriteString(fmt.Sprintf("- Commander: %s\n", card.Legalities.Commander))
-	output.WriteString(fmt.Sprintf("- Legacy: %s\n", card.Legalities.Legacy))
-	output.WriteString(fmt.Sprintf("- Vintage: %s\n", card.Legalities.Vintage))
-	output.WriteString(fmt.Sprintf("- Modern: %s\n", card.Legalities.Modern))
-	output.WriteString(fmt.Sprintf("- Standard: %s\n", card.Legalities.Standard))
+	fmt.Fprintf(&output, "- Commander: %s\n", card.Legalities.Commander)
+	fmt.Fprintf(&output, "- Legacy: %s\n", card.Legalities.Legacy)
+	fmt.Fprintf(&output, "- Vintage: %s\n", card.Legalities.Vintage)
+	fmt.Fprintf(&output, "- Modern: %s\n", card.Legalities.Modern)
+	fmt.Fprintf(&output, "- Standard: %s\n", card.Legalities.Standard)
 
 	// Additional info
 	if card.Artist != nil {
-		output.WriteString(fmt.Sprintf("\n**Artist:** %s\n", *card.Artist))
+		fmt.Fprintf(&output, "\n**Artist:** %s\n", *card.Artist)
 	}
 
-	output.WriteString(fmt.Sprintf("\n**Scryfall Link:** %s\n", card.ScryfallURI))
+	fmt.Fprintf(&output, "\n**Scryfall Link:** %s\n", card.ScryfallURI)
 
 	return mcp.NewToolResultText(output.String()), nil
 }
@@ -455,12 +453,12 @@ func (s *MTGCommanderServer) handleCheckLegality(
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("# Legality Check: %s\n\n", card.Name))
+	fmt.Fprintf(&output, "# Legality Check: %s\n\n", card.Name)
 
 	// Capitalize first letter for display
 	legality := string(card.Legalities.Commander)
 	status := strings.ToUpper(legality[:1]) + legality[1:]
-	output.WriteString(fmt.Sprintf("**Commander Format:** %s\n\n", status))
+	fmt.Fprintf(&output, "**Commander Format:** %s\n\n", status)
 
 	switch card.Legalities.Commander {
 	case scryfall.LegalityBanned:
@@ -473,13 +471,13 @@ func (s *MTGCommanderServer) handleCheckLegality(
 
 	// Show all format legalities
 	output.WriteString("**All Format Legalities:**\n")
-	output.WriteString(fmt.Sprintf("- Standard: %s\n", card.Legalities.Standard))
-	output.WriteString(fmt.Sprintf("- Pioneer: %s\n", card.Legalities.Pioneer))
-	output.WriteString(fmt.Sprintf("- Modern: %s\n", card.Legalities.Modern))
-	output.WriteString(fmt.Sprintf("- Legacy: %s\n", card.Legalities.Legacy))
-	output.WriteString(fmt.Sprintf("- Vintage: %s\n", card.Legalities.Vintage))
-	output.WriteString(fmt.Sprintf("- Pauper: %s\n", card.Legalities.Pauper))
-	output.WriteString(fmt.Sprintf("- Commander: %s\n", card.Legalities.Commander))
+	fmt.Fprintf(&output, "- Standard: %s\n", card.Legalities.Standard)
+	fmt.Fprintf(&output, "- Pioneer: %s\n", card.Legalities.Pioneer)
+	fmt.Fprintf(&output, "- Modern: %s\n", card.Legalities.Modern)
+	fmt.Fprintf(&output, "- Legacy: %s\n", card.Legalities.Legacy)
+	fmt.Fprintf(&output, "- Vintage: %s\n", card.Legalities.Vintage)
+	fmt.Fprintf(&output, "- Pauper: %s\n", card.Legalities.Pauper)
+	fmt.Fprintf(&output, "- Commander: %s\n", card.Legalities.Commander)
 
 	return mcp.NewToolResultText(output.String()), nil
 }
@@ -506,15 +504,15 @@ func (s *MTGCommanderServer) handleGetRulings(
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("# Rulings for %s\n\n", card.Name))
+	fmt.Fprintf(&output, "# Rulings for %s\n\n", card.Name)
 
 	if len(rulings) == 0 {
 		output.WriteString("No official rulings found for this card.\n")
 	} else {
-		output.WriteString(fmt.Sprintf("Found %d ruling(s):\n\n", len(rulings)))
+		fmt.Fprintf(&output, "Found %d ruling(s):\n\n", len(rulings))
 		for i, ruling := range rulings {
-			output.WriteString(fmt.Sprintf("%d. **%s** (%s)\n", i+1, ruling.PublishedAt, ruling.Source))
-			output.WriteString(fmt.Sprintf("   %s\n\n", ruling.Comment))
+			fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, ruling.PublishedAt, ruling.Source)
+			fmt.Fprintf(&output, "   %s\n\n", ruling.Comment)
 		}
 	}
 
@@ -560,10 +558,8 @@ func (s *MTGCommanderServer) handleGetPrice(
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("# Pricing for %s\n", card.Name))
-	output.WriteString(
-		fmt.Sprintf("Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber),
-	)
+	fmt.Fprintf(&output, "# Pricing for %s\n", card.Name)
+	fmt.Fprintf(&output, "Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
 
 	// Get exchange rate for BRL
 	usdToBRL, err := getUSDToBRLRate(ctx)
@@ -575,38 +571,36 @@ func (s *MTGCommanderServer) handleGetPrice(
 	hasPricing := false
 
 	if card.Prices.USD != "" {
-		output.WriteString(fmt.Sprintf("**USD:** $%s\n", card.Prices.USD))
-		output.WriteString(fmt.Sprintf("**BRL:** R$ %.2f (converted)\n", convertToBRL(card.Prices.USD, usdToBRL)))
+		fmt.Fprintf(&output, "**USD:** $%s\n", card.Prices.USD)
+		fmt.Fprintf(&output, "**BRL:** R$ %.2f (converted)\n", convertToBRL(card.Prices.USD, usdToBRL))
 		hasPricing = true
 	}
 
 	if card.Prices.USDFoil != "" {
-		output.WriteString(fmt.Sprintf("**USD (Foil):** $%s\n", card.Prices.USDFoil))
-		output.WriteString(
-			fmt.Sprintf("**BRL (Foil):** R$ %.2f (converted)\n", convertToBRL(card.Prices.USDFoil, usdToBRL)),
-		)
+		fmt.Fprintf(&output, "**USD (Foil):** $%s\n", card.Prices.USDFoil)
+		fmt.Fprintf(&output, "**BRL (Foil):** R$ %.2f (converted)\n", convertToBRL(card.Prices.USDFoil, usdToBRL))
 		hasPricing = true
 	}
 
 	if card.Prices.EUR != "" {
-		output.WriteString(fmt.Sprintf("**EUR:** €%s\n", card.Prices.EUR))
+		fmt.Fprintf(&output, "**EUR:** €%s\n", card.Prices.EUR)
 		hasPricing = true
 	}
 
 	if card.Prices.EURFoil != "" {
-		output.WriteString(fmt.Sprintf("**EUR (Foil):** €%s\n", card.Prices.EURFoil))
+		fmt.Fprintf(&output, "**EUR (Foil):** €%s\n", card.Prices.EURFoil)
 		hasPricing = true
 	}
 
 	if card.Prices.Tix != "" {
-		output.WriteString(fmt.Sprintf("**MTGO Tix:** %s\n", card.Prices.Tix))
+		fmt.Fprintf(&output, "**MTGO Tix:** %s\n", card.Prices.Tix)
 		hasPricing = true
 	}
 
 	if !hasPricing {
 		output.WriteString("No pricing data available for this card.\n")
 	} else {
-		output.WriteString(fmt.Sprintf("\n*Exchange rate: 1 USD = %.4f BRL*\n", usdToBRL))
+		fmt.Fprintf(&output, "\n*Exchange rate: 1 USD = %.4f BRL*\n", usdToBRL)
 		output.WriteString(
 			"*Note: BRL prices are converted from USD and may not reflect Brazilian market conditions*\n",
 		)
@@ -630,10 +624,10 @@ func (s *MTGCommanderServer) handleGetBannedList(
 
 	var output strings.Builder
 	output.WriteString("# Commander Format Banned List\n\n")
-	output.WriteString(fmt.Sprintf("Total banned cards: %d\n\n", result.TotalCards))
+	fmt.Fprintf(&output, "Total banned cards: %d\n\n", result.TotalCards)
 
 	for i, card := range result.Cards {
-		output.WriteString(fmt.Sprintf("%d. %s\n", i+1, card.Name))
+		fmt.Fprintf(&output, "%d. %s\n", i+1, card.Name)
 	}
 
 	output.WriteString("\n*Source: Scryfall (powered by Wizards of the Coast official data)*\n")
@@ -719,8 +713,8 @@ func (s *MTGCommanderServer) handleValidateDeck(
 		colorIdentity[i] = string(c)
 	}
 
-	output.WriteString(fmt.Sprintf("**Commander:** %s\n", commander.Name))
-	output.WriteString(fmt.Sprintf("**Color Identity:** %s\n\n", strings.Join(colorIdentity, ", ")))
+	fmt.Fprintf(&output, "**Commander:** %s\n", commander.Name)
+	fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(colorIdentity, ", "))
 
 	// Check if commander is legal
 	if commander.Legalities.Commander == "banned" {
@@ -739,7 +733,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 
 	// Check deck size
 	totalCards := len(cardNames)
-	output.WriteString(fmt.Sprintf("**Deck Size:** %d cards ", totalCards))
+	fmt.Fprintf(&output, "**Deck Size:** %d cards ", totalCards)
 	switch totalCards {
 	case deckValidationBasicCardCount:
 		output.WriteString("✅\n")
@@ -778,7 +772,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	} else {
 		output.WriteString("❌ Found duplicates:\n")
 		for _, dup := range duplicates {
-			output.WriteString(fmt.Sprintf("  - %s\n", dup))
+			fmt.Fprintf(&output, "  - %s\n", dup)
 		}
 	}
 
@@ -856,17 +850,16 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("# Decks by %s\n\n", username))
-	output.WriteString(fmt.Sprintf("**Total Decks:** %d\n", decks.TotalResults))
-	output.WriteString(
-		fmt.Sprintf("**Showing:** %d decks (Page %d of %d)\n\n", len(decks.Data), decks.PageNumber, decks.TotalPages),
-	)
+	fmt.Fprintf(&output, "# Decks by %s\n\n", username)
+	fmt.Fprintf(&output, "**Total Decks:** %d\n", decks.TotalResults)
+	fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
+		len(decks.Data), decks.PageNumber, decks.TotalPages)
 
 	for i, deck := range decks.Data {
-		output.WriteString(fmt.Sprintf("%d. **%s** (%s)\n", i+1, deck.Name, deck.Format))
-		output.WriteString(fmt.Sprintf("   - Deck ID: %s\n", deck.PublicID))
-		output.WriteString(fmt.Sprintf("   - Views: %d | Likes: %d\n", deck.ViewCount, deck.LikeCount))
-		output.WriteString(fmt.Sprintf("   - URL: %s\n\n", deck.PublicURL))
+		fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, deck.Name, deck.Format)
+		fmt.Fprintf(&output, "   - Deck ID: %s\n", deck.PublicID)
+		fmt.Fprintf(&output, "   - Views: %d | Likes: %d\n", deck.ViewCount, deck.LikeCount)
+		fmt.Fprintf(&output, "   - URL: %s\n\n", deck.PublicURL)
 	}
 
 	return mcp.NewToolResultText(output.String()), nil
@@ -945,27 +938,21 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("# Moxfield Decks for %s\n\n", commander))
-	output.WriteString(fmt.Sprintf("**Format:** %s\n", format))
-	output.WriteString(fmt.Sprintf("**Total Results:** %d\n", results.TotalResults))
-	output.WriteString(
-		fmt.Sprintf(
-			"**Showing:** %d decks (Page %d of %d)\n\n",
-			len(results.Data),
-			results.PageNumber,
-			results.TotalPages,
-		),
-	)
+	fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
+	fmt.Fprintf(&output, "**Format:** %s\n", format)
+	fmt.Fprintf(&output, "**Total Results:** %d\n", results.TotalResults)
+	fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
+		len(results.Data), results.PageNumber, results.TotalPages)
 
 	if len(results.Data) == 0 {
 		output.WriteString("No decks found for this commander.\n")
 	} else {
 		for i, deck := range results.Data {
-			output.WriteString(fmt.Sprintf("## %d. %s\n", i+1, deck.Name))
-			output.WriteString(fmt.Sprintf("- **Format:** %s\n", deck.Format))
-			output.WriteString(fmt.Sprintf("- **Deck ID:** %s\n", deck.PublicID))
-			output.WriteString(fmt.Sprintf("- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount))
-			output.WriteString(fmt.Sprintf("- **URL:** %s\n\n", deck.PublicURL))
+			fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+			fmt.Fprintf(&output, "- **Format:** %s\n", deck.Format)
+			fmt.Fprintf(&output, "- **Deck ID:** %s\n", deck.PublicID)
+			fmt.Fprintf(&output, "- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount)
+			fmt.Fprintf(&output, "- **URL:** %s\n\n", deck.PublicURL)
 		}
 	}
 

@@ -122,7 +122,7 @@ func getCommanderRecommendationsWithURL(ctx context.Context, commanderName, base
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ED
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
 	if err != nil {
 		return nil, err
 	}
@@ -186,11 +186,11 @@ func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ED
 func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 	var output strings.Builder
 
-	output.WriteString(fmt.Sprintf("# EDHREC Recommendations for %s\n\n", data.Card.Name))
-	output.WriteString(fmt.Sprintf("**Total Decks:** %d\n", data.NumDecks))
+	fmt.Fprintf(&output, "# EDHREC Recommendations for %s\n\n", data.Card.Name)
+	fmt.Fprintf(&output, "**Total Decks:** %d\n", data.NumDecks)
 
 	if len(data.Card.ColorID) > 0 {
-		output.WriteString(fmt.Sprintf("**Color Identity:** %s\n\n", strings.Join(data.Card.ColorID, ", ")))
+		fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(data.Card.ColorID, ", "))
 	}
 
 	// Show each card list category
@@ -199,7 +199,7 @@ func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 			continue
 		}
 
-		output.WriteString(fmt.Sprintf("\n## %s\n\n", cardList.Header))
+		fmt.Fprintf(&output, "\n## %s\n\n", cardList.Header)
 
 		// Limit number of cards shown per category
 		count := len(cardList.CardViews)
@@ -213,22 +213,22 @@ func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 			// Calculate percentage
 			percentage := float64(card.Inclusion) / float64(data.NumDecks) * percentageMultiplier
 
-			output.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, card.Name))
-			output.WriteString(fmt.Sprintf("   - Inclusion: %d decks (%.1f%%)\n", card.Inclusion, percentage))
+			fmt.Fprintf(&output, "%d. **%s**\n", i+1, card.Name)
+			fmt.Fprintf(&output, "   - Inclusion: %d decks (%.1f%%)\n", card.Inclusion, percentage)
 
 			if card.Synergy != 0 {
-				output.WriteString(fmt.Sprintf("   - Synergy: %.2f\n", card.Synergy))
+				fmt.Fprintf(&output, "   - Synergy: %.2f\n", card.Synergy)
 			}
 
 			if card.Salt > 0 {
-				output.WriteString(fmt.Sprintf("   - Salt Score: %.2f/4.0\n", card.Salt))
+				fmt.Fprintf(&output, "   - Salt Score: %.2f/4.0\n", card.Salt)
 			}
 
 			output.WriteString("\n")
 		}
 
 		if len(cardList.CardViews) > count {
-			output.WriteString(fmt.Sprintf("*...and %d more cards*\n", len(cardList.CardViews)-count))
+			fmt.Fprintf(&output, "*...and %d more cards*\n", len(cardList.CardViews)-count)
 		}
 	}
 
@@ -240,7 +240,7 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	var output strings.Builder
 
 	output.WriteString("# Popular Combos\n\n")
-	output.WriteString(fmt.Sprintf("**Total Combos:** %d\n\n", len(data.CardLists)))
+	fmt.Fprintf(&output, "**Total Combos:** %d\n\n", len(data.CardLists))
 
 	count := len(data.CardLists)
 	if limit > 0 && count > limit {
@@ -250,25 +250,25 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	for i := range count {
 		comboList := data.CardLists[i]
 
-		output.WriteString(fmt.Sprintf("%d. **%s**\n", i+1, comboList.Header))
+		fmt.Fprintf(&output, "%d. **%s**\n", i+1, comboList.Header)
 
 		if len(comboList.CardViews) > 0 {
 			cardNames := make([]string, len(comboList.CardViews))
 			for j, card := range comboList.CardViews {
 				cardNames[j] = card.Name
 			}
-			output.WriteString(fmt.Sprintf("   **Cards:** %s\n", strings.Join(cardNames, " + ")))
+			fmt.Fprintf(&output, "   **Cards:** %s\n", strings.Join(cardNames, " + "))
 		}
 
 		if comboList.Combo != nil && len(comboList.Combo.Results) > 0 {
-			output.WriteString(fmt.Sprintf("   **Results:** %s\n", strings.Join(comboList.Combo.Results, ", ")))
+			fmt.Fprintf(&output, "   **Results:** %s\n", strings.Join(comboList.Combo.Results, ", "))
 		}
 
 		output.WriteString("\n")
 	}
 
 	if len(data.CardLists) > count {
-		output.WriteString(fmt.Sprintf("*...and %d more combos*\n", len(data.CardLists)-count))
+		fmt.Fprintf(&output, "*...and %d more combos*\n", len(data.CardLists)-count)
 	}
 
 	return output.String()
@@ -298,7 +298,7 @@ func getTopCardsForCategoryWithURL(
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
 	if err != nil {
 		return nil, err
 	}

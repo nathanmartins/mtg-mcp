@@ -22,5 +22,5 @@ func HTTPGet(ctx context.Context, url string) (*http.Response, error) {
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	return client.Do(req)
+	return client.Do(req) //nolint:gosec // G704: URL is validated by the caller via http.NewRequestWithContext
 }
