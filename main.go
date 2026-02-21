@@ -607,7 +607,9 @@ func (s *MTGCommanderServer) handleGetPrice(
 		output.WriteString("No pricing data available for this card.\n")
 	} else {
 		output.WriteString(fmt.Sprintf("\n*Exchange rate: 1 USD = %.4f BRL*\n", usdToBRL))
-		output.WriteString("*Note: BRL prices are converted from USD and may not reflect Brazilian market conditions*\n")
+		output.WriteString(
+			"*Note: BRL prices are converted from USD and may not reflect Brazilian market conditions*\n",
+		)
 	}
 
 	return mcp.NewToolResultText(output.String()), nil
