@@ -7,7 +7,7 @@ on: # yamllint disable-line rule:truthy
       - '**'
 
 permissions:
-  contents: write
+  contents: write # goreleaser needs to create releases and upload assets
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

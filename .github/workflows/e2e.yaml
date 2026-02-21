@@ -4,7 +4,7 @@ on: # yamllint disable-line rule:truthy
   workflow_dispatch: # Manual trigger only
 
 permissions:
-  contents: write
+  contents: write # required to commit and push the updated coverage badge
 
 defaults:
   run:
