@@ -5,7 +5,7 @@ go 1.25
 require (
 	github.com/BlueMonday/go-scryfall v0.9.1
 	github.com/mark3labs/mcp-go v0.46.0
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.0
 )
 
 require (
@@ -13,7 +13,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/jsonschema-go v0.4.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
