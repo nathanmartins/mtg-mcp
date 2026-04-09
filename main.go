@@ -650,6 +650,7 @@ func parseDecklistString(decklistStr string) []string {
 }
 
 // parseTextDecklist parses a text-format decklist into card names.
+// Supports grouped quantities (e.g., "9 Plains" produces 9 entries).
 func parseTextDecklist(decklistStr string) []string {
 	var cardNames []string
 	lines := strings.Split(decklistStr, "\n")
@@ -659,26 +660,28 @@ func parseTextDecklist(decklistStr string) []string {
 		if line == "" {
 			continue
 		}
-		cardNames = append(cardNames, parseCardLine(line))
+		name, qty := parseCardLine(line)
+		for range qty {
+			cardNames = append(cardNames, name)
+		}
 	}
 
 	return cardNames
 }
 
-// parseCardLine extracts card name from a line, removing quantity prefix if present.
-func parseCardLine(line string) string {
-	// Remove quantity prefix (e.g., "1 Sol Ring" -> "Sol Ring")
+// parseCardLine extracts card name and quantity from a line (e.g., "4 Lightning Bolt" -> ("Lightning Bolt", 4)).
+func parseCardLine(line string) (string, int) {
 	parts := strings.SplitN(line, " ", defaultSplitLimit)
 	if len(parts) != defaultSplitLimit {
-		return line
+		return line, 1
 	}
 
-	// Check if first part is a number
-	if _, scanErr := fmt.Sscanf(parts[0], "%d", new(int)); scanErr == nil {
-		return strings.TrimSpace(parts[1])
+	var qty int
+	if _, scanErr := fmt.Sscanf(parts[0], "%d", &qty); scanErr == nil && qty > 0 {
+		return strings.TrimSpace(parts[1]), qty
 	}
 
-	return line
+	return line, 1
 }
 
 func (s *MTGCommanderServer) handleValidateDeck(
