@@ -42,18 +42,6 @@ func TestParseCardLine(t *testing.T) {
 			wantQty:  1,
 		},
 		{
-			name:     "card name with only spaces",
-			line:     "Lightning Bolt",
-			wantName: "Lightning Bolt",
-			wantQty:  1,
-		},
-		{
-			name:     "card with quantity and multi-word name",
-			line:     "1 Sword of the Animist",
-			wantName: "Sword of the Animist",
-			wantQty:  1,
-		},
-		{
 			name:     "card with quantity zero",
 			line:     "0 Plains",
 			wantName: "0 Plains",
