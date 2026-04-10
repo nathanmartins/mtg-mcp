@@ -99,7 +99,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func getUserDecksWithURL(
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func searchMoxfieldDecksWithURL(
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}

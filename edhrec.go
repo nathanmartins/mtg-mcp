@@ -122,7 +122,7 @@ func getCommanderRecommendationsWithURL(ctx context.Context, commanderName, base
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ED
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +298,7 @@ func getTopCardsForCategoryWithURL(
 	req.Header.Set("Accept", "application/json")
 
 	client := &http.Client{}
-	resp, err := client.Do(req) //nolint:gosec // G704: URL is constructed from a trusted base URL constant
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
