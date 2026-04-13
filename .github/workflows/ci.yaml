@@ -37,7 +37,7 @@ jobs:
 
       - name: Restore cached CI Dependencies
         id: cache-ci-dependencies-restore
-        uses: actions/cache/restore@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             /usr/local/bin/gotestfmt
@@ -59,7 +59,7 @@ jobs:
       - name: Save CI dependencies
         id: cache-ci-dependencies-save
         if: steps.cache-ci-dependencies-restore.outputs.cache-hit != 'true'
-        uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             /usr/local/bin/gotestfmt
