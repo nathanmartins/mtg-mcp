@@ -361,3 +361,186 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 		}
 	}
 }
+
+func TestSearchArchidektDecks(t *testing.T) {
+	bracket4 := 4
+	bracket2 := 2
+	mockResponse := ArchidektUserDecksResponse{
+		Count: 2,
+		Results: []ArchidektDeckSummary{
+			{
+				ID:         1001,
+				Name:       "Hearthhull Stax",
+				DeckFormat: 3,
+				EdhBracket: &bracket4,
+				ViewCount:  9000,
+				UpdatedAt:  "2025-01-01T00:00:00Z",
+				Owner:      ArchidektOwner{Username: "powerplayer"},
+			},
+			{
+				ID:         1002,
+				Name:       "Hearthhull Ramp",
+				DeckFormat: 3,
+				EdhBracket: &bracket2,
+				ViewCount:  4500,
+				UpdatedAt:  "2025-02-01T00:00:00Z",
+				Owner:      ArchidektOwner{Username: "casualplayer"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name         string
+		commander    string
+		bracket      int
+		limit        int
+		mockStatus   int
+		wantErr      bool
+		wantBracket  bool
+		wantPageSize string
+	}{
+		{
+			name:         "successful search with bracket",
+			commander:    "Hearthhull, the Worldseed",
+			bracket:      4,
+			limit:        10,
+			mockStatus:   http.StatusOK,
+			wantErr:      false,
+			wantBracket:  true,
+			wantPageSize: "10",
+		},
+		{
+			name:         "successful search without bracket",
+			commander:    "Hearthhull, the Worldseed",
+			bracket:      0,
+			limit:        5,
+			mockStatus:   http.StatusOK,
+			wantErr:      false,
+			wantBracket:  false,
+			wantPageSize: "5",
+		},
+		{
+			name:         "limit clamped to 20",
+			commander:    "Atraxa",
+			bracket:      0,
+			limit:        99,
+			mockStatus:   http.StatusOK,
+			wantErr:      false,
+			wantPageSize: "20",
+		},
+		{
+			name:       "server error",
+			commander:  "Atraxa",
+			bracket:    0,
+			limit:      10,
+			mockStatus: http.StatusInternalServerError,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if ua := r.Header.Get("User-Agent"); ua != "MTG-Commander-MCP-Server/1.0" {
+					t.Errorf("User-Agent = %v, want MTG-Commander-MCP-Server/1.0", ua)
+				}
+				q := r.URL.Query()
+				if q.Get("deckFormat") != "3" {
+					t.Errorf("expected deckFormat=3, got %q", q.Get("deckFormat"))
+				}
+				if q.Get("orderBy") != "-viewCount" {
+					t.Errorf("expected orderBy=-viewCount, got %q", q.Get("orderBy"))
+				}
+				if tt.wantBracket && q.Get("edhBracket") == "" {
+					t.Error("expected edhBracket param to be set")
+				}
+				if !tt.wantBracket && q.Get("edhBracket") != "" {
+					t.Errorf("expected no edhBracket param, got %q", q.Get("edhBracket"))
+				}
+				if tt.wantPageSize != "" && q.Get("page_size") != tt.wantPageSize {
+					t.Errorf("page_size = %q, want %q", q.Get("page_size"), tt.wantPageSize)
+				}
+
+				w.WriteHeader(tt.mockStatus)
+				if tt.mockStatus == http.StatusOK {
+					_ = json.NewEncoder(w).Encode(mockResponse)
+				}
+			}))
+			defer server.Close()
+
+			got, err := searchArchidektDecksWithURL(
+				context.Background(),
+				tt.commander,
+				tt.bracket,
+				tt.limit,
+				server.URL,
+			)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("searchArchidektDecksWithURL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !tt.wantErr && got != nil {
+				if got.Count != mockResponse.Count {
+					t.Errorf("Count = %d, want %d", got.Count, mockResponse.Count)
+				}
+				if len(got.Results) != len(mockResponse.Results) {
+					t.Errorf("Results len = %d, want %d", len(got.Results), len(mockResponse.Results))
+				}
+			}
+		})
+	}
+}
+
+func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
+	bracket := 4
+	result := &ArchidektUserDecksResponse{
+		Count: 1,
+		Results: []ArchidektDeckSummary{
+			{
+				ID:         9999,
+				Name:       "Hearthhull Stax",
+				DeckFormat: 3,
+				EdhBracket: &bracket,
+				ViewCount:  8500,
+				UpdatedAt:  "2025-03-01T00:00:00Z",
+				Owner:      ArchidektOwner{Username: "powerplayer"},
+			},
+		},
+	}
+
+	t.Run("with bracket filter", func(t *testing.T) {
+		got := FormatArchidektSearchResultsForDisplay("Hearthhull, the Worldseed", 4, result)
+		for _, want := range []string{
+			"Hearthhull, the Worldseed",
+			"Bracket 4",
+			"Hearthhull Stax",
+			"powerplayer",
+			"8500",
+			"**EDH Bracket:** 4",
+			"https://archidekt.com/decks/9999",
+		} {
+			if !strings.Contains(got, want) {
+				t.Errorf("missing %q in output", want)
+			}
+		}
+	})
+
+	t.Run("without bracket filter", func(t *testing.T) {
+		got := FormatArchidektSearchResultsForDisplay("Hearthhull, the Worldseed", 0, result)
+		if strings.Contains(got, "Bracket 0") {
+			t.Error("bracket 0 should not appear in header")
+		}
+		if !strings.Contains(got, "Hearthhull, the Worldseed") {
+			t.Error("missing commander name in output")
+		}
+	})
+
+	t.Run("empty results", func(t *testing.T) {
+		empty := &ArchidektUserDecksResponse{Count: 0, Results: nil}
+		got := FormatArchidektSearchResultsForDisplay("Unknown Commander", 0, empty)
+		if !strings.Contains(got, "No public decks found") {
+			t.Error("expected empty-results message")
+		}
+	})
+}

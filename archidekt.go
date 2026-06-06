@@ -10,7 +10,10 @@ import (
 	"strings"
 )
 
-const archidektCommanderCategory = "Commander"
+const (
+	archidektCommanderCategory = "Commander"
+	archidektSearchMaxLimit    = 20
+)
 
 // ArchidektDeck represents a deck from Archidekt.
 type ArchidektDeck struct {
@@ -95,6 +98,7 @@ type ArchidektDeckSummary struct {
 	ID         int            `json:"id"`
 	Name       string         `json:"name"`
 	DeckFormat int            `json:"deckFormat"`
+	EdhBracket *int           `json:"edhBracket"`
 	ViewCount  int            `json:"viewCount"`
 	Private    bool           `json:"private"`
 	UpdatedAt  string         `json:"updatedAt"`
@@ -320,6 +324,101 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	output.WriteString(formatCardGroup("Lands", groups.lands))
 	if len(groups.others) > 0 {
 		output.WriteString(formatCardGroup("Other", groups.others))
+	}
+
+	return output.String()
+}
+
+// SearchArchidektDecks searches public Commander decks by commander name, optionally filtered by
+// EDH bracket, sorted by view count descending. bracket=0 means no filter; limit is clamped to 1–20.
+func SearchArchidektDecks(
+	ctx context.Context,
+	commander string,
+	bracket int,
+	limit int,
+) (*ArchidektUserDecksResponse, error) {
+	return searchArchidektDecksWithURL(ctx, commander, bracket, limit, "https://archidekt.com/api")
+}
+
+// searchArchidektDecksWithURL is the testable variant that accepts a custom base URL.
+func searchArchidektDecksWithURL(
+	ctx context.Context,
+	commander string,
+	bracket int,
+	limit int,
+	baseURL string,
+) (*ArchidektUserDecksResponse, error) {
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > archidektSearchMaxLimit {
+		limit = archidektSearchMaxLimit
+	}
+
+	queryParams := url.Values{}
+	queryParams.Set("cards__oracle_card__name__icontains", commander)
+	queryParams.Set("cards__categories__icontains", archidektCommanderCategory)
+	queryParams.Set("deckFormat", "3")
+	queryParams.Set("orderBy", "-viewCount")
+	queryParams.Set("page_size", strconv.Itoa(limit))
+	if bracket >= 1 && bracket <= 4 {
+		queryParams.Set("edhBracket", strconv.Itoa(bracket))
+	}
+
+	reqURL := fmt.Sprintf("%s/decks/?%s", baseURL, queryParams.Encode())
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
+	}
+
+	var result ArchidektUserDecksResponse
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	}
+
+	return &result, nil
+}
+
+// FormatArchidektSearchResultsForDisplay formats a deck search result list for text display.
+func FormatArchidektSearchResultsForDisplay(commander string, bracket int, result *ArchidektUserDecksResponse) string {
+	var output strings.Builder
+
+	if bracket >= 1 && bracket <= 4 {
+		fmt.Fprintf(&output, "# Archidekt Decks: %s (Bracket %d)\n\n", commander, bracket)
+	} else {
+		fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", commander)
+	}
+	fmt.Fprintf(&output, "**Total Results:** %d\n\n", result.Count)
+
+	if len(result.Results) == 0 {
+		output.WriteString("No public decks found for this commander.\n")
+		return output.String()
+	}
+
+	for i, deck := range result.Results {
+		fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+		fmt.Fprintf(&output, "- **Author:** %s\n", deck.Owner.Username)
+		fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
+		if deck.EdhBracket != nil {
+			fmt.Fprintf(&output, "- **EDH Bracket:** %d\n", *deck.EdhBracket)
+		}
+		fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
+		fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 	}
 
 	return output.String()
