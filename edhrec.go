@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -111,9 +112,9 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 // getCommanderRecommendationsWithURL fetches recommendations with a custom base URL.
 func getCommanderRecommendationsWithURL(ctx context.Context, commanderName, baseURL string) (*EDHRECData, error) {
 	sanitized := SanitizeCardName(commanderName)
-	url := fmt.Sprintf("%s/commanders/%s.json", baseURL, sanitized)
+	reqURL := fmt.Sprintf("%s/commanders/%s.json", baseURL, url.PathEscape(sanitized))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -151,9 +152,9 @@ func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, e
 func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*EDHRECComboData, error) {
 	// Color codes: w (white), u (blue), b (black), r (red), g (green)
 	// Examples: "wu" (azorius), "ubr" (grixis), "wubrg" (5-color)
-	url := fmt.Sprintf("%s/combos/%s.json", baseURL, strings.ToLower(colors))
+	reqURL := fmt.Sprintf("%s/combos/%s.json", baseURL, url.PathEscape(strings.ToLower(colors)))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -287,9 +288,9 @@ func getTopCardsForCategoryWithURL(
 	baseURL string,
 ) ([]EDHRECCardView, error) {
 	// Categories: salt, commanders, themes, etc.
-	url := fmt.Sprintf("%s/top/%s--%d.json", baseURL, category, page)
+	reqURL := fmt.Sprintf("%s/top/%s--%d.json", baseURL, url.PathEscape(category), page)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
