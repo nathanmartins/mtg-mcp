@@ -7,6 +7,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const (
+	logLevelDebug = "debug"
+	logLevelInfo  = "info"
+	logLevelWarn  = "warn"
+	logLevelError = "error"
+)
+
 // loggerInstance wraps the zerolog logger for thread-safe access.
 type loggerInstance struct {
 	logger zerolog.Logger
@@ -59,13 +66,13 @@ func InitLogger(logFilePath string) error {
 // SetLogLevel sets the global log level.
 func SetLogLevel(level string) {
 	switch level {
-	case "debug":
+	case logLevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case "info":
+	case logLevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case "warn":
+	case logLevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case "error":
+	case logLevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
