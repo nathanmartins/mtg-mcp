@@ -10,6 +10,7 @@ GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
 GOFMT=$(GOCMD) fmt
 BINARY_NAME=mtg-mcp
+GOPATH_BIN=$(shell go env GOPATH)/bin
 COVERAGE_FILE=coverage.out
 
 # Detect OS for cross-platform compatibility
@@ -128,7 +129,7 @@ tidy:
 ## install: Install the binary
 install: build
 	@echo "Installing binary..."
-	cp $(BINARY_NAME) $(GOPATH)/bin/$(BINARY_NAME)
+	cp $(BINARY_NAME) $(GOPATH_BIN)/$(BINARY_NAME)
 
 ## run: Run the application
 run: build
