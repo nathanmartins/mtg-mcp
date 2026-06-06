@@ -58,9 +58,9 @@ func TestHTTPGet(t *testing.T) {
 			}))
 			defer server.Close()
 
-			// Test the function
+			// Test the function using the internal client-aware variant
 			ctx := context.Background()
-			resp, err := HTTPGet(ctx, server.URL)
+			resp, err := httpGetWithClient(ctx, server.URL, server.Client())
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("HTTPGet() error = %v, wantErr %v", err, tt.wantErr)
@@ -90,7 +90,7 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := HTTPGet(ctx, server.URL)
+	_, err := httpGetWithClient(ctx, server.URL, server.Client())
 	if err == nil {
 		t.Error("HTTPGet() expected error with cancelled context, got nil")
 	}
@@ -112,7 +112,7 @@ func TestHTTPGet_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := HTTPGet(ctx, server.URL)
+	_, err := httpGetWithClient(ctx, server.URL, server.Client())
 
 	// Should timeout due to context deadline
 	if err == nil {
