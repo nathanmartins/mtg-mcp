@@ -77,7 +77,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
    - Paginated results (up to 100 per page)
    - Returns deck metadata with views, likes, and URLs
 
-#### Archidekt Integration (2 tools)
+#### Archidekt Integration (3 tools)
 
 1. **get_archidekt_deck** - Fetch a complete deck from Archidekt
    - Accepts deck URL or numeric ID (e.g., `https://archidekt.com/decks/12345` or `12345`)
@@ -90,6 +90,13 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
    - List all public decks for any Archidekt username
    - Paginated results with direct deck URLs
    - Format name, view count, and last-updated date for each deck
+
+3. **search_archidekt_decks** - Search public Commander decks by commander name
+   - Required `commander` parameter (card name, e.g. `"Atraxa, Praetors' Voice"`)
+   - Optional `bracket` filter (1–4; omit to search all brackets)
+   - Optional `limit` (default: 10, max: 20)
+   - Results sorted by view count descending
+   - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 
 #### EDHREC Meta Data (2 tools)
 

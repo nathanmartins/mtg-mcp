@@ -98,7 +98,8 @@ fmt:
 ## lint: Run linters
 lint:
 	@echo "Running golangci-lint..."
-	golangci-lint run ./...
+	golangci-lint fmt
+	golangci-lint run ./... --fix
 	@echo "Running markdown linter..."
 	-markdownlint *.md --fix 2>/dev/null || echo "markdownlint not found, skipping..."
 	@echo "Running yaml linter..."
