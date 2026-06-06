@@ -36,3 +36,6 @@ go.work
 dist/
 build/
 mtg-mcp
+
+# pi agent stuff
+.pi/
