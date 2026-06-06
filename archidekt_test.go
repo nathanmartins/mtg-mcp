@@ -271,7 +271,11 @@ func TestGetArchidektUserDecks(t *testing.T) {
 					t.Errorf("GetArchidektUserDecks() count = %v, want %v", got.Count, mockResponse.Count)
 				}
 				if len(got.Results) != len(mockResponse.Results) {
-					t.Errorf("GetArchidektUserDecks() results len = %v, want %v", len(got.Results), len(mockResponse.Results))
+					t.Errorf(
+						"GetArchidektUserDecks() results len = %v, want %v",
+						len(got.Results),
+						len(mockResponse.Results),
+					)
 				}
 			}
 		})
