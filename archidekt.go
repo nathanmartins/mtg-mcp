@@ -5,38 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
 
-// archidektFormatNames maps Archidekt's numeric format codes to human-readable names.
-var archidektFormatNames = map[int]string{
-	1:  "Standard",
-	2:  "Modern",
-	3:  "Commander",
-	4:  "Legacy",
-	5:  "Vintage",
-	6:  "Pauper",
-	7:  "Custom",
-	8:  "Frontier",
-	9:  "Future Standard",
-	10: "Penny Dreadful",
-	11: "1v1 Commander",
-	12: "Duel Commander",
-	13: "Brawl",
-	14: "Oathbreaker",
-	15: "Pioneer",
-	16: "Historic",
-	17: "Pauper Commander",
-	18: "Alchemy",
-	19: "Explorer",
-	20: "Historic Brawl",
-	21: "Gladiator",
-	22: "Premodern",
-	23: "Pre-EDH",
-	24: "Timeless",
-	25: "Canadian Highlander",
-}
+const archidektCommanderCategory = "Commander"
 
 // ArchidektDeck represents a deck from Archidekt.
 type ArchidektDeck struct {
@@ -71,21 +45,21 @@ type ArchidektCategory struct {
 
 // ArchidektCardEntry represents a card entry within an Archidekt deck.
 type ArchidektCardEntry struct {
-	ID         int              `json:"id"`
-	Quantity   int              `json:"quantity"`
-	Modifier   string           `json:"modifier"`
-	Categories []string         `json:"categories"`
-	Card       ArchidektCard    `json:"card"`
+	ID         int           `json:"id"`
+	Quantity   int           `json:"quantity"`
+	Modifier   string        `json:"modifier"`
+	Categories []string      `json:"categories"`
+	Card       ArchidektCard `json:"card"`
 }
 
 // ArchidektCard represents the physical card data from Archidekt.
 type ArchidektCard struct {
-	UID             string               `json:"uid"`
-	CollectorNumber string               `json:"collectorNumber"`
-	Rarity          string               `json:"rarity"`
-	Edition         ArchidektEdition     `json:"edition"`
-	OracleCard      ArchidektOracleCard  `json:"oracleCard"`
-	Prices          ArchidektPrices      `json:"prices"`
+	UID             string              `json:"uid"`
+	CollectorNumber string              `json:"collectorNumber"`
+	Rarity          string              `json:"rarity"`
+	Edition         ArchidektEdition    `json:"edition"`
+	OracleCard      ArchidektOracleCard `json:"oracleCard"`
+	Prices          ArchidektPrices     `json:"prices"`
 }
 
 // ArchidektEdition represents the set/edition of an Archidekt card.
@@ -129,9 +103,9 @@ type ArchidektDeckSummary struct {
 
 // ArchidektUserDecksResponse represents a paginated list of Archidekt decks.
 type ArchidektUserDecksResponse struct {
-	Count    int                    `json:"count"`
-	Next     string                 `json:"next"`
-	Results  []ArchidektDeckSummary `json:"results"`
+	Count   int                    `json:"count"`
+	Next    string                 `json:"next"`
+	Results []ArchidektDeckSummary `json:"results"`
 }
 
 // GetArchidektDeck fetches a deck by its numeric ID.
@@ -141,9 +115,9 @@ func GetArchidektDeck(ctx context.Context, deckID int) (*ArchidektDeck, error) {
 
 // getArchidektDeckWithURL fetches a deck with a custom base URL (used for testing).
 func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*ArchidektDeck, error) {
-	url := fmt.Sprintf("%s/decks/%d/", baseURL, deckID)
+	reqURL := fmt.Sprintf("%s/decks/%d/", baseURL, deckID)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -189,9 +163,13 @@ func getArchidektUserDecksWithURL(
 		page = 1
 	}
 
-	url := fmt.Sprintf("%s/decks/?owner=%s&exactowner=true&page=%d", baseURL, username, page)
+	queryParams := url.Values{}
+	queryParams.Set("owner", username)
+	queryParams.Set("exactowner", "true")
+	queryParams.Set("page", strconv.Itoa(page))
+	reqURL := fmt.Sprintf("%s/decks/?%s", baseURL, queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +225,34 @@ func ExtractArchidektDeckID(input string) (int, error) {
 
 // archidektFormatName returns a human-readable format name for a numeric format code.
 func archidektFormatName(code int) string {
-	if name, ok := archidektFormatNames[code]; ok {
+	formatNames := map[int]string{
+		1:  "Standard",
+		2:  "Modern",
+		3:  archidektCommanderCategory,
+		4:  "Legacy",
+		5:  "Vintage",
+		6:  "Pauper",
+		7:  "Custom",
+		8:  "Frontier",
+		9:  "Future Standard",
+		10: "Penny Dreadful",
+		11: "1v1 Commander",
+		12: "Duel Commander",
+		13: "Brawl",
+		14: "Oathbreaker",
+		15: "Pioneer",
+		16: "Historic",
+		17: "Pauper Commander",
+		18: "Alchemy",
+		19: "Explorer",
+		20: "Historic Brawl",
+		21: "Gladiator",
+		22: "Premodern",
+		23: "Pre-EDH",
+		24: "Timeless",
+		25: "Canadian Highlander",
+	}
+	if name, ok := formatNames[code]; ok {
 		return name
 	}
 	return fmt.Sprintf("Unknown (%d)", code)
