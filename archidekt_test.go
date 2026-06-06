@@ -457,8 +457,8 @@ func TestSearchArchidektDecks(t *testing.T) {
 				if !tt.wantBracket && q.Get("edhBracket") != "" {
 					t.Errorf("expected no edhBracket param, got %q", q.Get("edhBracket"))
 				}
-				if tt.wantPageSize != "" && q.Get("page_size") != tt.wantPageSize {
-					t.Errorf("page_size = %q, want %q", q.Get("page_size"), tt.wantPageSize)
+				if tt.wantPageSize != "" && q.Get("pageSize") != tt.wantPageSize {
+					t.Errorf("pageSize = %q, want %q", q.Get("pageSize"), tt.wantPageSize)
 				}
 
 				w.WriteHeader(tt.mockStatus)

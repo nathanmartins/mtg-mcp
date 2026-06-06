@@ -171,7 +171,7 @@ func getArchidektUserDecksWithURL(
 	queryParams.Set("owner", username)
 	queryParams.Set("exactowner", "true")
 	queryParams.Set("page", strconv.Itoa(page))
-	reqURL := fmt.Sprintf("%s/decks/?%s", baseURL, queryParams.Encode())
+	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
@@ -356,16 +356,15 @@ func searchArchidektDecksWithURL(
 	}
 
 	queryParams := url.Values{}
-	queryParams.Set("cards__oracle_card__name__icontains", commander)
-	queryParams.Set("cards__categories__icontains", archidektCommanderCategory)
+	queryParams.Set("commanderName", commander)
 	queryParams.Set("deckFormat", "3")
 	queryParams.Set("orderBy", "-viewCount")
-	queryParams.Set("page_size", strconv.Itoa(limit))
+	queryParams.Set("pageSize", strconv.Itoa(limit))
 	if bracket >= 1 && bracket <= 4 {
 		queryParams.Set("edhBracket", strconv.Itoa(bracket))
 	}
 
-	reqURL := fmt.Sprintf("%s/decks/?%s", baseURL, queryParams.Encode())
+	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
