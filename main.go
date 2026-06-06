@@ -12,6 +12,13 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
+// Build-time variables injected via -ldflags.
+var (
+	version   = "dev"
+	commit    = "none"
+	buildDate = "unknown"
+)
+
 const (
 	totalToolCount               = 14
 	totalResourceCount           = 2
@@ -44,6 +51,15 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 }
 
 func main() {
+	// Handle flags before logger init so --version can print cleanly to stdout
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "--version", "-version":
+			fmt.Printf("mtg-mcp version %s (commit: %s, built: %s)\n", version, commit, buildDate)
+			os.Exit(0)
+		}
+	}
+
 	// Initialize logger
 	logFilePath := "mtg-commander-server.log"
 	if err := InitLogger(logFilePath); err != nil {
@@ -52,7 +68,11 @@ func main() {
 	}
 
 	log := GetLogger()
-	log.Info().Msg("Initializing MTG Commander MCP Server")
+	log.Info().
+		Str("version", version).
+		Str("commit", commit).
+		Str("build_date", buildDate).
+		Msg("Initializing MTG Commander MCP Server")
 
 	// Check for log level flag
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {

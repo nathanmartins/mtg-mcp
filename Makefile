@@ -21,7 +21,10 @@ else
 endif
 
 # Build flags
-LDFLAGS=-ldflags="-w -s"
+VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+BUILD_DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+LDFLAGS=-ldflags="-w -s -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)"
 
 .PHONY: all build test test-unit test-e2e test-coverage clean fmt lint help install deps tidy
 
