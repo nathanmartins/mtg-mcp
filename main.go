@@ -296,6 +296,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 
+	s.registerArchidektTools(mcpServer)
+}
+
+// registerArchidektTools registers Archidekt-related MCP tools (split out to keep registerTools within length limits).
+func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer) {
 	// Tool 13: Get Archidekt Deck
 	archidektDeckTool := mcp.NewTool(
 		"get_archidekt_deck",
@@ -322,6 +327,25 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		),
 	)
 	mcpServer.AddTool(archidektUserDecksTool, s.handleGetArchidektUserDecks)
+
+	// Tool 15: Search Archidekt Decks
+	searchArchidektDecksTool := mcp.NewTool(
+		"search_archidekt_decks",
+		mcp.WithDescription(
+			"Search for public Commander decks on Archidekt by commander name, sorted by view count descending",
+		),
+		mcp.WithString("commander",
+			mcp.Required(),
+			mcp.Description("Commander card name to search for (e.g. 'Atraxa, Praetors\\' Voice')"),
+		),
+		mcp.WithNumber("bracket",
+			mcp.Description("Filter by EDH bracket (1–4). Omit to return all brackets."),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Number of decks to return (default: 10, max: 20)"),
+		),
+	)
+	mcpServer.AddTool(searchArchidektDecksTool, s.handleSearchArchidektDecks)
 }
 
 // registerResources registers MCP resources.
@@ -1187,6 +1211,56 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 	}
 
 	return mcp.NewToolResultText(output.String()), nil
+}
+
+func (s *MTGCommanderServer) handleSearchArchidektDecks(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	commander, err := request.RequireString("commander")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	bracket := 0
+	limit := 10
+	args := request.GetArguments()
+	if bracketVal, hasBracket := args["bracket"]; hasBracket {
+		if bracketFloat, ok := bracketVal.(float64); ok {
+			bracket = int(bracketFloat)
+		}
+	}
+	if limitVal, hasLimit := args["limit"]; hasLimit {
+		if limitFloat, ok := limitVal.(float64); ok && limitFloat >= 1 {
+			limit = int(limitFloat)
+		}
+	}
+
+	GetLogger().Info().
+		Str("tool", "search_archidekt_decks").
+		Str("commander", commander).
+		Int("bracket", bracket).
+		Int("limit", limit).
+		Msg("Searching Archidekt decks")
+
+	result, err := SearchArchidektDecks(ctx, commander, bracket, limit)
+	if err != nil {
+		GetLogger().Error().
+			Err(err).
+			Str("tool", "search_archidekt_decks").
+			Str("commander", commander).
+			Msg("Failed to search Archidekt decks")
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Archidekt decks: %v", err)), nil
+	}
+
+	GetLogger().Info().
+		Str("tool", "search_archidekt_decks").
+		Str("commander", commander).
+		Int("result_count", len(result.Results)).
+		Msg("Successfully searched Archidekt decks")
+
+	output := FormatArchidektSearchResultsForDisplay(commander, bracket, result)
+	return mcp.NewToolResultText(output), nil
 }
 
 // Resource Handlers
