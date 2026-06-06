@@ -295,7 +295,7 @@ Once connected to Claude Desktop, you can ask questions like:
    - **Note:** API is open for read access; credit deck creators when publishing data
    - No API key required
 
-5. **EDHREC:** Unofficial JSON endpoints (<https://json.edhrec.com>)
+6. **EDHREC:** Unofficial JSON endpoints (<https://json.edhrec.com>)
    - Card recommendations and synergies
    - Meta statistics and popularity data
    - Combo database
