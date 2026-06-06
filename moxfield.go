@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -87,9 +89,9 @@ func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error
 
 // getMoxfieldDeckWithURL fetches a deck with a custom base URL.
 func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*MoxfieldDeck, error) {
-	url := fmt.Sprintf("%s/decks/all/%s", baseURL, publicID)
+	reqURL := fmt.Sprintf("%s/decks/all/%s", baseURL, url.PathEscape(publicID))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -134,9 +136,11 @@ func getUserDecksWithURL(
 		pageSize = maxPageSize
 	}
 
-	url := fmt.Sprintf("%s/users/%s/decks?pageSize=%d", baseURL, username, pageSize)
+	queryParams := url.Values{}
+	queryParams.Set("pageSize", strconv.Itoa(pageSize))
+	reqURL := fmt.Sprintf("%s/users/%s/decks?%s", baseURL, url.PathEscape(username), queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -185,23 +189,25 @@ func searchMoxfieldDecksWithURL(
 	}
 
 	// Build query parameters
-	url := fmt.Sprintf("%s?pageSize=%d&pageNumber=%d",
-		searchURL, params.PageSize, params.PageNumber)
-
+	queryParams := url.Values{}
+	queryParams.Set("pageSize", strconv.Itoa(params.PageSize))
+	queryParams.Set("pageNumber", strconv.Itoa(params.PageNumber))
 	if params.Query != "" {
-		url += fmt.Sprintf("&board=commanders&query=%s", params.Query)
+		queryParams.Set("board", "commanders")
+		queryParams.Set("query", params.Query)
 	}
 	if params.Format != "" {
-		url += fmt.Sprintf("&fmt=%s", params.Format)
+		queryParams.Set("fmt", params.Format)
 	}
 	if params.SortType != "" {
-		url += fmt.Sprintf("&sortType=%s", params.SortType)
+		queryParams.Set("sortType", params.SortType)
 	}
 	if params.SortDirection != "" {
-		url += fmt.Sprintf("&sortDirection=%s", params.SortDirection)
+		queryParams.Set("sortDirection", params.SortDirection)
 	}
+	reqURL := fmt.Sprintf("%s?%s", searchURL, queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, err
 	}
