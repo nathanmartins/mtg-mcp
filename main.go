@@ -20,6 +20,10 @@ const (
 	maxPageSize                  = 100
 	deckValidationBasicCardCount = 99
 	deckValidationCommanderCount = 100
+	cardSortOrderName            = "name"
+	defaultFormat                = "commander"
+	defaultSortDirection         = "Descending"
+	paramCommander               = "commander"
 )
 
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
@@ -52,7 +56,7 @@ func main() {
 
 	// Check for log level flag
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
-		SetLogLevel("debug")
+		SetLogLevel(logLevelDebug)
 		log.Debug().Msg("Debug logging enabled")
 	}
 
@@ -175,7 +179,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		mcp.WithDescription(
 			"Validate a Commander deck for format legality (100 cards, singleton, color identity, banned cards)",
 		),
-		mcp.WithString("commander",
+		mcp.WithString(paramCommander,
 			mcp.Required(),
 			mcp.Description("Commander card name"),
 		),
@@ -221,7 +225,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		mcp.WithDescription(
 			"Search for decks on Moxfield by commander name or other criteria, returns popular decks sorted by views/likes",
 		),
-		mcp.WithString("commander",
+		mcp.WithString(paramCommander,
 			mcp.Required(),
 			mcp.Description("Commander card name to search for (e.g., 'Atraxa, Praetors Voice')"),
 		),
@@ -246,7 +250,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		mcp.WithDescription(
 			"Get EDHREC card recommendations for a specific commander, including high synergy cards, top cards, and statistics",
 		),
-		mcp.WithString("commander",
+		mcp.WithString(paramCommander,
 			mcp.Required(),
 			mcp.Description("Commander card name (e.g., 'Atraxa, Praetors Voice')"),
 		),
@@ -354,7 +358,7 @@ func (s *MTGCommanderServer) handleSearchCards(
 	// Search cards using Scryfall
 	searchOpts := scryfall.SearchCardsOptions{
 		Unique: "cards",
-		Order:  "name",
+		Order:  cardSortOrderName,
 	}
 
 	result, err := s.scryfallClient.SearchCards(ctx, query, searchOpts)
@@ -643,7 +647,7 @@ func (s *MTGCommanderServer) handleGetBannedList(
 	// Search for banned cards in Commander
 	searchQuery := "banned:commander"
 	result, err := s.scryfallClient.SearchCards(ctx, searchQuery, scryfall.SearchCardsOptions{
-		Order: "name",
+		Order: cardSortOrderName,
 	})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch banned list: %v", err)), nil
@@ -715,7 +719,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	commanderName, err := request.RequireString("commander")
+	commanderName, err := request.RequireString(paramCommander)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -899,7 +903,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	commander, err := request.RequireString("commander")
+	commander, err := request.RequireString(paramCommander)
 	if err != nil {
 		GetLogger().Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
@@ -908,7 +912,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 	// Get optional parameters
 	args := request.GetArguments()
 
-	format := "commander"
+	format := defaultFormat
 	if formatVal, hasFormat := args["format"]; hasFormat {
 		if formatStr, ok := formatVal.(string); ok {
 			format = formatStr
@@ -922,7 +926,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		}
 	}
 
-	sortDirection := "Descending"
+	sortDirection := defaultSortDirection
 	if sortDirVal, hasSortDir := args["sort_direction"]; hasSortDir {
 		if sortDirStr, ok := sortDirVal.(string); ok {
 			sortDirection = sortDirStr
@@ -942,7 +946,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 
 	GetLogger().Info().
 		Str("tool", "search_moxfield_decks").
-		Str("commander", commander).
+		Str(paramCommander, commander).
 		Str("format", format).
 		Str("sort_type", sortType).
 		Int("page_size", pageSize).
@@ -962,7 +966,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		GetLogger().Error().
 			Err(err).
 			Str("tool", "search_moxfield_decks").
-			Str("commander", commander).
+			Str(paramCommander, commander).
 			Msg("Failed to search Moxfield decks")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
@@ -988,7 +992,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 
 	GetLogger().Info().
 		Str("tool", "search_moxfield_decks").
-		Str("commander", commander).
+		Str(paramCommander, commander).
 		Int("results_count", len(results.Data)).
 		Msg("Successfully searched Moxfield decks")
 
@@ -999,7 +1003,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	commander, err := request.RequireString("commander")
+	commander, err := request.RequireString(paramCommander)
 	if err != nil {
 		GetLogger().Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
@@ -1015,7 +1019,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 
 	GetLogger().Info().
 		Str("tool", "get_edhrec_recommendations").
-		Str("commander", commander).
+		Str(paramCommander, commander).
 		Int("limit", limit).
 		Msg("Fetching EDHREC recommendations")
 
@@ -1024,14 +1028,14 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		GetLogger().Error().
 			Err(err).
 			Str("tool", "get_edhrec_recommendations").
-			Str("commander", commander).
+			Str(paramCommander, commander).
 			Msg("Failed to fetch EDHREC recommendations")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC recommendations: %v", err)), nil
 	}
 
 	GetLogger().Info().
 		Str("tool", "get_edhrec_recommendations").
-		Str("commander", commander).
+		Str(paramCommander, commander).
 		Int("num_decks", data.NumDecks).
 		Int("card_lists", len(data.CardLists)).
 		Msg("Successfully fetched EDHREC recommendations")
@@ -1218,7 +1222,7 @@ func (s *MTGCommanderServer) handleBannedListResource(
 ) ([]mcp.ResourceContents, error) {
 	// Fetch current banned list from Scryfall
 	result, err := s.scryfallClient.SearchCards(ctx, "banned:commander", scryfall.SearchCardsOptions{
-		Order: "name",
+		Order: cardSortOrderName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch banned list: %w", err)
@@ -1234,7 +1238,7 @@ func (s *MTGCommanderServer) handleBannedListResource(
 	}
 
 	data, err := json.MarshalIndent(map[string]interface{}{
-		"format":       "commander",
+		"format":       defaultFormat,
 		"total_banned": result.TotalCards,
 		"cards":        bannedCards,
 		"last_updated": "real-time",
