@@ -423,6 +423,46 @@ func FormatArchidektSearchResultsForDisplay(commander string, bracket int, resul
 	return output.String()
 }
 
+// FormatArchidektLandsForDisplay returns only the land cards from a deck — useful for
+// landbase comparisons without the token overhead of a full decklist.
+func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
+	var output strings.Builder
+
+	premier := archidektPremierCategories(deck.Categories)
+
+	fmt.Fprintf(&output, "# %s — Landbase\n\n", deck.Name)
+	fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
+	if deck.EdhBracket != nil {
+		fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
+	}
+	fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+
+	var lands []string
+	for _, entry := range deck.Cards {
+		isCommander := false
+		for _, cat := range entry.Categories {
+			if premier[cat] {
+				isCommander = true
+				break
+			}
+		}
+		if isCommander {
+			continue
+		}
+		typeLine := strings.ToLower(strings.Join(entry.Card.OracleCard.Types, " "))
+		if strings.Contains(typeLine, "land") {
+			lands = append(lands, fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name))
+		}
+	}
+
+	fmt.Fprintf(&output, "## Lands (%d)\n", len(lands))
+	for _, l := range lands {
+		fmt.Fprintf(&output, "- %s\n", l)
+	}
+
+	return output.String()
+}
+
 // groupArchidektDeckCards categorizes non-commander cards by oracle type.
 func groupArchidektDeckCards(cards []ArchidektCardEntry, premier map[string]bool) deckCardGroups {
 	groups := deckCardGroups{

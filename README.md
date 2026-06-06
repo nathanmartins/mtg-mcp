@@ -85,6 +85,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
    - Commander(s) identified via premier category flag
    - Deck metadata (format, owner, views, EDH bracket, last updated)
    - Direct link back to the Archidekt deck page
+   - Optional `lands_only` flag — returns only land cards, ideal for landbase comparisons without the token overhead of a full decklist
 
 2. **get_archidekt_user_decks** - Get a user's public decks from Archidekt
    - List all public decks for any Archidekt username

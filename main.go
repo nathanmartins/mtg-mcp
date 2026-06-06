@@ -311,6 +311,12 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 			mcp.Required(),
 			mcp.Description("Archidekt deck ID or full URL (e.g., '12345' or 'https://archidekt.com/decks/12345')"),
 		),
+		mcp.WithBoolean(
+			"lands_only",
+			mcp.Description(
+				"If true, return only the land cards. Useful for landbase comparisons without fetching the full decklist.",
+			),
+		),
 	)
 	mcpServer.AddTool(archidektDeckTool, s.handleGetArchidektDeck)
 
@@ -1145,14 +1151,28 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Archidekt deck: %v", err)), nil
 	}
 
+	landsOnly := false
+	args := request.GetArguments()
+	if v, hasLandsOnly := args["lands_only"]; hasLandsOnly {
+		if b, isBool := v.(bool); isBool {
+			landsOnly = b
+		}
+	}
+
 	GetLogger().Info().
 		Str("tool", "get_archidekt_deck").
 		Int("deck_id", deckID).
 		Str("deck_name", deck.Name).
 		Int("card_count", len(deck.Cards)).
+		Bool("lands_only", landsOnly).
 		Msg("Successfully fetched Archidekt deck")
 
-	output := FormatArchidektDeckForDisplay(deck)
+	var output string
+	if landsOnly {
+		output = FormatArchidektLandsForDisplay(deck)
+	} else {
+		output = FormatArchidektDeckForDisplay(deck)
+	}
 	return mcp.NewToolResultText(output), nil
 }
 

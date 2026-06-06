@@ -362,6 +362,61 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 	}
 }
 
+func TestFormatArchidektLandsForDisplay(t *testing.T) {
+	bracket := 4
+	deck := &ArchidektDeck{
+		ID:         12345,
+		Name:       "Hearthhull Lands",
+		DeckFormat: 3,
+		EdhBracket: &bracket,
+		Owner:      ArchidektOwner{Username: "testuser"},
+		Categories: []ArchidektCategory{
+			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+		},
+		Cards: []ArchidektCardEntry{
+			{
+				Quantity:   1,
+				Categories: []string{"Commander"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Hearthhull, the Worldseed", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Land"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Artifact"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Sol Ring", Types: []string{"Artifact"}},
+				},
+			},
+		},
+	}
+
+	got := FormatArchidektLandsForDisplay(deck)
+
+	if !strings.Contains(got, "Command Tower") {
+		t.Error("Expected Command Tower in lands output")
+	}
+	if strings.Contains(got, "Sol Ring") {
+		t.Error("Sol Ring should not appear in lands-only output")
+	}
+	if strings.Contains(got, "Hearthhull, the Worldseed") {
+		t.Error("Commander should not appear in lands-only output")
+	}
+	if !strings.Contains(got, "Landbase") {
+		t.Error("Expected 'Landbase' heading in output")
+	}
+	if !strings.Contains(got, "https://archidekt.com/decks/12345") {
+		t.Error("Expected deck URL in output")
+	}
+}
+
 func TestSearchArchidektDecks(t *testing.T) {
 	bracket4 := 4
 	bracket2 := 2
