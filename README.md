@@ -7,7 +7,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/nathanmartins/mtg-mcp)](https://goreportcard.com/report/github.com/nathanmartins/mtg-mcp) [![License](https://img.shields.io/github/license/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/releases/latest) [![Go Version](https://img.shields.io/github/go-mod/go-version/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/go.mod)
 
 A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card
-information, rulings, pricing, and deck validation tools.
+information, rulings, pricing, deck validation tools, and multi-platform deck importing.
 
 ## Features
 
@@ -77,6 +77,20 @@ information, rulings, pricing, and deck validation tools.
    - Paginated results (up to 100 per page)
    - Returns deck metadata with views, likes, and URLs
 
+#### Archidekt Integration (2 tools)
+
+1. **get_archidekt_deck** - Fetch a complete deck from Archidekt
+   - Accepts deck URL or numeric ID (e.g., `https://archidekt.com/decks/12345` or `12345`)
+   - Full decklist organised by card type
+   - Commander(s) identified via premier category flag
+   - Deck metadata (format, owner, views, EDH bracket, last updated)
+   - Direct link back to the Archidekt deck page
+
+2. **get_archidekt_user_decks** - Get a user's public decks from Archidekt
+   - List all public decks for any Archidekt username
+   - Paginated results with direct deck URLs
+   - Format name, view count, and last-updated date for each deck
+
 #### EDHREC Meta Data (2 tools)
 
 1. **get_edhrec_recommendations** - Get EDHREC recommendations for a commander
@@ -124,10 +138,10 @@ cd mtg-mcp
 go mod tidy
 
 # Build the MCP server
-go build -o mtg-commander-server
+go build -o mtg-mcp
 ```
 
-The compiled binary `mtg-commander-server` is an MCP server for use with Claude Desktop or other MCP clients.
+The compiled binary `mtg-mcp` is an MCP server for use with Claude Desktop or other MCP clients.
 
 ## Usage
 
@@ -136,7 +150,7 @@ The compiled binary `mtg-commander-server` is an MCP server for use with Claude 
 The server uses stdio transport for communication with MCP clients like Claude Desktop:
 
 ```bash
-./mtg-commander-server
+./mtg-mcp
 ```
 
 #### Connecting to Claude Desktop
@@ -155,7 +169,7 @@ To use this server with Claude Desktop, add the following configuration to your 
 {
   "mcpServers": {
     "mtg-commander": {
-      "command": "/absolute/path/to/mtg-mcp/mtg-commander-server"
+      "command": "/absolute/path/to/mtg-mcp/mtg-mcp"
     }
   }
 }
@@ -172,7 +186,7 @@ To make this server available globally in Claude Code across all projects:
 #### Option 1: Using the CLI (Recommended)
 
 ```bash
-claude mcp add --transport stdio mtg-commander /absolute/path/to/mtg-mcp/mtg-commander-server --scope user
+claude mcp add --transport stdio mtg-commander /absolute/path/to/mtg-mcp/mtg-mcp --scope user
 ```
 
 #### Option 2: Manual Configuration
@@ -191,7 +205,7 @@ Edit the global MCP configuration file:
 {
   "mcpServers": {
     "mtg-commander": {
-      "command": "/absolute/path/to/mtg-mcp/mtg-commander-server",
+      "command": "/absolute/path/to/mtg-mcp/mtg-mcp",
       "args": [],
       "transport": "stdio"
     }
@@ -227,6 +241,12 @@ Once connected to Claude Desktop, you can ask questions like:
 - "What's in the mainboard of Moxfield deck xyz789?"
 - "Search Moxfield for top Atraxa, Praetors' Voice decks"
 - "Find the most popular Thrasios decks on Moxfield sorted by views"
+
+**Archidekt:**
+
+- "Fetch this Archidekt deck: <https://archidekt.com/decks/12345>"
+- "Show me decks by user NorwegianWhaler on Archidekt"
+- "What's the commander and decklist for Archidekt deck 67890?"
 
 **EDHREC:**
 
@@ -269,6 +289,12 @@ Once connected to Claude Desktop, you can ask questions like:
    - **Note:** No official public API; be respectful of rate limits
    - Contact <support@moxfield.com> for authorized access
 
+5. **Archidekt:** Open public API (<https://archidekt.com/api>)
+   - Deck data including full card lists and categories
+   - Owner, format, EDH bracket, and view count metadata
+   - **Note:** API is open for read access; credit deck creators when publishing data
+   - No API key required
+
 5. **EDHREC:** Unofficial JSON endpoints (<https://json.edhrec.com>)
    - Card recommendations and synergies
    - Meta statistics and popularity data
@@ -282,10 +308,12 @@ Once connected to Claude Desktop, you can ask questions like:
 mtg-mcp/
 ├── main.go                  # Core MCP server implementation
 ├── logger.go                # Structured logging configuration (zerolog)
+├── archidekt.go             # Archidekt API integration
 ├── edhrec.go                # EDHREC API integration
 ├── moxfield.go              # Moxfield API integration
 ├── http.go                  # HTTP utilities for API calls
 ├── *_test.go                # Unit test files (with httptest mocks)
+│   ├── archidekt_test.go    # Tests for Archidekt functionality
 │   ├── edhrec_test.go       # Tests for EDHREC functionality
 │   ├── moxfield_test.go     # Tests for Moxfield functionality
 │   ├── http_test.go         # Tests for HTTP utilities
@@ -302,7 +330,7 @@ mtg-mcp/
 │       └── lint.yaml        # Code quality checks
 ├── go.mod                   # Go module dependencies
 ├── go.sum                   # Dependency checksums
-├── mtg-commander-server     # Compiled MCP server binary
+├── mtg-mcp                  # Compiled MCP server binary
 ├── mtg-commander-server.log # Server log file (JSON)
 └── README.md                # This file
 ```
@@ -520,6 +548,7 @@ Potential improvements:
 - [x] Moxfield deck search by commander
 - [x] EDHREC card recommendations and combo database
 - [x] Comprehensive unit tests with CI/CD
+- [x] Archidekt deck fetching and user deck lists
 - [ ] Direct LigaMagic integration for accurate BRL pricing
 - [ ] Caching layer for frequently accessed cards
 - [ ] Bulk deck validation with full color identity checking
@@ -527,7 +556,6 @@ Potential improvements:
 - [ ] Price history tracking
 - [ ] Deck building suggestions based on EDHREC data
 - [ ] Commander power level estimation (EDH brackets)
-- [ ] Archidekt integration for additional deck sources
 
 ## Contributing
 
@@ -553,4 +581,4 @@ For issues or questions:
 
 - Check Scryfall API status: <https://scryfall.com/docs/api>
 - Verify MCP server is running: Check Claude Desktop logs
-- Review configuration: Ensure correct binary path in `claude_desktop_config.json`
+- Review configuration: Ensure correct binary path (`mtg-mcp`) in `claude_desktop_config.json`

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	totalToolCount               = 11
+	totalToolCount               = 14
 	totalResourceCount           = 2
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
@@ -271,6 +271,33 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		),
 	)
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
+
+	// Tool 13: Get Archidekt Deck
+	archidektDeckTool := mcp.NewTool(
+		"get_archidekt_deck",
+		mcp.WithDescription(
+			"Fetch a deck from Archidekt by URL or numeric deck ID, includes full decklist and metadata",
+		),
+		mcp.WithString("deck_id",
+			mcp.Required(),
+			mcp.Description("Archidekt deck ID or full URL (e.g., '12345' or 'https://archidekt.com/decks/12345')"),
+		),
+	)
+	mcpServer.AddTool(archidektDeckTool, s.handleGetArchidektDeck)
+
+	// Tool 14: Get Archidekt User Decks
+	archidektUserDecksTool := mcp.NewTool(
+		"get_archidekt_user_decks",
+		mcp.WithDescription("Get a list of public decks for a specific Archidekt user"),
+		mcp.WithString("username",
+			mcp.Required(),
+			mcp.Description("Archidekt username"),
+		),
+		mcp.WithNumber("page",
+			mcp.Description("Page number for pagination (default: 1)"),
+		),
+	)
+	mcpServer.AddTool(archidektUserDecksTool, s.handleGetArchidektUserDecks)
 }
 
 // registerResources registers MCP resources.
@@ -1038,6 +1065,104 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(
 
 	output := FormatCombosForDisplay(data, limit)
 	return mcp.NewToolResultText(output), nil
+}
+
+func (s *MTGCommanderServer) handleGetArchidektDeck(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	deckIDStr, err := request.RequireString("deck_id")
+	if err != nil {
+		GetLogger().Error().Err(err).Str("tool", "get_archidekt_deck").Msg("Missing deck_id parameter")
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	deckID, err := ExtractArchidektDeckID(deckIDStr)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Invalid deck ID: %v", err)), nil
+	}
+
+	GetLogger().Info().
+		Str("tool", "get_archidekt_deck").
+		Int("deck_id", deckID).
+		Msg("Fetching Archidekt deck")
+
+	deck, err := GetArchidektDeck(ctx, deckID)
+	if err != nil {
+		GetLogger().Error().
+			Err(err).
+			Str("tool", "get_archidekt_deck").
+			Int("deck_id", deckID).
+			Msg("Failed to fetch Archidekt deck")
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Archidekt deck: %v", err)), nil
+	}
+
+	GetLogger().Info().
+		Str("tool", "get_archidekt_deck").
+		Int("deck_id", deckID).
+		Str("deck_name", deck.Name).
+		Int("card_count", len(deck.Cards)).
+		Msg("Successfully fetched Archidekt deck")
+
+	output := FormatArchidektDeckForDisplay(deck)
+	return mcp.NewToolResultText(output), nil
+}
+
+func (s *MTGCommanderServer) handleGetArchidektUserDecks(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	username, err := request.RequireString("username")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	page := 1
+	args := request.GetArguments()
+	if pageVal, hasPage := args["page"]; hasPage {
+		if pageFloat, ok := pageVal.(float64); ok && pageFloat >= 1 {
+			page = int(pageFloat)
+		}
+	}
+
+	GetLogger().Info().
+		Str("tool", "get_archidekt_user_decks").
+		Str("username", username).
+		Int("page", page).
+		Msg("Fetching Archidekt user decks")
+
+	result, err := GetArchidektUserDecks(ctx, username, page)
+	if err != nil {
+		GetLogger().Error().
+			Err(err).
+			Str("tool", "get_archidekt_user_decks").
+			Str("username", username).
+			Msg("Failed to fetch Archidekt user decks")
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Archidekt user decks: %v", err)), nil
+	}
+
+	var output strings.Builder
+	fmt.Fprintf(&output, "# Archidekt Decks by %s\n\n", username)
+	fmt.Fprintf(&output, "**Total Decks:** %d\n", result.Count)
+	fmt.Fprintf(&output, "**Page:** %d\n\n", page)
+
+	if len(result.Results) == 0 {
+		output.WriteString("No public decks found for this user.\n")
+	} else {
+		for i, deck := range result.Results {
+			fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+			fmt.Fprintf(&output, "- **Format:** %s\n", archidektFormatName(deck.DeckFormat))
+			fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
+			fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
+			fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+		}
+	}
+
+	if result.Next != "" {
+		fmt.Fprintf(&output, "*More decks available — use page %d to continue.*\n", page+1)
+	}
+
+	return mcp.NewToolResultText(output.String()), nil
 }
 
 // Resource Handlers
