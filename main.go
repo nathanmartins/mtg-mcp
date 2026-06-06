@@ -15,8 +15,8 @@ import (
 // Build-time variables injected via -ldflags.
 var (
 	version   = "dev"
-	commit    = "none"
-	buildDate = "unknown"
+	commit    = "none"    //nolint:gochecknoglobals // build-time variable injected via -ldflags
+	buildDate = "unknown" //nolint:gochecknoglobals // build-time variable injected via -ldflags
 )
 
 const (
@@ -55,7 +55,7 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "--version", "-version":
-			fmt.Printf("mtg-mcp version %s (commit: %s, built: %s)\n", version, commit, buildDate)
+			fmt.Fprintf(os.Stdout, "mtg-mcp version %s (commit: %s, built: %s)\n", version, commit, buildDate)
 			os.Exit(0)
 		}
 	}
