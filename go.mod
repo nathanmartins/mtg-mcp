@@ -4,12 +4,11 @@ go 1.26.4
 
 require (
 	github.com/BlueMonday/go-scryfall v0.9.1
-	github.com/mark3labs/mcp-go v0.54.1
+	github.com/mark3labs/mcp-go v0.55.0
 	github.com/rs/zerolog v1.35.1
 )
 
 require (
-	github.com/andres-erbsen/clock v0.0.0-20160526145045-9e14626cd129 // indirect
 	github.com/benbjohnson/clock v1.3.5 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
