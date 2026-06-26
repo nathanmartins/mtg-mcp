@@ -49,3 +49,46 @@ func TestParseComprehensiveRules(t *testing.T) {
 		t.Error("Raw should hold the full normalized text")
 	}
 }
+
+func TestComprehensiveRulesLookups(t *testing.T) {
+	cr := parseComprehensiveRules(sampleRulesTxt)
+
+	// Rule with subrules
+	got, ok := cr.Rule("702.19")
+	if !ok {
+		t.Fatal("expected rule 702.19")
+	}
+	if !strings.Contains(got, "Trample") || !strings.Contains(got, "static ability") ||
+		!strings.Contains(got, "first assigns damage") {
+		t.Errorf("Rule(702.19) should include parent + subrules; got:\n%s", got)
+	}
+
+	// Subrule alone
+	sub, ok := cr.Rule("702.19a")
+	if !ok || strings.Contains(sub, "first assigns damage") {
+		t.Errorf("Rule(702.19a) should return only that subrule; got:\n%s", sub)
+	}
+
+	// Unknown rule
+	if _, ok := cr.Rule("999.99"); ok {
+		t.Error("unknown rule should return ok=false")
+	}
+
+	// Search
+	matches := cr.Search("trample", 0)
+	if len(matches) == 0 || matches[0].Number != "702.19" {
+		t.Errorf("Search(trample) first match should be 702.19; got %+v", matches)
+	}
+	if len(cr.Search("trample", 1)) != 1 {
+		t.Error("Search limit should cap results")
+	}
+
+	// Glossary (case-insensitive)
+	def, ok := cr.GlossaryTerm("Trample")
+	if !ok || !strings.Contains(def, "keyword ability") {
+		t.Errorf("GlossaryTerm(Trample) wrong; ok=%v def=%q", ok, def)
+	}
+	if _, ok := cr.GlossaryTerm("nope"); ok {
+		t.Error("unknown glossary term should return ok=false")
+	}
+}

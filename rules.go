@@ -102,3 +102,65 @@ func parseGlossary(cr *ComprehensiveRules, lines []string) {
 	}
 	flush()
 }
+
+// RuleMatch is a single result from Search.
+type RuleMatch struct {
+	Number string
+	Text   string
+}
+
+// Rule returns a rule's text. A parent number (e.g. "702.19") includes its subrules;
+// a subrule number (e.g. "702.19a") returns just that subrule.
+func (cr *ComprehensiveRules) Rule(number string) (string, bool) {
+	number = strings.TrimSpace(number)
+	text, ok := cr.rules[number]
+	if !ok {
+		return "", false
+	}
+	var b strings.Builder
+	b.WriteString(text)
+	for _, n := range cr.ruleNums {
+		if len(n) > len(number) && strings.HasPrefix(n, number) && isAllLetters(n[len(number):]) {
+			b.WriteString("\n\n")
+			b.WriteString(cr.rules[n])
+		}
+	}
+	return b.String(), true
+}
+
+// Search returns up to limit rules whose text contains keyword (case-insensitive), in document order.
+func (cr *ComprehensiveRules) Search(keyword string, limit int) []RuleMatch {
+	if limit <= 0 {
+		limit = rulesSearchDefaultLimit
+	}
+	kw := strings.ToLower(strings.TrimSpace(keyword))
+	var matches []RuleMatch
+	for _, n := range cr.ruleNums {
+		if strings.Contains(strings.ToLower(cr.rules[n]), kw) {
+			matches = append(matches, RuleMatch{Number: n, Text: cr.rules[n]})
+			if len(matches) >= limit {
+				break
+			}
+		}
+	}
+	return matches
+}
+
+// GlossaryTerm returns a glossary definition by term (case-insensitive).
+func (cr *ComprehensiveRules) GlossaryTerm(term string) (string, bool) {
+	def, ok := cr.glossary[strings.ToLower(strings.TrimSpace(term))]
+	return def, ok
+}
+
+// isAllLetters reports whether s is non-empty and only lowercase a-z (a subrule suffix).
+func isAllLetters(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < 'a' || r > 'z' {
+			return false
+		}
+	}
+	return true
+}
