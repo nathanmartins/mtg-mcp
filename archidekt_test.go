@@ -623,6 +623,69 @@ func TestFormatArchidektLandsExcludesSideboard(t *testing.T) {
 	}
 }
 
+func TestFormatArchidektZonesMatchMoxfieldStyle(t *testing.T) {
+	deck := &ArchidektDeck{
+		ID:         559,
+		Name:       "Zones Deck",
+		DeckFormat: 3,
+		Owner:      ArchidektOwner{Username: "tester"},
+		Categories: []ArchidektCategory{
+			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
+			{ID: 4, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
+		},
+		Cards: []ArchidektCardEntry{
+			{
+				Quantity:   1,
+				Categories: []string{"Commander"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Creature"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Sideboard"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Maybeboard"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Demonic Tutor", Types: []string{"Sorcery"}},
+				},
+			},
+		},
+	}
+
+	got := FormatArchidektDeckForDisplay(deck)
+
+	// Moxfield style: plain headers with no "(N)" count.
+	if strings.Contains(got, "## Sideboard (") || strings.Contains(got, "## Maybeboard (") {
+		t.Errorf("zone headers must not include a count to match Moxfield style; got:\n%s", got)
+	}
+	if !strings.Contains(got, "## Sideboard\n") {
+		t.Error("expected plain '## Sideboard' header")
+	}
+	if !strings.Contains(got, "## Maybeboard\n") {
+		t.Error("expected plain '## Maybeboard' header")
+	}
+
+	// Moxfield order: Sideboard before Maybeboard.
+	if strings.Index(got, "## Sideboard") > strings.Index(got, "## Maybeboard") {
+		t.Error("Sideboard section should come before Maybeboard, matching Moxfield order")
+	}
+}
+
 func TestSearchArchidektDecks(t *testing.T) {
 	bracket4 := 4
 	bracket2 := 2

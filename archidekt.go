@@ -317,14 +317,14 @@ func archidektEntryInDeck(entry ArchidektCardEntry, excluded map[string]bool) bo
 	return archidektEntryZone(entry, excluded) == ""
 }
 
-// formatArchidektZone renders an out-of-deck zone as "## Title (N)" followed by its card lines,
-// or "" when the zone is empty.
+// formatArchidektZone renders an out-of-deck zone as "## Title" followed by its card lines,
+// or "" when the zone is empty. Mirrors the Moxfield deck output style (plain heading, no count).
 func formatArchidektZone(title string, cards []string) string {
 	if len(cards) == 0 {
 		return ""
 	}
 	var output strings.Builder
-	fmt.Fprintf(&output, "\n## %s (%d)\n", title, len(cards))
+	fmt.Fprintf(&output, "\n## %s\n", title)
 	for _, c := range cards {
 		fmt.Fprintf(&output, "- %s\n", c)
 	}
@@ -396,8 +396,8 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 			sideboard = append(sideboard, line)
 		}
 	}
-	output.WriteString(formatArchidektZone(archidektMaybeboardZone, maybeboard))
 	output.WriteString(formatArchidektZone(archidektSideboardZone, sideboard))
+	output.WriteString(formatArchidektZone(archidektMaybeboardZone, maybeboard))
 
 	return output.String()
 }
