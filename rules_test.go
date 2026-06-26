@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 const sampleRulesTxt = `Magic: The Gathering Comprehensive Rules
@@ -129,5 +130,51 @@ func TestGetComprehensiveRulesWithURL_NoLink(t *testing.T) {
 
 	if _, err := getComprehensiveRulesWithURL(context.Background(), server.URL); err == nil {
 		t.Error("expected an error when the rules link is missing")
+	}
+}
+
+func TestComprehensiveRulesCache(t *testing.T) {
+	var pageHits int
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".txt") {
+			fmt.Fprint(w, sampleRulesTxt)
+			return
+		}
+		pageHits++
+		fmt.Fprintf(w, `<html><a href="%s/MagicCompRules 20260619.txt">r</a></html>`, server.URL)
+	}))
+	defer server.Close()
+
+	srv := &MTGCommanderServer{rules: &rulesCache{}}
+
+	if _, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL); err != nil {
+		t.Fatalf("first fetch: %v", err)
+	}
+	if _, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL); err != nil {
+		t.Fatalf("second fetch: %v", err)
+	}
+	if pageHits != 1 {
+		t.Errorf("expected 1 page fetch (cached), got %d", pageHits)
+	}
+}
+
+func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
+	srv := &MTGCommanderServer{rules: &rulesCache{
+		rules:     parseComprehensiveRules(sampleRulesTxt),
+		fetchedAt: time.Now().Add(-2 * rulesCacheTTL), // expired
+	}}
+
+	dead := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer dead.Close()
+
+	cr, err := srv.comprehensiveRulesFromURL(context.Background(), dead.URL)
+	if err != nil {
+		t.Fatalf("should serve stale cache, got error: %v", err)
+	}
+	if _, ok := cr.Rule("702.19"); !ok {
+		t.Error("stale cache should still answer lookups")
 	}
 }

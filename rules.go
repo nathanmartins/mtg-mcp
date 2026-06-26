@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -222,4 +223,43 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 		return "", err
 	}
 	return string(body), nil
+}
+
+// rulesCache holds the parsed comprehensive rules with a fetch timestamp.
+type rulesCache struct {
+	mu        sync.Mutex
+	rules     *ComprehensiveRules
+	fetchedAt time.Time
+}
+
+// comprehensiveRules returns the cached rules, fetching from the official site when needed.
+func (s *MTGCommanderServer) comprehensiveRules(ctx context.Context) (*ComprehensiveRules, error) {
+	return s.comprehensiveRulesFromURL(ctx, rulesPageURL)
+}
+
+// comprehensiveRulesFromURL serves the cache (refetching past the TTL); on fetch failure it serves
+// the stale cache if present, otherwise returns the error.
+func (s *MTGCommanderServer) comprehensiveRulesFromURL(
+	ctx context.Context,
+	pageURL string,
+) (*ComprehensiveRules, error) {
+	s.rules.mu.Lock()
+	defer s.rules.mu.Unlock()
+
+	if s.rules.rules != nil && time.Since(s.rules.fetchedAt) < rulesCacheTTL {
+		return s.rules.rules, nil
+	}
+
+	fetched, err := getComprehensiveRulesWithURL(ctx, pageURL)
+	if err != nil {
+		if s.rules.rules != nil {
+			GetLogger().Warn().Err(err).Msg("using stale comprehensive rules cache")
+			return s.rules.rules, nil
+		}
+		return nil, err
+	}
+
+	s.rules.rules = fetched
+	s.rules.fetchedAt = time.Now()
+	return s.rules.rules, nil
 }

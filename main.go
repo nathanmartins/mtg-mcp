@@ -36,6 +36,7 @@ const (
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
 type MTGCommanderServer struct {
 	scryfallClient *scryfall.Client
+	rules          *rulesCache
 }
 
 // NewMTGCommanderServer creates a new MTG Commander MCP server.
@@ -47,6 +48,7 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 
 	return &MTGCommanderServer{
 		scryfallClient: client,
+		rules:          &rulesCache{},
 	}, nil
 }
 
