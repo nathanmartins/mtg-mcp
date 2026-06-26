@@ -20,8 +20,8 @@ var (
 )
 
 const (
-	totalToolCount               = 14
-	totalResourceCount           = 2
+	totalToolCount               = 17
+	totalResourceCount           = 3
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
 	maxPageSize                  = 100
@@ -299,6 +299,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 
 	s.registerArchidektTools(mcpServer)
+	s.registerRulesTools(mcpServer)
 }
 
 // registerArchidektTools registers Archidekt-related MCP tools (split out to keep registerTools within length limits).
@@ -356,6 +357,42 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	mcpServer.AddTool(searchArchidektDecksTool, s.handleSearchArchidektDecks)
 }
 
+// registerRulesTools registers Comprehensive Rules lookup tools.
+func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
+	getRuleTool := mcp.NewTool(
+		"get_rule",
+		mcp.WithDescription("Get a specific Comprehensive Rule by number (e.g. '702.19'); includes its subrules"),
+		mcp.WithString("rule",
+			mcp.Required(),
+			mcp.Description("Rule number, e.g. '702.19' or a subrule like '702.19a'"),
+		),
+	)
+	mcpServer.AddTool(getRuleTool, s.handleGetRule)
+
+	searchRulesTool := mcp.NewTool(
+		"search_rules",
+		mcp.WithDescription("Search the Comprehensive Rules text by keyword"),
+		mcp.WithString("keyword",
+			mcp.Required(),
+			mcp.Description("Keyword or phrase to search for"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Max results (default: 10, max: 20)"),
+		),
+	)
+	mcpServer.AddTool(searchRulesTool, s.handleSearchRules)
+
+	glossaryTool := mcp.NewTool(
+		"get_glossary_term",
+		mcp.WithDescription("Get a Comprehensive Rules glossary definition by term"),
+		mcp.WithString("term",
+			mcp.Required(),
+			mcp.Description("Glossary term, e.g. 'Trample'"),
+		),
+	)
+	mcpServer.AddTool(glossaryTool, s.handleGetGlossaryTerm)
+}
+
 // registerResources registers MCP resources.
 func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 	// Resource 1: Commander Rules
@@ -375,6 +412,15 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		mcp.WithMIMEType("application/json"),
 	)
 	mcpServer.AddResource(bannedResource, s.handleBannedListResource)
+
+	// Resource 3: Comprehensive Rules (full text, fetched from WotC)
+	comprehensiveResource := mcp.NewResource(
+		"rules://comprehensive",
+		"Magic Comprehensive Rules",
+		mcp.WithResourceDescription("Full official Magic: The Gathering Comprehensive Rules (large)"),
+		mcp.WithMIMEType("text/plain"),
+	)
+	mcpServer.AddResource(comprehensiveResource, s.handleComprehensiveRulesResource)
 }
 
 // Tool Handlers
@@ -1370,6 +1416,85 @@ func (s *MTGCommanderServer) handleBannedListResource(
 			Text:     string(data),
 		},
 	}, nil
+}
+
+func (s *MTGCommanderServer) handleComprehensiveRulesResource(
+	ctx context.Context,
+	request mcp.ReadResourceRequest,
+) ([]mcp.ResourceContents, error) {
+	rules, err := s.comprehensiveRules(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load comprehensive rules: %w", err)
+	}
+	return []mcp.ResourceContents{
+		&mcp.TextResourceContents{
+			URI:      request.Params.URI,
+			MIMEType: "text/plain",
+			Text:     rules.Raw,
+		},
+	}, nil
+}
+
+func (s *MTGCommanderServer) handleGetRule(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	number, err := request.RequireString("rule")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	rules, err := s.comprehensiveRules(ctx)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
+	}
+	text, ok := rules.Rule(number)
+	if !ok {
+		return mcp.NewToolResultText(fmt.Sprintf("Rule %s not found.", number)), nil
+	}
+	return mcp.NewToolResultText(FormatRuleForDisplay(number, text)), nil
+}
+
+func (s *MTGCommanderServer) handleSearchRules(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	keyword, err := request.RequireString("keyword")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	limit := rulesSearchDefaultLimit
+	if limitVal, ok := request.GetArguments()["limit"]; ok {
+		if limitFloat, isNum := limitVal.(float64); isNum && limitFloat >= 1 {
+			limit = int(limitFloat)
+		}
+	}
+	if limit > rulesSearchMaxLimit {
+		limit = rulesSearchMaxLimit
+	}
+	rules, err := s.comprehensiveRules(ctx)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
+	}
+	return mcp.NewToolResultText(FormatRuleSearchForDisplay(keyword, rules.Search(keyword, limit))), nil
+}
+
+func (s *MTGCommanderServer) handleGetGlossaryTerm(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	term, err := request.RequireString("term")
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	rules, err := s.comprehensiveRules(ctx)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
+	}
+	def, ok := rules.GlossaryTerm(term)
+	if !ok {
+		return mcp.NewToolResultText(fmt.Sprintf("Glossary term %q not found.", term)), nil
+	}
+	return mcp.NewToolResultText(FormatGlossaryTermForDisplay(term, def)), nil
 }
 
 // Helper functions

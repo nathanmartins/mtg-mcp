@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 const sampleRulesTxt = `Magic: The Gathering Comprehensive Rules
@@ -75,7 +77,7 @@ func TestComprehensiveRulesLookups(t *testing.T) {
 	}
 
 	// Unknown rule
-	if _, ok := cr.Rule("999.99"); ok {
+	if _, found := cr.Rule("999.99"); found {
 		t.Error("unknown rule should return ok=false")
 	}
 
@@ -93,7 +95,7 @@ func TestComprehensiveRulesLookups(t *testing.T) {
 	if !ok || !strings.Contains(def, "keyword ability") {
 		t.Errorf("GlossaryTerm(Trample) wrong; ok=%v def=%q", ok, def)
 	}
-	if _, ok := cr.GlossaryTerm("nope"); ok {
+	if _, found := cr.GlossaryTerm("nope"); found {
 		t.Error("unknown glossary term should return ok=false")
 	}
 }
@@ -207,4 +209,51 @@ func TestRulesFormatters(t *testing.T) {
 	if !strings.Contains(g, "# Trample") || !strings.Contains(g, "keyword ability") {
 		t.Errorf("glossary format wrong:\n%s", g)
 	}
+}
+
+func TestRulesCountsAndHandlers(t *testing.T) {
+	if totalToolCount != 17 {
+		t.Errorf("totalToolCount = %d, want 17", totalToolCount)
+	}
+	if totalResourceCount != 3 {
+		t.Errorf("totalResourceCount = %d, want 3", totalResourceCount)
+	}
+
+	// Pre-populate the cache so handlers do no network.
+	srv := &MTGCommanderServer{rules: &rulesCache{
+		rules:     parseComprehensiveRules(sampleRulesTxt),
+		fetchedAt: time.Now(),
+	}}
+
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = map[string]any{"rule": "702.19"}
+	res, err := srv.handleGetRule(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handleGetRule: %v", err)
+	}
+	if !strings.Contains(toolResultText(t, res), "Trample") {
+		t.Error("handleGetRule should return rule 702.19 text")
+	}
+
+	greq := mcp.CallToolRequest{}
+	greq.Params.Arguments = map[string]any{"term": "Trample"}
+	gres, err := srv.handleGetGlossaryTerm(context.Background(), greq)
+	if err != nil {
+		t.Fatalf("handleGetGlossaryTerm: %v", err)
+	}
+	if !strings.Contains(toolResultText(t, gres), "keyword ability") {
+		t.Error("handleGetGlossaryTerm should return the definition")
+	}
+}
+
+// toolResultText extracts the text payload from a tool result.
+func toolResultText(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+	var b strings.Builder
+	for _, c := range res.Content {
+		if tc, ok := c.(mcp.TextContent); ok {
+			b.WriteString(tc.Text)
+		}
+	}
+	return b.String()
 }

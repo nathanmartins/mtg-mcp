@@ -20,10 +20,14 @@ const (
 
 // rulesTxtLinkPattern discovers the comprehensive rules .txt URL embedded in the WotC rules page.
 // The filename carries a date and a space (e.g. "MagicCompRules 20260619.txt"), so spaces are allowed.
-var rulesTxtLinkPattern = regexp.MustCompile(`https?://[^"\s]*MagicCompRules[^"]*?\.txt`) //nolint:gochecknoglobals // compiled regex reused across calls
+var rulesTxtLinkPattern = regexp.MustCompile(
+	`https?://[^"\s]*MagicCompRules[^"]*?\.txt`,
+)
 
 // ruleNumberPattern matches a rule/subrule number at the start of a line (e.g. "702.19." or "702.19a").
-var ruleNumberPattern = regexp.MustCompile(`^(\d+\.\d+[a-z]*)\.?\s`) //nolint:gochecknoglobals // compiled regex reused across calls
+var ruleNumberPattern = regexp.MustCompile(
+	`^(\d+\.\d+[a-z]*)\.?\s`,
+)
 
 // ComprehensiveRules holds the parsed Magic: The Gathering comprehensive rules.
 type ComprehensiveRules struct {
