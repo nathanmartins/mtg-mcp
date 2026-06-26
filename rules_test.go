@@ -196,7 +196,7 @@ func TestRulesFormatters(t *testing.T) {
 	}
 
 	s := FormatRuleSearchForDisplay("trample", []RuleMatch{{Number: "702.19", Text: "702.19. Trample\nmore"}})
-	if !strings.Contains(s, "702.19") || !strings.Contains(s, "trample") {
+	if !strings.Contains(s, "- 702.19") || !strings.Contains(s, "trample") {
 		t.Errorf("search format wrong:\n%s", s)
 	}
 	if strings.Contains(s, "\nmore") {
