@@ -186,13 +186,14 @@ func getComprehensiveRulesWithURL(ctx context.Context, pageURL string) (*Compreh
 		return nil, fmt.Errorf("could not find comprehensive rules .txt link on %s", pageURL)
 	}
 
-	txt, err := rulesHTTPGet(ctx, strings.ReplaceAll(link, " ", "%20"))
+	encodedLink := strings.ReplaceAll(link, " ", "%20")
+	txt, err := rulesHTTPGet(ctx, encodedLink)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch rules text: %w", err)
 	}
 
 	cr := parseComprehensiveRules(txt)
-	cr.SourceURL = link
+	cr.SourceURL = encodedLink
 	return cr, nil
 }
 
