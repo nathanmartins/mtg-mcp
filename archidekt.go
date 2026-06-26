@@ -273,11 +273,70 @@ func archidektPremierCategories(categories []ArchidektCategory) map[string]bool 
 	return premier
 }
 
+// archidektExcludedCategories returns the set of category names explicitly NOT included in the deck
+// (includedInDeck == false), e.g. "Maybeboard".
+func archidektExcludedCategories(categories []ArchidektCategory) map[string]bool {
+	excluded := make(map[string]bool)
+	for _, c := range categories {
+		if !c.IncludedInDeck {
+			excluded[c.Name] = true
+		}
+	}
+	return excluded
+}
+
+// Out-of-deck zone names. Commander has no real sideboard, so Archidekt's Sideboard category is
+// always treated as out of the deck (regardless of its includedInDeck flag).
+const (
+	archidektSideboardZone  = "Sideboard"
+	archidektMaybeboardZone = "Maybeboard"
+)
+
+// archidektEntryZone classifies a card entry's out-of-deck zone, returning archidektSideboardZone or
+// archidektMaybeboardZone for cards outside the playable deck, or "" for cards that count toward it.
+// A card belongs to a zone if ANY of its categories matches it, so cards tagged Sideboard alongside a
+// type category (e.g. ["Sideboard", "Creature"]) are still treated as sideboard. excluded holds the
+// category names flagged includedInDeck==false (e.g. Maybeboard).
+func archidektEntryZone(entry ArchidektCardEntry, excluded map[string]bool) string {
+	for _, cat := range entry.Categories {
+		if cat == archidektSideboardZone {
+			return archidektSideboardZone
+		}
+	}
+	for _, cat := range entry.Categories {
+		if excluded[cat] {
+			return archidektMaybeboardZone
+		}
+	}
+	return ""
+}
+
+// archidektEntryInDeck reports whether a card entry counts toward the playable deck (mainboard),
+// i.e. it is not in an out-of-deck zone (Sideboard / Maybeboard).
+func archidektEntryInDeck(entry ArchidektCardEntry, excluded map[string]bool) bool {
+	return archidektEntryZone(entry, excluded) == ""
+}
+
+// formatArchidektZone renders an out-of-deck zone as "## Title (N)" followed by its card lines,
+// or "" when the zone is empty.
+func formatArchidektZone(title string, cards []string) string {
+	if len(cards) == 0 {
+		return ""
+	}
+	var output strings.Builder
+	fmt.Fprintf(&output, "\n## %s (%d)\n", title, len(cards))
+	for _, c := range cards {
+		fmt.Fprintf(&output, "- %s\n", c)
+	}
+	return output.String()
+}
+
 // FormatArchidektDeckForDisplay formats an Archidekt deck for text display.
 func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	var output strings.Builder
 
 	premier := archidektPremierCategories(deck.Categories)
+	excluded := archidektExcludedCategories(deck.Categories)
 
 	// Header
 	fmt.Fprintf(&output, "# %s\n\n", deck.Name)
@@ -309,8 +368,8 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 		}
 	}
 
-	// Group mainboard cards by type (exclude commander-category cards)
-	groups := groupArchidektDeckCards(deck.Cards, premier)
+	// Group mainboard cards by type (exclude commander-category and out-of-deck cards)
+	groups := groupArchidektDeckCards(deck.Cards, premier, excluded)
 
 	output.WriteString("\n## Mainboard\n")
 	fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
@@ -325,6 +384,20 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	if len(groups.others) > 0 {
 		output.WriteString(formatCardGroup("Other", groups.others))
 	}
+
+	// Out-of-deck zones (Sideboard / Maybeboard), listed separately
+	var maybeboard, sideboard []string
+	for _, entry := range deck.Cards {
+		line := fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name)
+		switch archidektEntryZone(entry, excluded) {
+		case archidektMaybeboardZone:
+			maybeboard = append(maybeboard, line)
+		case archidektSideboardZone:
+			sideboard = append(sideboard, line)
+		}
+	}
+	output.WriteString(formatArchidektZone(archidektMaybeboardZone, maybeboard))
+	output.WriteString(formatArchidektZone(archidektSideboardZone, sideboard))
 
 	return output.String()
 }
@@ -429,6 +502,7 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 	var output strings.Builder
 
 	premier := archidektPremierCategories(deck.Categories)
+	excluded := archidektExcludedCategories(deck.Categories)
 
 	fmt.Fprintf(&output, "# %s — Landbase\n\n", deck.Name)
 	fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
@@ -449,6 +523,10 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 		if isCommander {
 			continue
 		}
+		// Skip cards outside the deck (Sideboard / Maybeboard)
+		if !archidektEntryInDeck(entry, excluded) {
+			continue
+		}
 		typeLine := strings.ToLower(strings.Join(entry.Card.OracleCard.Types, " "))
 		if strings.Contains(typeLine, "land") {
 			lands = append(lands, fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name))
@@ -463,8 +541,9 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 	return output.String()
 }
 
-// groupArchidektDeckCards categorizes non-commander cards by oracle type.
-func groupArchidektDeckCards(cards []ArchidektCardEntry, premier map[string]bool) deckCardGroups {
+// groupArchidektDeckCards categorizes non-commander, in-deck cards by oracle type,
+// excluding cards that sit outside the deck (Sideboard / Maybeboard).
+func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[string]bool) deckCardGroups {
 	groups := deckCardGroups{
 		creatures:     []string{},
 		instants:      []string{},
@@ -486,6 +565,11 @@ func groupArchidektDeckCards(cards []ArchidektCardEntry, premier map[string]bool
 			}
 		}
 		if isCommander {
+			continue
+		}
+
+		// Skip cards outside the deck (Sideboard / Maybeboard)
+		if !archidektEntryInDeck(entry, excluded) {
 			continue
 		}
 
