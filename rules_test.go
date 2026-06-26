@@ -148,11 +148,16 @@ func TestComprehensiveRulesCache(t *testing.T) {
 
 	srv := &MTGCommanderServer{rules: &rulesCache{}}
 
-	if _, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL); err != nil {
+	r1, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL)
+	if err != nil {
 		t.Fatalf("first fetch: %v", err)
 	}
-	if _, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL); err != nil {
+	r2, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL)
+	if err != nil {
 		t.Fatalf("second fetch: %v", err)
+	}
+	if r1 == nil || r1 != r2 {
+		t.Errorf("cache hit should return the same non-nil rules; r1=%p r2=%p", r1, r2)
 	}
 	if pageHits != 1 {
 		t.Errorf("expected 1 page fetch (cached), got %d", pageHits)
