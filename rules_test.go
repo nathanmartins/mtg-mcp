@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -90,5 +94,40 @@ func TestComprehensiveRulesLookups(t *testing.T) {
 	}
 	if _, ok := cr.GlossaryTerm("nope"); ok {
 		t.Error("unknown glossary term should return ok=false")
+	}
+}
+
+func TestGetComprehensiveRulesWithURL(t *testing.T) {
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".txt") {
+			fmt.Fprint(w, sampleRulesTxt)
+			return
+		}
+		// Page embeds a link to the .txt with a space in the filename, like the real WotC page.
+		fmt.Fprintf(w, `<html><body><a href="%s/MagicCompRules 20260619.txt">rules</a></body></html>`, server.URL)
+	}))
+	defer server.Close()
+
+	cr, err := getComprehensiveRulesWithURL(context.Background(), server.URL)
+	if err != nil {
+		t.Fatalf("getComprehensiveRulesWithURL: %v", err)
+	}
+	if _, ok := cr.Rule("702.19"); !ok {
+		t.Error("expected parsed rule 702.19 from fetched text")
+	}
+	if !strings.Contains(cr.SourceURL, "MagicCompRules") {
+		t.Errorf("SourceURL not set correctly: %q", cr.SourceURL)
+	}
+}
+
+func TestGetComprehensiveRulesWithURL_NoLink(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `<html><body>no rules link here</body></html>`)
+	}))
+	defer server.Close()
+
+	if _, err := getComprehensiveRulesWithURL(context.Background(), server.URL); err == nil {
+		t.Error("expected an error when the rules link is missing")
 	}
 }

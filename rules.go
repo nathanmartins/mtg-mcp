@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"strings"
 	"time"
@@ -163,4 +167,58 @@ func isAllLetters(s string) bool {
 		}
 	}
 	return true
+}
+
+// GetComprehensiveRules fetches and parses the current official comprehensive rules.
+func GetComprehensiveRules(ctx context.Context) (*ComprehensiveRules, error) {
+	return getComprehensiveRulesWithURL(ctx, rulesPageURL)
+}
+
+// getComprehensiveRulesWithURL fetches the rules using a custom page URL (used for testing).
+func getComprehensiveRulesWithURL(ctx context.Context, pageURL string) (*ComprehensiveRules, error) {
+	page, err := rulesHTTPGet(ctx, pageURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch rules page: %w", err)
+	}
+
+	link := rulesTxtLinkPattern.FindString(page)
+	if link == "" {
+		return nil, fmt.Errorf("could not find comprehensive rules .txt link on %s", pageURL)
+	}
+
+	txt, err := rulesHTTPGet(ctx, strings.ReplaceAll(link, " ", "%20"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch rules text: %w", err)
+	}
+
+	cr := parseComprehensiveRules(txt)
+	cr.SourceURL = link
+	return cr, nil
+}
+
+// rulesHTTPGet performs a GET and returns the body as a string (plain client, like archidekt.go).
+func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
+	req.Header.Set("Accept", "text/plain, text/html")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("rules source returned status %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	return string(body), nil
 }
