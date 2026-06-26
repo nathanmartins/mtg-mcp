@@ -417,6 +417,212 @@ func TestFormatArchidektLandsForDisplay(t *testing.T) {
 	}
 }
 
+func TestFormatArchidektDeckMaybeboardSeparated(t *testing.T) {
+	deck := &ArchidektDeck{
+		ID:         555,
+		Name:       "Maybe Deck",
+		DeckFormat: 3,
+		Owner:      ArchidektOwner{Username: "tester"},
+		Categories: []ArchidektCategory{
+			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
+		},
+		Cards: []ArchidektCardEntry{
+			{
+				Quantity:   1,
+				Categories: []string{"Commander"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Creature"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Maybeboard"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Maybe Card", Types: []string{"Sorcery"}},
+				},
+			},
+		},
+	}
+
+	got := FormatArchidektDeckForDisplay(deck)
+
+	if !strings.Contains(got, "## Maybeboard") {
+		t.Fatalf("expected a Maybeboard section in output:\n%s", got)
+	}
+
+	mainPart, maybePart, _ := strings.Cut(got, "## Maybeboard")
+
+	if strings.Contains(mainPart, "Maybe Card") {
+		t.Error("maybeboard card should not appear in the Mainboard section")
+	}
+	if !strings.Contains(maybePart, "Maybe Card") {
+		t.Error("maybeboard card should appear in the Maybeboard section")
+	}
+	if !strings.Contains(mainPart, "Llanowar Elves") {
+		t.Error("mainboard creature missing from Mainboard section")
+	}
+	if !strings.Contains(mainPart, "**Total Cards:** 2") {
+		t.Errorf("Total Cards should be 2 (commander + 1 mainboard), excluding maybeboard; got:\n%s", mainPart)
+	}
+}
+
+func TestFormatArchidektLandsExcludesMaybeboard(t *testing.T) {
+	deck := &ArchidektDeck{
+		ID:         556,
+		Name:       "Maybe Lands",
+		DeckFormat: 3,
+		Owner:      ArchidektOwner{Username: "tester"},
+		Categories: []ArchidektCategory{
+			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: "Land", IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
+		},
+		Cards: []ArchidektCardEntry{
+			{
+				Quantity:   1,
+				Categories: []string{"Land"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Maybeboard"},
+				Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Bojuka Bog", Types: []string{"Land"}}},
+			},
+		},
+	}
+
+	got := FormatArchidektLandsForDisplay(deck)
+
+	if !strings.Contains(got, "Command Tower") {
+		t.Error("mainboard land should appear in lands-only output")
+	}
+	if strings.Contains(got, "Bojuka Bog") {
+		t.Error("maybeboard land should not appear in lands-only output")
+	}
+}
+
+func TestFormatArchidektDeckSideboardSeparated(t *testing.T) {
+	deck := &ArchidektDeck{
+		ID:         557,
+		Name:       "Side Deck",
+		DeckFormat: 3,
+		Owner:      ArchidektOwner{Username: "tester"},
+		Categories: []ArchidektCategory{
+			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
+			// Archidekt flags Sideboard as includedInDeck=true, but in Commander it is out of the deck.
+			{ID: 3, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
+		},
+		Cards: []ArchidektCardEntry{
+			{
+				Quantity:   1,
+				Categories: []string{"Commander"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Creature"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Sideboard"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
+				},
+			},
+			{
+				// Mixed category: tagged Sideboard AND a type — must still be treated as sideboard.
+				Quantity:   1,
+				Categories: []string{"Sideboard", "Creature"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Scavenging Ooze", Types: []string{"Creature"}},
+				},
+			},
+		},
+	}
+
+	got := FormatArchidektDeckForDisplay(deck)
+
+	if !strings.Contains(got, "## Sideboard") {
+		t.Fatalf("expected a Sideboard section in output:\n%s", got)
+	}
+
+	mainPart, sidePart, _ := strings.Cut(got, "## Sideboard")
+
+	if strings.Contains(mainPart, "Pithing Needle") {
+		t.Error("sideboard card should not appear in the Mainboard section")
+	}
+	if strings.Contains(mainPart, "Scavenging Ooze") {
+		t.Error("mixed-category sideboard card should not appear in the Mainboard section")
+	}
+	if !strings.Contains(sidePart, "Pithing Needle") {
+		t.Error("sideboard card should appear in the Sideboard section")
+	}
+	if !strings.Contains(sidePart, "Scavenging Ooze") {
+		t.Error("mixed-category sideboard card should appear in the Sideboard section")
+	}
+	if !strings.Contains(mainPart, "Llanowar Elves") {
+		t.Error("mainboard creature missing from Mainboard section")
+	}
+	if !strings.Contains(mainPart, "**Total Cards:** 2") {
+		t.Errorf("Total Cards should be 2 (commander + 1 mainboard), excluding sideboard; got:\n%s", mainPart)
+	}
+}
+
+func TestFormatArchidektLandsExcludesSideboard(t *testing.T) {
+	deck := &ArchidektDeck{
+		ID:         558,
+		Name:       "Side Lands",
+		DeckFormat: 3,
+		Owner:      ArchidektOwner{Username: "tester"},
+		Categories: []ArchidektCategory{
+			{ID: 1, Name: "Land", IsPremier: false, IncludedInDeck: true},
+			{ID: 2, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
+		},
+		Cards: []ArchidektCardEntry{
+			{
+				Quantity:   1,
+				Categories: []string{"Land"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				},
+			},
+			{
+				Quantity:   1,
+				Categories: []string{"Sideboard"},
+				Card: ArchidektCard{
+					OracleCard: ArchidektOracleCard{Name: "Reliquary Tower", Types: []string{"Land"}},
+				},
+			},
+		},
+	}
+
+	got := FormatArchidektLandsForDisplay(deck)
+
+	if !strings.Contains(got, "Command Tower") {
+		t.Error("mainboard land should appear in lands-only output")
+	}
+	if strings.Contains(got, "Reliquary Tower") {
+		t.Error("sideboard land should not appear in lands-only output")
+	}
+}
+
 func TestSearchArchidektDecks(t *testing.T) {
 	bracket4 := 4
 	bracket2 := 2
