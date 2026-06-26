@@ -18,7 +18,7 @@ func TestComprehensiveRulesE2E(t *testing.T) {
 
 	text, ok := rules.Rule("702.19")
 	if !ok || !strings.Contains(text, "Trample") {
-		t.Errorf("expected rule 702.19 to mention Trample; ok=%v", ok)
+		t.Errorf("expected rule 702.19 to mention Trample; ok=%v got=%q", ok, text)
 	}
 	if _, okGlossary := rules.GlossaryTerm("Trample"); !okGlossary {
 		t.Error("expected glossary to contain 'Trample'")

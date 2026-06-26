@@ -43,6 +43,9 @@ func TestParseComprehensiveRules(t *testing.T) {
 			t.Errorf("expected rule %q to be parsed", num)
 		}
 	}
+	if _, ok := cr.rules["100"]; ok {
+		t.Error("section header '100. General' should not be parsed as a rule")
+	}
 	if !strings.Contains(cr.rules["702.19a"], "static ability") {
 		t.Errorf("rule 702.19a text wrong: %q", cr.rules["702.19a"])
 	}
