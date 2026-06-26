@@ -244,6 +244,21 @@ func TestRulesCountsAndHandlers(t *testing.T) {
 	if !strings.Contains(toolResultText(t, gres), "keyword ability") {
 		t.Error("handleGetGlossaryTerm should return the definition")
 	}
+
+	sreq := mcp.CallToolRequest{}
+	sreq.Params.Arguments = map[string]any{"keyword": "trample", "limit": float64(1)}
+	sres, err := srv.handleSearchRules(context.Background(), sreq)
+	if err != nil {
+		t.Fatalf("handleSearchRules: %v", err)
+	}
+	stext := toolResultText(t, sres)
+	if !strings.Contains(stext, "Rules matching") || !strings.Contains(stext, "702.19") {
+		t.Errorf("handleSearchRules should list matching rule 702.19; got:\n%s", stext)
+	}
+	// limit=1 must cap the listing to a single "- " result line
+	if n := strings.Count(stext, "\n- "); n != 1 {
+		t.Errorf("expected exactly 1 result line with limit=1, got %d:\n%s", n, stext)
+	}
 }
 
 // toolResultText extracts the text payload from a tool result.
