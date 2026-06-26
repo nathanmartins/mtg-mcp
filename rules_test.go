@@ -183,3 +183,28 @@ func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
 		t.Error("stale cache should still answer lookups")
 	}
 }
+
+func TestRulesFormatters(t *testing.T) {
+	r := FormatRuleForDisplay("702.19", "702.19. Trample")
+	if !strings.Contains(r, "# Rule 702.19") || !strings.Contains(r, "Trample") {
+		t.Errorf("FormatRuleForDisplay wrong:\n%s", r)
+	}
+
+	empty := FormatRuleSearchForDisplay("xyzzy", nil)
+	if !strings.Contains(empty, "No matching rules") {
+		t.Errorf("empty search should say so:\n%s", empty)
+	}
+
+	s := FormatRuleSearchForDisplay("trample", []RuleMatch{{Number: "702.19", Text: "702.19. Trample\nmore"}})
+	if !strings.Contains(s, "702.19") || !strings.Contains(s, "trample") {
+		t.Errorf("search format wrong:\n%s", s)
+	}
+	if strings.Contains(s, "\nmore") {
+		t.Error("search listing should show only the first line of each match")
+	}
+
+	g := FormatGlossaryTermForDisplay("Trample", "A keyword ability.")
+	if !strings.Contains(g, "# Trample") || !strings.Contains(g, "keyword ability") {
+		t.Errorf("glossary format wrong:\n%s", g)
+	}
+}

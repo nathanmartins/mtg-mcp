@@ -263,3 +263,35 @@ func (s *MTGCommanderServer) comprehensiveRulesFromURL(
 	s.rules.fetchedAt = time.Now()
 	return s.rules.rules, nil
 }
+
+// FormatRuleForDisplay renders a single rule (with any subrules) as text.
+func FormatRuleForDisplay(number, text string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Rule %s\n\n%s\n", number, text)
+	return b.String()
+}
+
+// FormatRuleSearchForDisplay renders search results as a one-line-per-rule list.
+func FormatRuleSearchForDisplay(keyword string, matches []RuleMatch) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# Rules matching %q (%d)\n\n", keyword, len(matches))
+	if len(matches) == 0 {
+		b.WriteString("No matching rules found.\n")
+		return b.String()
+	}
+	for _, m := range matches {
+		first := m.Text
+		if i := strings.IndexByte(first, '\n'); i != -1 {
+			first = first[:i]
+		}
+		fmt.Fprintf(&b, "- %s\n", first)
+	}
+	return b.String()
+}
+
+// FormatGlossaryTermForDisplay renders a glossary definition as text.
+func FormatGlossaryTermForDisplay(term, def string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s\n\n%s\n", term, def)
+	return b.String()
+}
