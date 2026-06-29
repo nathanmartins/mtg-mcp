@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -16,6 +17,8 @@ const (
 	rulesCacheTTL           = 24 * time.Hour
 	rulesSearchDefaultLimit = 10
 	rulesSearchMaxLimit     = 20
+	rulesHTTPTimeout        = 30 * time.Second
+	rulesMaxBodyBytes       = 8 << 20 // 8 MiB cap on fetched bodies (the rules .txt is ~1 MiB)
 )
 
 // rulesTxtLinkPattern discovers the comprehensive rules .txt URL embedded in the WotC rules page.
@@ -191,6 +194,12 @@ func getComprehensiveRulesWithURL(ctx context.Context, pageURL string) (*Compreh
 		return nil, fmt.Errorf("could not find comprehensive rules .txt link on %s", pageURL)
 	}
 
+	// Only follow a link that stays on the same host/domain as the page we scraped, so a
+	// compromised or tampered page cannot redirect us to fetch arbitrary remote content.
+	if !rulesLinkHostAllowed(pageURL, link) {
+		return nil, fmt.Errorf("discovered rules link points to an untrusted host: %s", link)
+	}
+
 	encodedLink := strings.ReplaceAll(link, " ", "%20")
 	txt, err := rulesHTTPGet(ctx, encodedLink)
 	if err != nil {
@@ -198,8 +207,44 @@ func getComprehensiveRulesWithURL(ctx context.Context, pageURL string) (*Compreh
 	}
 
 	cr := parseComprehensiveRules(txt)
+	if len(cr.rules) == 0 {
+		return nil, fmt.Errorf("fetched rules text contained no parseable rules (%d bytes)", len(txt))
+	}
 	cr.SourceURL = encodedLink
 	return cr, nil
+}
+
+// rulesLinkHostAllowed reports whether link may be fetched given the page it was discovered on:
+// the link host must equal the page host or share its registrable (last-two-label) domain.
+func rulesLinkHostAllowed(pageURL, link string) bool {
+	page, pErr := url.Parse(pageURL)
+	target, tErr := url.Parse(link)
+	if pErr != nil || tErr != nil {
+		return false
+	}
+	pageHost, linkHost := page.Hostname(), target.Hostname()
+	if pageHost == "" || linkHost == "" {
+		return false
+	}
+	if linkHost == pageHost {
+		return true
+	}
+	base := registrableSuffix(pageHost)
+	return linkHost == base || strings.HasSuffix(linkHost, "."+base)
+}
+
+// registrableLabels is the number of trailing dot-separated labels treated as the registrable
+// domain (e.g. the "wizards.com" in "magic.wizards.com").
+const registrableLabels = 2
+
+// registrableSuffix returns the last registrableLabels labels of host (e.g. "wizards.com"
+// for "magic.wizards.com"), or host itself if it has fewer labels.
+func registrableSuffix(host string) string {
+	parts := strings.Split(host, ".")
+	if len(parts) < registrableLabels {
+		return host
+	}
+	return strings.Join(parts[len(parts)-registrableLabels:], ".")
 }
 
 // rulesHTTPGet performs a GET and returns the body as a string (plain client, like archidekt.go).
@@ -211,7 +256,7 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "text/plain, text/html")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: rulesHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
@@ -222,9 +267,14 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 		return "", fmt.Errorf("rules source returned status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
+	// Read at most rulesMaxBodyBytes; reading one extra byte lets us detect (rather than
+	// silently truncate) an oversized response.
+	body, err := io.ReadAll(io.LimitReader(resp.Body, rulesMaxBodyBytes+1))
 	if err != nil {
 		return "", err
+	}
+	if len(body) > rulesMaxBodyBytes {
+		return "", fmt.Errorf("rules source response exceeded %d bytes", rulesMaxBodyBytes)
 	}
 	return string(body), nil
 }
@@ -247,25 +297,33 @@ func (s *MTGCommanderServer) comprehensiveRulesFromURL(
 	ctx context.Context,
 	pageURL string,
 ) (*ComprehensiveRules, error) {
+	// Serve a fresh cache under the lock, but never hold the lock across the network fetch —
+	// a slow upstream must not block other callers (or wedge the feature indefinitely).
 	s.rules.mu.Lock()
-	defer s.rules.mu.Unlock()
-
 	if s.rules.rules != nil && time.Since(s.rules.fetchedAt) < rulesCacheTTL {
-		return s.rules.rules, nil
+		cached := s.rules.rules
+		s.rules.mu.Unlock()
+		return cached, nil
 	}
+	s.rules.mu.Unlock()
 
 	fetched, err := getComprehensiveRulesWithURL(ctx, pageURL)
 	if err != nil {
-		if s.rules.rules != nil {
+		s.rules.mu.Lock()
+		stale := s.rules.rules
+		s.rules.mu.Unlock()
+		if stale != nil {
 			GetLogger().Warn().Err(err).Msg("using stale comprehensive rules cache")
-			return s.rules.rules, nil
+			return stale, nil
 		}
 		return nil, err
 	}
 
+	s.rules.mu.Lock()
 	s.rules.rules = fetched
 	s.rules.fetchedAt = time.Now()
-	return s.rules.rules, nil
+	s.rules.mu.Unlock()
+	return fetched, nil
 }
 
 // FormatRuleForDisplay renders a single rule (with any subrules) as text.

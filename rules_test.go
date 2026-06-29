@@ -275,3 +275,48 @@ func toolResultText(t *testing.T, res *mcp.CallToolResult) string {
 	}
 	return b.String()
 }
+
+func TestRulesHTTPGetRejectsOversizedBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		// One byte over the cap.
+		fmt.Fprint(w, strings.Repeat("a", rulesMaxBodyBytes+1))
+	}))
+	defer server.Close()
+
+	if _, err := rulesHTTPGet(context.Background(), server.URL); err == nil {
+		t.Errorf("expected an error when the response exceeds %d bytes", rulesMaxBodyBytes)
+	}
+}
+
+func TestGetComprehensiveRulesWithURLRejectsForeignHost(t *testing.T) {
+	// The page links to a .txt on a host unrelated to the page host — must be rejected, not fetched.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `<html><a href="http://evil.example/MagicCompRules 20260619.txt">r</a></html>`)
+	}))
+	defer server.Close()
+
+	_, err := getComprehensiveRulesWithURL(context.Background(), server.URL)
+	if err == nil {
+		t.Fatal("expected an error for a rules link on an untrusted host")
+	}
+	if !strings.Contains(err.Error(), "host") {
+		t.Errorf("error should mention the untrusted host; got: %v", err)
+	}
+}
+
+func TestGetComprehensiveRulesWithURLRejectsEmptyParse(t *testing.T) {
+	// A 200 response whose body has no parseable rules must be treated as a failure, not cached.
+	var server *httptest.Server
+	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, ".txt") {
+			fmt.Fprint(w, "maintenance page — no rules here")
+			return
+		}
+		fmt.Fprintf(w, `<html><a href="%s/MagicCompRules 20260619.txt">r</a></html>`, server.URL)
+	}))
+	defer server.Close()
+
+	if _, err := getComprehensiveRulesWithURL(context.Background(), server.URL); err == nil {
+		t.Error("expected an error when the fetched text contains no parseable rules")
+	}
+}
