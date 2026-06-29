@@ -16,119 +16,119 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 #### Scryfall Card Data (7 tools)
 
 1. **search_cards** - Search for MTG cards using Scryfall search syntax
-   - Supports advanced queries (colors, types, abilities, etc.)
-   - Returns up to 50 results with full card details
-   - Includes Commander legality status
+    - Supports advanced queries (colors, types, abilities, etc.)
+    - Returns up to 50 results with full card details
+    - Includes Commander legality status
 
 2. **get_card_details** - Get detailed information about a specific card
-   - Oracle text and rules
-   - Mana cost, type, power/toughness
-   - Color identity
-   - Format legalities across all formats
-   - Artist and set information
+    - Oracle text and rules
+    - Mana cost, type, power/toughness
+    - Color identity
+    - Format legalities across all formats
+    - Artist and set information
 
 3. **check_commander_legality** - Check if a card is legal in Commander
-   - Shows legality status across all formats
-   - Clear indication of banned/legal/not legal status
-   - Quick format validation
+    - Shows legality status across all formats
+    - Clear indication of banned/legal/not legal status
+    - Quick format validation
 
 4. **get_card_rulings** - Get official card rulings and clarifications
-   - Official WotC rulings
-   - Dates and sources for each ruling
-   - Comprehensive rules clarifications
+    - Official WotC rulings
+    - Dates and sources for each ruling
+    - Comprehensive rules clarifications
 
 5. **get_card_price** - Get current card pricing
-   - USD and EUR prices from Scryfall
-   - **BRL (Brazilian Real) pricing** via real-time currency conversion
-   - Supports both regular and foil versions
-   - Optional set-specific pricing
+    - USD and EUR prices from Scryfall
+    - **BRL (Brazilian Real) pricing** via real-time currency conversion
+    - Supports both regular and foil versions
+    - Optional set-specific pricing
 
 6. **get_banned_list** - Get current Commander banned list
-   - Real-time data from Scryfall
-   - 85+ banned cards (updated automatically)
-   - Complete list with card names
+    - Real-time data from Scryfall
+    - 85+ banned cards (updated automatically)
+    - Complete list with card names
 
 7. **validate_deck** - Validate a Commander deck
-   - 100-card deck size check
-   - Singleton rule verification (no duplicates except basics)
-   - Commander legality check
-   - Color identity validation
-   - Supports JSON array or text format decklists
+    - 100-card deck size check
+    - Singleton rule verification (no duplicates except basics)
+    - Commander legality check
+    - Color identity validation
+    - Supports JSON array or text format decklists
 
 #### Moxfield Integration (3 tools)
 
 1. **get_moxfield_deck** - Fetch complete deck from Moxfield
-   - Accepts deck URL or public ID
-   - Full decklist with card types organized
-   - Deck metadata (views, likes, comments, author)
-   - Commanders, mainboard, sideboard, maybeboard
-   - Last updated timestamp
+    - Accepts deck URL or public ID
+    - Full decklist with card types organized
+    - Deck metadata (views, likes, comments, author)
+    - Commanders, mainboard, sideboard, maybeboard
+    - Last updated timestamp
 
 2. **get_moxfield_user_decks** - Get user's deck list from Moxfield
-   - List all decks for a Moxfield user
-   - Paginated results (up to 100 per page)
-   - Deck summaries with views and likes
-   - Format and public URL for each deck
+    - List all decks for a Moxfield user
+    - Paginated results (up to 100 per page)
+    - Deck summaries with views and likes
+    - Format and public URL for each deck
 
 3. **search_moxfield_decks** - Search for decks on Moxfield by commander
-   - Search by commander name
-   - Filter by format (commander, standard, modern, etc.)
-   - Sort by updated, views, or likes
-   - Paginated results (up to 100 per page)
-   - Returns deck metadata with views, likes, and URLs
+    - Search by commander name
+    - Filter by format (commander, standard, modern, etc.)
+    - Sort by updated, views, or likes
+    - Paginated results (up to 100 per page)
+    - Returns deck metadata with views, likes, and URLs
 
 #### Archidekt Integration (3 tools)
 
 1. **get_archidekt_deck** - Fetch a complete deck from Archidekt
-   - Accepts deck URL or numeric ID (e.g., `https://archidekt.com/decks/12345` or `12345`)
-   - Full decklist organised by card type
-   - Commander(s) identified via premier category flag
-   - Deck metadata (format, owner, views, EDH bracket, last updated)
-   - Direct link back to the Archidekt deck page
-   - Optional `lands_only` flag — returns only land cards, ideal for landbase comparisons
-     without the token overhead of a full decklist
+    - Accepts deck URL or numeric ID (e.g., `https://archidekt.com/decks/12345` or `12345`)
+    - Full decklist organised by card type
+    - Commander(s) identified via premier category flag
+    - Deck metadata (format, owner, views, EDH bracket, last updated)
+    - Direct link back to the Archidekt deck page
+    - Optional `lands_only` flag — returns only land cards, ideal for landbase comparisons
+      without the token overhead of a full decklist
 
 2. **get_archidekt_user_decks** - Get a user's public decks from Archidekt
-   - List all public decks for any Archidekt username
-   - Paginated results with direct deck URLs
-   - Format name, view count, and last-updated date for each deck
+    - List all public decks for any Archidekt username
+    - Paginated results with direct deck URLs
+    - Format name, view count, and last-updated date for each deck
 
 3. **search_archidekt_decks** - Search public Commander decks by commander name
-   - Required `commander` parameter (card name, e.g. `"Atraxa, Praetors' Voice"`)
-   - Optional `bracket` filter (1–4; omit to search all brackets)
-   - Optional `limit` (default: 10, max: 20)
-   - Results sorted by view count descending
-   - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
+    - Required `commander` parameter (card name, e.g. `"Atraxa, Praetors' Voice"`)
+    - Optional `bracket` filter (1–4; omit to search all brackets)
+    - Optional `limit` (default: 10, max: 20)
+    - Results sorted by view count descending
+    - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 
 #### EDHREC Meta Data (2 tools)
 
 1. **get_edhrec_recommendations** - Get EDHREC recommendations for a commander
-   - High synergy cards with synergy scores
-   - Most popular cards by inclusion rate
-   - New cards trending for the commander
-   - Card categories (creatures, instants, artifacts, etc.)
-   - Deck count and meta statistics
-   - Salt scores for controversial cards
+    - High synergy cards with synergy scores
+    - Most popular cards by inclusion rate
+    - New cards trending for the commander
+    - Card categories (creatures, instants, artifacts, etc.)
+    - Deck count and meta statistics
+    - Salt scores for controversial cards
 
 2. **get_edhrec_combos** - Get popular combos for color combinations
-   - Combo cards and prerequisites
-   - Combo results (e.g., "Infinite mana", "Win the game")
-   - Usage statistics and percentages
-   - Ranked by popularity
-   - Color identity filtering (w/u/b/r/g)
+    - Combo cards and prerequisites
+    - Combo results (e.g., "Infinite mana", "Win the game")
+    - Usage statistics and percentages
+    - Ranked by popularity
+    - Color identity filtering (w/u/b/r/g)
 
 ### Resources (Data Sources)
 
 1. **commander://rules** - Complete Commander format rules
-   - Deck construction guidelines
-   - Gameplay rules
-   - Winning conditions
-   - Official sources
+    - Deck construction guidelines
+    - Gameplay rules
+    - Winning conditions
+    - Official sources
 
 2. **commander://banned-list** - JSON-formatted banned list
-   - Real-time data
-   - Card names, types, and mana costs
-   - Total count of banned cards
+    - Real-time data
+    - Card names, types, and mana costs
+    - Total count of banned cards
 
 ## Installation
 
@@ -270,7 +270,8 @@ Once connected to Claude Desktop, you can ask questions like:
 
 - **Language:** Go 1.21+
 - **MCP Framework:** [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go)
-- **Card Data API:** [Scryfall API](https://scryfall.com/docs/api) via [go-scryfall](https://github.com/BlueMonday/go-scryfall)
+- **Card Data API:** [Scryfall API](https://scryfall.com/docs/api)
+  via [go-scryfall](https://github.com/BlueMonday/go-scryfall)
 - **Currency Conversion:** [Frankfurter API](https://www.frankfurter.app/) (free, no API key)
 - **Logging:** [zerolog](https://github.com/rs/zerolog) for structured JSON logging
 - **Transport:** stdio (Model Context Protocol)
@@ -278,38 +279,38 @@ Once connected to Claude Desktop, you can ask questions like:
 ### Data Sources
 
 1. **Card Data:** Scryfall API
-   - Updated daily
-   - Complete MTG card database
-   - Includes rulings, legalities, and pricing
-   - Rate-limited to 10 requests/second (built into client)
+    - Updated daily
+    - Complete MTG card database
+    - Includes rulings, legalities, and pricing
+    - Rate-limited to 10 requests/second (built into client)
 
 2. **Commander Rules:** Official format rules embedded in server
-   - Source: <https://mtgcommander.net>
-   - Format managed by Wizards of the Coast
+    - Source: <https://mtgcommander.net>
+    - Format managed by Wizards of the Coast
 
 3. **Pricing:**
-   - Base prices: Scryfall (USD/EUR)
-   - BRL conversion: Real-time exchange rates via Frankfurter API
-   - Note: Prices are indicative and may not reflect Brazilian market conditions
+    - Base prices: Scryfall (USD/EUR)
+    - BRL conversion: Real-time exchange rates via Frankfurter API
+    - Note: Prices are indicative and may not reflect Brazilian market conditions
 
 4. **Moxfield:** Unofficial API (<https://api.moxfield.com>)
-   - Deck data and user profiles
-   - Metadata including views, likes, comments
-   - **Note:** No official public API; be respectful of rate limits
-   - Contact <support@moxfield.com> for authorized access
+    - Deck data and user profiles
+    - Metadata including views, likes, comments
+    - **Note:** No official public API; be respectful of rate limits
+    - Contact <support@moxfield.com> for authorized access
 
 5. **Archidekt:** Open public API (<https://archidekt.com/api>)
-   - Deck data including full card lists and categories
-   - Owner, format, EDH bracket, and view count metadata
-   - **Note:** API is open for read access; credit deck creators when publishing data
-   - No API key required
+    - Deck data including full card lists and categories
+    - Owner, format, EDH bracket, and view count metadata
+    - **Note:** API is open for read access; credit deck creators when publishing data
+    - No API key required
 
 6. **EDHREC:** Unofficial JSON endpoints (<https://json.edhrec.com>)
-   - Card recommendations and synergies
-   - Meta statistics and popularity data
-   - Combo database
-   - **Rate limit:** Recommend 1 request/second
-   - Cached data (may not be real-time)
+    - Card recommendations and synergies
+    - Meta statistics and popularity data
+    - Combo database
+    - **Rate limit:** Recommend 1 request/second
+    - Cached data (may not be real-time)
 
 ## Project Structure
 
@@ -387,25 +388,25 @@ make ci
 
 **Common Makefile Commands:**
 
-| Command | Description |
-| ------- | ----------- |
-| `make help` | Show all available commands |
-| `make build` | Build the binary |
-| `make test-unit` | Run unit tests only (fast, skips E2E) |
-| `make test-e2e` | Run E2E tests only |
-| `make test` | Run all tests (unit + E2E) |
-| `make test-coverage` | Generate HTML coverage report |
-| `make test-coverage-cli` | Show coverage in terminal |
+| Command                      | Description                                        |
+|------------------------------|----------------------------------------------------|
+| `make help`                  | Show all available commands                        |
+| `make build`                 | Build the binary                                   |
+| `make test-unit`             | Run unit tests only (fast, skips E2E)              |
+| `make test-e2e`              | Run E2E tests only                                 |
+| `make test`                  | Run all tests (unit + E2E)                         |
+| `make test-coverage`         | Generate HTML coverage report                      |
+| `make test-coverage-cli`     | Show coverage in terminal                          |
 | `make update-coverage-badge` | Update coverage badge in README with proper colors |
-| `make test-race` | Run tests with race detector |
-| `make bench` | Run benchmarks |
-| `make fmt` | Format Go code |
-| `make lint` | Run all linters |
-| `make check` | Run fmt + lint + test-unit |
-| `make ci` | Run full CI pipeline locally |
-| `make clean` | Clean build artifacts |
-| `make deps` | Download dependencies |
-| `make tidy` | Tidy go.mod |
+| `make test-race`             | Run tests with race detector                       |
+| `make bench`                 | Run benchmarks                                     |
+| `make fmt`                   | Format Go code                                     |
+| `make lint`                  | Run all linters                                    |
+| `make check`                 | Run fmt + lint + test-unit                         |
+| `make ci`                    | Run full CI pipeline locally                       |
+| `make clean`                 | Clean build artifacts                              |
+| `make deps`                  | Download dependencies                              |
+| `make tidy`                  | Tidy go.mod                                        |
 
 ### Running Tests
 
@@ -540,9 +541,9 @@ The project uses GitHub Actions with two main workflows:
 ## Limitations
 
 1. **Brazilian Pricing:** Converted from USD using exchange rates. Does not account for:
-   - Import taxes and fees
-   - Brazilian market supply/demand
-   - Local marketplace pricing (LigaMagic, etc.)
+    - Import taxes and fees
+    - Brazilian market supply/demand
+    - Local marketplace pricing (LigaMagic, etc.)
 
 2. **Rate Limiting:** Scryfall API has a 10 req/sec limit (automatically handled)
 
