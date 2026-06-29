@@ -545,7 +545,7 @@ func TestHandleValidateDeck(t *testing.T) {
 		var sb strings.Builder
 		sb.WriteString("2 Sol Ring\n") // duplicate non-basic -> flagged
 		sb.WriteString("10 Forest\n")  // basic land duplicates -> allowed
-		for i := 0; i < 87; i++ {      // pad to 99 total entries
+		for i := range 87 {            // pad to 99 total entries
 			sb.WriteString("1 Card")
 			sb.WriteByte(byte('A' + (i % 26)))
 			sb.WriteString("\n")

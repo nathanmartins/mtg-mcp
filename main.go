@@ -28,6 +28,7 @@ const (
 	defaultFormat                = "commander"
 	defaultSortDirection         = "Descending"
 	paramCommander               = "commander"
+	paramName                    = "name"
 
 	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
 	defaultArchidektBaseURL = "https://archidekt.com/api"
@@ -149,7 +150,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		mcp.WithDescription(
 			"Get detailed information about a specific Magic: The Gathering card including rules text, mana cost, type, and more",
 		),
-		mcp.WithString("name",
+		mcp.WithString(paramName,
 			mcp.Required(),
 			mcp.Description("Exact or fuzzy card name (e.g., 'Lightning Bolt', 'Mana Crypt')"),
 		),
@@ -162,7 +163,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		mcp.WithDescription(
 			"Check if a card is legal in Commander format and get its legality status across all formats",
 		),
-		mcp.WithString("name",
+		mcp.WithString(paramName,
 			mcp.Required(),
 			mcp.Description("Card name to check legality"),
 		),
@@ -172,7 +173,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	// Tool 4: Get Card Rulings
 	rulingsTool := mcp.NewTool("get_card_rulings",
 		mcp.WithDescription("Get official rulings and clarifications for a Magic: The Gathering card"),
-		mcp.WithString("name",
+		mcp.WithString(paramName,
 			mcp.Required(),
 			mcp.Description("Card name to get rulings for"),
 		),
@@ -185,7 +186,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		mcp.WithDescription(
 			"Get current pricing for a Magic: The Gathering card in USD, EUR, and BRL (Brazilian Real via conversion)",
 		),
-		mcp.WithString("name",
+		mcp.WithString(paramName,
 			mcp.Required(),
 			mcp.Description("Card name to get pricing for"),
 		),

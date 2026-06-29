@@ -93,7 +93,7 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	name, err := request.RequireString("name")
+	name, err := request.RequireString(paramName)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -149,7 +149,7 @@ func (s *MTGCommanderServer) handleCheckLegality(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	name, err := request.RequireString("name")
+	name, err := request.RequireString(paramName)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -191,7 +191,7 @@ func (s *MTGCommanderServer) handleGetRulings(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	name, err := request.RequireString("name")
+	name, err := request.RequireString(paramName)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -226,7 +226,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	name, err := request.RequireString("name")
+	name, err := request.RequireString(paramName)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
@@ -371,7 +371,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	_, _ = fmt.Fprintf(&output, "**Commander:** %s\n", commander.Name)
 	_, _ = fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(colorIdentity, ", "))
 
-	if commander.Legalities.Commander == "banned" {
+	if commander.Legalities.Commander == scryfall.LegalityBanned {
 		output.WriteString("❌ **ERROR:** Your commander is banned in Commander format!\n\n")
 	}
 

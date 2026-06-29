@@ -68,7 +68,7 @@ func (s *MTGCommanderServer) handleBannedListResource(
 	bannedCards := make([]map[string]string, len(result.Cards))
 	for i, card := range result.Cards {
 		bannedCards[i] = map[string]string{
-			"name":      card.Name,
+			paramName:   card.Name,
 			"type":      card.TypeLine,
 			"mana_cost": card.ManaCost,
 		}

@@ -28,7 +28,10 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 		Name:     "Atraxa Superfriends",
 		Format:   "commander",
 		Commanders: map[string]MoxfieldCardEntry{
-			"atraxa": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Atraxa, Praetors' Voice", TypeLine: "Legendary Creature"}},
+			"atraxa": {
+				Quantity: 1,
+				Card:     MoxfieldCardInfo{Name: "Atraxa, Praetors' Voice", TypeLine: "Legendary Creature"},
+			},
 		},
 		Mainboard: map[string]MoxfieldCardEntry{
 			"sol": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
@@ -63,7 +66,14 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 		TotalResults: 1,
 		TotalPages:   1,
 		Data: []MoxfieldDeckSummary{
-			{PublicID: "d1", Name: "Deck One", Format: "commander", PublicURL: "https://moxfield.com/d1", ViewCount: 10, LikeCount: 2},
+			{
+				PublicID:  "d1",
+				Name:      "Deck One",
+				Format:    "commander",
+				PublicURL: "https://moxfield.com/d1",
+				ViewCount: 10,
+				LikeCount: 2,
+			},
 		},
 	}
 	s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
@@ -278,7 +288,10 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 					Card:     EDHRECCardInfo{Name: "Atraxa, Praetors' Voice", ColorID: []string{"W", "U", "B", "G"}},
 					NumDecks: 1000,
 					CardLists: []EDHRECCardList{
-						{Header: "High Synergy Cards", CardViews: []EDHRECCardView{{Name: "Doubling Season", Inclusion: 500}}},
+						{
+							Header:    "High Synergy Cards",
+							CardViews: []EDHRECCardView{{Name: "Doubling Season", Inclusion: 500}},
+						},
 					},
 				},
 			},
@@ -298,7 +311,10 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
-		res, _ := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{"commander": "Nobody"}))
+		res, _ := s.handleGetEDHRECRecommendations(
+			context.Background(),
+			toolRequest(map[string]any{"commander": "Nobody"}),
+		)
 		if !res.IsError {
 			t.Error("expected error result")
 		}
