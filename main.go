@@ -28,11 +28,19 @@ const (
 	defaultFormat                = "commander"
 	defaultSortDirection         = "Descending"
 	paramCommander               = "commander"
+
+	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
+	defaultArchidektBaseURL = "https://archidekt.com/api"
+	defaultEDHRECBaseURL    = "https://json.edhrec.com/pages"
 )
 
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
+// The base URL fields default to the live APIs but can be overridden in tests.
 type MTGCommanderServer struct {
-	scryfallClient *scryfall.Client
+	scryfallClient   *scryfall.Client
+	moxfieldBaseURL  string
+	archidektBaseURL string
+	edhrecBaseURL    string
 }
 
 // NewMTGCommanderServer creates a new MTG Commander MCP server.
@@ -43,7 +51,10 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 	}
 
 	return &MTGCommanderServer{
-		scryfallClient: client,
+		scryfallClient:   client,
+		moxfieldBaseURL:  defaultMoxfieldBaseURL,
+		archidektBaseURL: defaultArchidektBaseURL,
+		edhrecBaseURL:    defaultEDHRECBaseURL,
 	}, nil
 }
 

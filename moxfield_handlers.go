@@ -25,7 +25,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 		Str("deck_id", publicID).
 		Msg("Fetching Moxfield deck")
 
-	deck, err := GetMoxfieldDeck(ctx, publicID)
+	deck, err := getMoxfieldDeckWithURL(ctx, publicID, s.moxfieldBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
@@ -68,7 +68,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 		}
 	}
 
-	decks, err := GetUserDecks(ctx, username, pageSize)
+	decks, err := getUserDecksWithURL(ctx, username, pageSize, s.moxfieldBaseURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch user decks: %v", err)), nil
 	}
@@ -150,7 +150,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		PageNumber:    1,
 	}
 
-	results, err := SearchMoxfieldDecks(ctx, params)
+	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
