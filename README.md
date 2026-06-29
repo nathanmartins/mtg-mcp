@@ -3,11 +3,11 @@
 <!-- markdownlint-disable-next-line MD013 -->
 [![CI](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/ci.yaml) [![CD](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/cd.yaml) [![Lint](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml/badge.svg)](https://github.com/nathanmartins/mtg-mcp/actions/workflows/lint.yaml) ![Coverage](https://img.shields.io/badge/Coverage-93.2%25-green)
 
-<!-- markdownlint-disable-next-line MD013 -->
-[![Go Report Card](https://goreportcard.com/badge/github.com/nathanmartins/mtg-mcp)](https://goreportcard.com/report/github.com/nathanmartins/mtg-mcp) [![License](https://img.shields.io/github/license/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/releases/latest) [![Go Version](https://img.shields.io/github/go-mod/go-version/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/go.mod)
-
 A Model Context Protocol (MCP) server for Magic: The Gathering Commander format, providing comprehensive card
 information, rulings, pricing, deck validation tools, and multi-platform deck importing.
+
+<!-- markdownlint-disable-next-line MD013 -->
+[![Go Report Card](https://goreportcard.com/badge/github.com/nathanmartins/mtg-mcp)](https://goreportcard.com/report/github.com/nathanmartins/mtg-mcp) [![License](https://img.shields.io/github/license/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/releases/latest) [![Go Version](https://img.shields.io/github/go-mod/go-version/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/go.mod)
 
 ## Features
 
