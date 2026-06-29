@@ -68,7 +68,9 @@ func TestHTTPGet(t *testing.T) {
 			}
 
 			if err == nil {
-				defer resp.Body.Close()
+				defer func() {
+					_ = resp.Body.Close()
+				}()
 				if resp.StatusCode != tt.serverStatus {
 					t.Errorf("HTTPGet() status = %v, want %v", resp.StatusCode, tt.serverStatus)
 				}
@@ -82,7 +84,7 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
+		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	}))
 	defer server.Close()
 
