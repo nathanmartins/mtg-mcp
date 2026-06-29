@@ -868,3 +868,71 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 		}
 	})
 }
+
+func TestGroupArchidektDeckCards(t *testing.T) {
+	premier := map[string]bool{"Commander": true}
+	excluded := map[string]bool{"Maybeboard": true}
+
+	cards := []ArchidektCardEntry{
+		// Commander — should be skipped
+		{
+			Quantity:   1,
+			Categories: []string{"Commander"},
+			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Atraxa", Types: []string{"Creature"}}},
+		},
+		// Sideboard — should be skipped
+		{
+			Quantity:   1,
+			Categories: []string{"Sideboard"},
+			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Swansong", Types: []string{"Instant"}}},
+		},
+		// Maybeboard (excluded) — should be skipped
+		{
+			Quantity:   1,
+			Categories: []string{"Maybeboard"},
+			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Cyclonic Rift", Types: []string{"Instant"}}},
+		},
+		// Unknown type — should go to others
+		{
+			Quantity:   1,
+			Categories: []string{"Mainboard"},
+			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Treasure Token", Types: []string{"Token"}}},
+		},
+		// Normal creature — should be counted
+		{
+			Quantity:   1,
+			Categories: []string{"Mainboard"},
+			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Birds of Paradise", Types: []string{"Creature"}}},
+		},
+	}
+
+	groups := groupArchidektDeckCards(cards, premier, excluded)
+
+	if len(groups.creatures) != 1 {
+		t.Errorf("creatures = %v, want 1 entry", groups.creatures)
+	}
+	if len(groups.others) != 1 || groups.others[0] != "1x Treasure Token" {
+		t.Errorf("others = %v, want [1x Treasure Token]", groups.others)
+	}
+	if groups.totalCards != 2 {
+		t.Errorf("totalCards = %d, want 2 (commander + sideboard + maybeboard excluded)", groups.totalCards)
+	}
+}
+
+func TestFormatArchidektDeckForDisplayWithBracket(t *testing.T) {
+	bracket := 3
+	deck := &ArchidektDeck{
+		ID:         99,
+		Name:       "Bracket Deck",
+		DeckFormat: 3,
+		EdhBracket: &bracket,
+		Owner:      ArchidektOwner{Username: "tester"},
+		Cards:      []ArchidektCardEntry{},
+	}
+
+	got := FormatArchidektDeckForDisplay(deck)
+
+	if !strings.Contains(got, "**EDH Bracket:** 3") {
+		t.Errorf("FormatArchidektDeckForDisplay() missing EDH Bracket line, got:\n%s", got)
+	}
+}

@@ -387,3 +387,62 @@ func TestFormatCombosForDisplay(t *testing.T) {
 		})
 	}
 }
+
+func TestFormatCommanderRecsForDisplayEdgeCases(t *testing.T) {
+	t.Run("empty card list skipped", func(t *testing.T) {
+		data := &EDHRECData{
+			Card:     EDHRECCardInfo{Name: "Test Commander"},
+			NumDecks: 100,
+			CardLists: []EDHRECCardList{
+				{Header: "Skipped Section", CardViews: []EDHRECCardView{}},
+				{Header: "Non-Empty Section", CardViews: []EDHRECCardView{
+					{Name: "Sol Ring", Inclusion: 90},
+				}},
+			},
+		}
+		got := FormatCommanderRecsForDisplay(data, 10)
+		if strings.Contains(got, "Skipped Section") {
+			t.Error("FormatCommanderRecsForDisplay() should skip card lists with no cards")
+		}
+		if !strings.Contains(got, "Non-Empty Section") {
+			t.Error("FormatCommanderRecsForDisplay() missing non-empty section")
+		}
+	})
+
+	t.Run("zero synergy and zero salt omitted", func(t *testing.T) {
+		data := &EDHRECData{
+			Card:     EDHRECCardInfo{Name: "Test Commander"},
+			NumDecks: 100,
+			CardLists: []EDHRECCardList{
+				{Header: "Top Cards", CardViews: []EDHRECCardView{
+					{Name: "Sol Ring", Inclusion: 90, Synergy: 0, Salt: 0},
+				}},
+			},
+		}
+		got := FormatCommanderRecsForDisplay(data, 10)
+		if strings.Contains(got, "Synergy:") {
+			t.Error("FormatCommanderRecsForDisplay() should omit Synergy line when zero")
+		}
+		if strings.Contains(got, "Salt Score:") {
+			t.Error("FormatCommanderRecsForDisplay() should omit Salt Score line when zero")
+		}
+	})
+
+	t.Run("truncation suffix shown", func(t *testing.T) {
+		data := &EDHRECData{
+			Card:     EDHRECCardInfo{Name: "Test Commander"},
+			NumDecks: 100,
+			CardLists: []EDHRECCardList{
+				{Header: "Top Cards", CardViews: []EDHRECCardView{
+					{Name: "Sol Ring", Inclusion: 90},
+					{Name: "Arcane Signet", Inclusion: 80},
+					{Name: "Command Tower", Inclusion: 70},
+				}},
+			},
+		}
+		got := FormatCommanderRecsForDisplay(data, 1)
+		if !strings.Contains(got, "and 2 more cards") {
+			t.Errorf("FormatCommanderRecsForDisplay() missing truncation suffix, got:\n%s", got)
+		}
+	})
+}
