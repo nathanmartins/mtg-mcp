@@ -15,40 +15,40 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 #### Scryfall Card Data (7 tools)
 
-1. **search_cards** - Search for MTG cards using Scryfall search syntax
+1. **search_cards** – Search for MTG cards using Scryfall search syntax
     - Supports advanced queries (colors, types, abilities, etc.)
     - Returns up to 50 results with full card details
     - Includes Commander legality status
 
-2. **get_card_details** - Get detailed information about a specific card
+2. **get_card_details** – Get detailed information about a specific card
     - Oracle text and rules
     - Mana cost, type, power/toughness
     - Color identity
     - Format legalities across all formats
     - Artist and set information
 
-3. **check_commander_legality** - Check if a card is legal in Commander
+3. **check_commander_legality** – Check if a card is legal in Commander
     - Shows legality status across all formats
     - Clear indication of banned/legal/not legal status
     - Quick format validation
 
-4. **get_card_rulings** - Get official card rulings and clarifications
+4. **get_card_rulings** – Get official card rulings and clarifications
     - Official WotC rulings
     - Dates and sources for each ruling
     - Comprehensive rules clarifications
 
-5. **get_card_price** - Get current card pricing
+5. **get_card_price** – Get current card pricing
     - USD and EUR prices from Scryfall
     - **BRL (Brazilian Real) pricing** via real-time currency conversion
     - Supports both regular and foil versions
     - Optional set-specific pricing
 
-6. **get_banned_list** - Get current Commander banned list
+6. **get_banned_list** – Get the current Commander banned list
     - Real-time data from Scryfall
     - 85+ banned cards (updated automatically)
     - Complete list with card names
 
-7. **validate_deck** - Validate a Commander deck
+7. **validate_deck** – Validate a Commander deck
     - 100-card deck size check
     - Singleton rule verification (no duplicates except basics)
     - Commander legality check
@@ -57,20 +57,20 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 #### Moxfield Integration (3 tools)
 
-1. **get_moxfield_deck** - Fetch complete deck from Moxfield
+1. **get_moxfield_deck** – Fetch the complete deck from Moxfield
     - Accepts deck URL or public ID
     - Full decklist with card types organized
     - Deck metadata (views, likes, comments, author)
     - Commanders, mainboard, sideboard, maybeboard
     - Last updated timestamp
 
-2. **get_moxfield_user_decks** - Get user's deck list from Moxfield
+2. **get_moxfield_user_decks** – Get user's deck list from Moxfield
     - List all decks for a Moxfield user
     - Paginated results (up to 100 per page)
     - Deck summaries with views and likes
     - Format and public URL for each deck
 
-3. **search_moxfield_decks** - Search for decks on Moxfield by commander
+3. **search_moxfield_decks** – Search for decks on Moxfield by commander
     - Search by commander name
     - Filter by format (commander, standard, modern, etc.)
     - Sort by updated, views, or likes
@@ -79,38 +79,38 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 #### Archidekt Integration (3 tools)
 
-1. **get_archidekt_deck** - Fetch a complete deck from Archidekt
+1. **get_archidekt_deck** – Fetch a complete deck from Archidekt
     - Accepts deck URL or numeric ID (e.g., `https://archidekt.com/decks/12345` or `12345`)
-    - Full decklist organised by card type
-    - Commander(s) identified via premier category flag
+    - Full decklist organised by a card type
+    - Commander(s) identified via the premier category flag
     - Deck metadata (format, owner, views, EDH bracket, last updated)
     - Direct link back to the Archidekt deck page
     - Optional `lands_only` flag — returns only land cards, ideal for landbase comparisons
       without the token overhead of a full decklist
 
-2. **get_archidekt_user_decks** - Get a user's public decks from Archidekt
+2. **get_archidekt_user_decks** – Get a user's public decks from Archidekt
     - List all public decks for any Archidekt username
     - Paginated results with direct deck URLs
     - Format name, view count, and last-updated date for each deck
 
-3. **search_archidekt_decks** - Search public Commander decks by commander name
+3. **search_archidekt_decks** – Search public Commander decks by commander name
     - Required `commander` parameter (card name, e.g. `"Atraxa, Praetors' Voice"`)
-    - Optional `bracket` filter (1–4; omit to search all brackets)
+    - Optional `bracket` filter (1–4; omit searching all brackets)
     - Optional `limit` (default: 10, max: 20)
     - Results sorted by view count descending
     - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 
 #### EDHREC Meta Data (2 tools)
 
-1. **get_edhrec_recommendations** - Get EDHREC recommendations for a commander
-    - High synergy cards with synergy scores
+1. **get_edhrec_recommendations** – Get EDHREC recommendations for a commander
+    - High-synergy cards with synergy scores
     - Most popular cards by inclusion rate
     - New cards trending for the commander
     - Card categories (creatures, instants, artifacts, etc.)
-    - Deck count and meta statistics
+    - Deck count and meta-statistics
     - Salt scores for controversial cards
 
-2. **get_edhrec_combos** - Get popular combos for color combinations
+2. **get_edhrec_combos** – Get popular combos for color combinations
     - Combo cards and prerequisites
     - Combo results (e.g., "Infinite mana", "Win the game")
     - Usage statistics and percentages
@@ -119,7 +119,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 ### Resources (Data Sources)
 
-1. **commander://rules** - Complete Commander format rules
+1. **commander://rules** – Complete Commander format rules
     - Deck construction guidelines
     - Gameplay rules
     - Winning conditions
@@ -154,7 +154,7 @@ The compiled binary `mtg-mcp` is an MCP server for use with Claude Desktop or ot
 
 ## Usage
 
-### Running as MCP Server
+### Running as an MCP Server
 
 The server uses stdio transport for communication with MCP clients like Claude Desktop:
 
@@ -259,16 +259,16 @@ Once connected to Claude Desktop, you can ask questions like:
 
 **EDHREC:**
 
-- "What are the best cards for Atraxa, Praetors' Voice according to EDHREC?"
+- "What are the best cards for Atraxa, Praetors' Voice, according to EDHREC?"
 - "Show me popular combos in Dimir colors (ub)"
-- "What are high synergy cards for Meren of Clan Nel Toth?"
+- "What are high-synergy cards for Meren of Clan Nel Toth?"
 - "Get me the top 5-color combos for WUBRG"
 
 ## Architecture
 
 ### Technology Stack
 
-- **Language:** Go 1.21+
+- **Language:** Go 1.26+
 - **MCP Framework:** [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go)
 - **Card Data API:** [Scryfall API](https://scryfall.com/docs/api)
   via [go-scryfall](https://github.com/BlueMonday/go-scryfall)
@@ -282,7 +282,7 @@ Once connected to Claude Desktop, you can ask questions like:
     - Updated daily
     - Complete MTG card database
     - Includes rulings, legalities, and pricing
-    - Rate-limited to 10 requests/second (built into client)
+    - Rate-limited to 10 requests/second (built into a client)
 
 2. **Commander Rules:** Official format rules embedded in server
     - Source: <https://mtgcommander.net>
@@ -307,7 +307,7 @@ Once connected to Claude Desktop, you can ask questions like:
 
 6. **EDHREC:** Unofficial JSON endpoints (<https://json.edhrec.com>)
     - Card recommendations and synergies
-    - Meta statistics and popularity data
+    - Meta-statistics and popularity data
     - Combo database
     - **Rate limit:** Recommend 1 request/second
     - Cached data (may not be real-time)
@@ -316,22 +316,35 @@ Once connected to Claude Desktop, you can ask questions like:
 
 ```text
 mtg-mcp/
-├── main.go                  # Core MCP server implementation
+├── main.go                  # Core MCP server, tool/resource registration
 ├── logger.go                # Structured logging configuration (zerolog)
+├── http.go                  # HTTP utilities for API calls
+├── resources.go             # MCP resource handlers (rules, banned list)
 ├── archidekt.go             # Archidekt API integration
 ├── edhrec.go                # EDHREC API integration
 ├── moxfield.go              # Moxfield API integration
-├── http.go                  # HTTP utilities for API calls
+├── *_handlers.go            # MCP tool handlers per source
+│   ├── scryfall_handlers.go  # Scryfall tools (search, details, price, …)
+│   ├── archidekt_handlers.go # Archidekt tools
+│   ├── edhrec_handlers.go    # EDHREC tools
+│   └── moxfield_handlers.go  # Moxfield tools
 ├── *_test.go                # Unit test files (with httptest mocks)
 │   ├── archidekt_test.go    # Tests for Archidekt functionality
 │   ├── edhrec_test.go       # Tests for EDHREC functionality
 │   ├── moxfield_test.go     # Tests for Moxfield functionality
 │   ├── http_test.go         # Tests for HTTP utilities
-│   └── logger_test.go       # Tests for logger
+│   ├── logger_test.go       # Tests for logger
+│   ├── server_test.go       # Tests for server construction & registration
+│   ├── resources_test.go    # Tests for MCP resource handlers
+│   ├── scryfall_handlers_test.go          # Tests for decklist parsing helpers
+│   ├── scryfall_handlers_internal_test.go # Tests for Scryfall tool handlers
+│   ├── handlers_success_test.go           # Deck-handler success-path tests
+│   └── handlers_error_test.go             # Handler request-validation tests
 ├── *_e2e_test.go            # E2E test files (real API calls)
-│   ├── edhrec_e2e_test.go   # E2E tests for EDHREC API
-│   ├── moxfield_e2e_test.go # E2E tests for Moxfield API
-│   └── scryfall_e2e_test.go # E2E tests for Scryfall API
+│   ├── archidekt_e2e_test.go # E2E tests for Archidekt API
+│   ├── edhrec_e2e_test.go    # E2E tests for EDHREC API
+│   ├── moxfield_e2e_test.go  # E2E tests for Moxfield API
+│   └── scryfall_e2e_test.go  # E2E tests for Scryfall API
 ├── .github/                 # GitHub Actions workflows
 │   └── workflows/
 │       ├── ci.yaml          # CI pipeline (unit tests + linting)
@@ -345,20 +358,11 @@ mtg-mcp/
 └── README.md                # This file
 ```
 
-## Dependencies
-
-Key dependencies (automatically managed by `go mod`):
-
-- `github.com/mark3labs/mcp-go` v0.43.0 - MCP server and client framework
-- `github.com/BlueMonday/go-scryfall` v0.9.1 - Scryfall API client
-- `github.com/rs/zerolog` v1.34.0 - Structured JSON logging
-- `go.uber.org/ratelimit` v0.2.0 - Rate limiting (via scryfall client)
-
 ## Development
 
 ### Quick Start with Makefile
 
-The project includes a Makefile with common development tasks (compatible with MacOS and Linux):
+The project includes a Makefile with common development tasks (compatible with macOS and Linux):
 
 ```bash
 # View all available commands
@@ -493,7 +497,7 @@ golangci-lint run --fix
 ### Adding New Tools
 
 1. Define the tool in `registerTools()` using `mcp.NewTool()`
-2. Create a handler function with signature:
+2. Create a handler function with a signature:
 
    ```go
    func (s *MTGCommanderServer) handleToolName(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
@@ -505,7 +509,7 @@ golangci-lint run --fix
 ### Adding New Resources
 
 1. Define the resource in `registerResources()` using `mcp.NewResource()`
-2. Create a handler function with signature:
+2. Create a handler function with a signature:
 
    ```go
    func (s *MTGCommanderServer) handleResourceName(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error)
@@ -529,7 +533,7 @@ The project uses GitHub Actions with two main workflows:
 
 - **Unit Tests**: Runs all unit tests first
 - **E2E Tests**: Runs full test suite including real API calls to Scryfall, EDHREC, and Moxfield
-- **Coverage**: Generates coverage report from full test suite
+- **Coverage**: Generates a coverage report from the full test suite
 - **Badge Generation**: Updates README with current coverage percentage
 - **Auto-commit**: Commits badge changes automatically
 - **Artifacts**: Uploads test logs for debugging (7-day retention)
@@ -565,7 +569,8 @@ Potential improvements:
 - [ ] Card image retrieval
 - [ ] Price history tracking
 - [ ] Deck building suggestions based on EDHREC data
-- [ ] Commander power level estimation (EDH brackets)
+- [x] EDH bracket filtering and display for Archidekt decks
+- [ ] Commander power level estimation (compute a bracket from a decklist)
 
 ## Contributing
 
@@ -591,4 +596,4 @@ For issues or questions:
 
 - Check Scryfall API status: <https://scryfall.com/docs/api>
 - Verify MCP server is running: Check Claude Desktop logs
-- Review configuration: Ensure correct binary path (`mtg-mcp`) in `claude_desktop_config.json`
+- Review configuration: Ensure a correct binary path (`mtg-mcp`) in `claude_desktop_config.json`
