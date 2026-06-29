@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	scryfall "github.com/BlueMonday/go-scryfall"
+	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
