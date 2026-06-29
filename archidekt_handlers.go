@@ -28,7 +28,7 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 		Int("deck_id", deckID).
 		Msg("Fetching Archidekt deck")
 
-	deck, err := GetArchidektDeck(ctx, deckID)
+	deck, err := getArchidektDeckWithURL(ctx, deckID, s.archidektBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
@@ -86,7 +86,7 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 		Int("page", page).
 		Msg("Fetching Archidekt user decks")
 
-	result, err := GetArchidektUserDecks(ctx, username, page)
+	result, err := getArchidektUserDecksWithURL(ctx, username, page, s.archidektBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
@@ -150,7 +150,7 @@ func (s *MTGCommanderServer) handleSearchArchidektDecks(
 		Int("limit", limit).
 		Msg("Searching Archidekt decks")
 
-	result, err := SearchArchidektDecks(ctx, commander, bracket, limit)
+	result, err := searchArchidektDecksWithURL(ctx, commander, bracket, limit, s.archidektBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).

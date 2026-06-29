@@ -31,7 +31,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		Int("limit", limit).
 		Msg("Fetching EDHREC recommendations")
 
-	data, err := GetCommanderRecommendations(ctx, commander)
+	data, err := getCommanderRecommendationsWithURL(ctx, commander, s.edhrecBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
@@ -70,7 +70,7 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(
 		}
 	}
 
-	data, err := GetCombosForColors(ctx, colors)
+	data, err := getCombosForColorsWithURL(ctx, colors, s.edhrecBaseURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC combos: %v", err)), nil
 	}

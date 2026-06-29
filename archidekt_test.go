@@ -890,19 +890,25 @@ func TestGroupArchidektDeckCards(t *testing.T) {
 		{
 			Quantity:   1,
 			Categories: []string{"Maybeboard"},
-			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Cyclonic Rift", Types: []string{"Instant"}}},
+			Card: ArchidektCard{
+				OracleCard: ArchidektOracleCard{Name: "Cyclonic Rift", Types: []string{"Instant"}},
+			},
 		},
 		// Unknown type — should go to others
 		{
 			Quantity:   1,
 			Categories: []string{"Mainboard"},
-			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Treasure Token", Types: []string{"Token"}}},
+			Card: ArchidektCard{
+				OracleCard: ArchidektOracleCard{Name: "Treasure Token", Types: []string{"Token"}},
+			},
 		},
 		// Normal creature — should be counted
 		{
 			Quantity:   1,
 			Categories: []string{"Mainboard"},
-			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Birds of Paradise", Types: []string{"Creature"}}},
+			Card: ArchidektCard{
+				OracleCard: ArchidektOracleCard{Name: "Birds of Paradise", Types: []string{"Creature"}},
+			},
 		},
 	}
 

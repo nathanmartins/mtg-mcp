@@ -388,6 +388,82 @@ func TestFormatCombosForDisplay(t *testing.T) {
 	}
 }
 
+func TestGetTopCardsForCategory(t *testing.T) {
+	tests := []struct {
+		name       string
+		category   string
+		page       int
+		mockStatus int
+		mockResp   EDHRECResponse
+		wantCards  int
+		wantErr    bool
+	}{
+		{
+			name:       "successful request flattens card lists",
+			category:   "salt",
+			page:       0,
+			mockStatus: http.StatusOK,
+			mockResp: EDHRECResponse{
+				Container: EDHRECContainer{
+					JSONDict: EDHRECData{
+						CardLists: []EDHRECCardList{
+							{
+								Header: "Saltiest Cards",
+								CardViews: []EDHRECCardView{
+									{Name: "Armageddon"},
+									{Name: "Stasis"},
+								},
+							},
+							{
+								Header: "More Salt",
+								CardViews: []EDHRECCardView{
+									{Name: "Winter Orb"},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantCards: 3,
+			wantErr:   false,
+		},
+		{
+			name:       "404 not found",
+			category:   "missing",
+			page:       1,
+			mockStatus: http.StatusNotFound,
+			wantErr:    true,
+		},
+		{
+			name:       "500 server error",
+			category:   "salt",
+			page:       0,
+			mockStatus: http.StatusInternalServerError,
+			wantErr:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.mockStatus)
+				if tt.mockStatus == http.StatusOK {
+					_ = json.NewEncoder(w).Encode(tt.mockResp)
+				}
+			}))
+			defer server.Close()
+
+			got, err := getTopCardsForCategoryWithURL(context.Background(), tt.category, tt.page, server.URL)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("getTopCardsForCategoryWithURL() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if !tt.wantErr && len(got) != tt.wantCards {
+				t.Errorf("got %d cards, want %d", len(got), tt.wantCards)
+			}
+		})
+	}
+}
+
 func TestFormatCommanderRecsForDisplayEdgeCases(t *testing.T) {
 	t.Run("empty card list skipped", func(t *testing.T) {
 		data := &EDHRECData{
