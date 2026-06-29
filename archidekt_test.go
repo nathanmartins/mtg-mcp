@@ -89,12 +89,11 @@ func TestArchidektFormatName(t *testing.T) {
 }
 
 func TestGetArchidektDeck(t *testing.T) {
-	bracket := 2
 	mockDeck := ArchidektDeck{
 		ID:         12345,
 		Name:       "Test Commander Deck",
 		DeckFormat: 3,
-		EdhBracket: &bracket,
+		EdhBracket: new(2),
 		ViewCount:  500,
 		UpdatedAt:  "2024-01-01T00:00:00Z",
 		Owner:      ArchidektOwner{ID: 1, Username: "testuser"},
@@ -283,12 +282,11 @@ func TestGetArchidektUserDecks(t *testing.T) {
 }
 
 func TestFormatArchidektDeckForDisplay(t *testing.T) {
-	bracket := 3
 	deck := &ArchidektDeck{
 		ID:         12345,
 		Name:       "Hylda Control",
 		DeckFormat: 3,
-		EdhBracket: &bracket,
+		EdhBracket: new(3),
 		ViewCount:  1000,
 		UpdatedAt:  "2024-01-15T00:00:00Z",
 		Owner:      ArchidektOwner{Username: "NorwegianWhaler"},
@@ -363,12 +361,11 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 }
 
 func TestFormatArchidektLandsForDisplay(t *testing.T) {
-	bracket := 4
 	deck := &ArchidektDeck{
 		ID:         12345,
 		Name:       "Hearthhull Lands",
 		DeckFormat: 3,
-		EdhBracket: &bracket,
+		EdhBracket: new(4),
 		Owner:      ArchidektOwner{Username: "testuser"},
 		Categories: []ArchidektCategory{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
@@ -687,8 +684,6 @@ func TestFormatArchidektZonesMatchMoxfieldStyle(t *testing.T) {
 }
 
 func TestSearchArchidektDecks(t *testing.T) {
-	bracket4 := 4
-	bracket2 := 2
 	mockResponse := ArchidektUserDecksResponse{
 		Count: 2,
 		Results: []ArchidektDeckSummary{
@@ -696,7 +691,7 @@ func TestSearchArchidektDecks(t *testing.T) {
 				ID:         1001,
 				Name:       "Hearthhull Stax",
 				DeckFormat: 3,
-				EdhBracket: &bracket4,
+				EdhBracket: new(4),
 				ViewCount:  9000,
 				UpdatedAt:  "2025-01-01T00:00:00Z",
 				Owner:      ArchidektOwner{Username: "powerplayer"},
@@ -705,7 +700,7 @@ func TestSearchArchidektDecks(t *testing.T) {
 				ID:         1002,
 				Name:       "Hearthhull Ramp",
 				DeckFormat: 3,
-				EdhBracket: &bracket2,
+				EdhBracket: new(2),
 				ViewCount:  4500,
 				UpdatedAt:  "2025-02-01T00:00:00Z",
 				Owner:      ArchidektOwner{Username: "casualplayer"},
@@ -817,7 +812,6 @@ func TestSearchArchidektDecks(t *testing.T) {
 }
 
 func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
-	bracket := 4
 	result := &ArchidektUserDecksResponse{
 		Count: 1,
 		Results: []ArchidektDeckSummary{
@@ -825,7 +819,7 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 				ID:         9999,
 				Name:       "Hearthhull Stax",
 				DeckFormat: 3,
-				EdhBracket: &bracket,
+				EdhBracket: new(4),
 				ViewCount:  8500,
 				UpdatedAt:  "2025-03-01T00:00:00Z",
 				Owner:      ArchidektOwner{Username: "powerplayer"},
@@ -926,12 +920,11 @@ func TestGroupArchidektDeckCards(t *testing.T) {
 }
 
 func TestFormatArchidektDeckForDisplayWithBracket(t *testing.T) {
-	bracket := 3
 	deck := &ArchidektDeck{
 		ID:         99,
 		Name:       "Bracket Deck",
 		DeckFormat: 3,
-		EdhBracket: &bracket,
+		EdhBracket: new(3),
 		Owner:      ArchidektOwner{Username: "tester"},
 		Cards:      []ArchidektCardEntry{},
 	}

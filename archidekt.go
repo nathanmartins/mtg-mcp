@@ -324,9 +324,9 @@ func formatArchidektZone(title string, cards []string) string {
 		return ""
 	}
 	var output strings.Builder
-	fmt.Fprintf(&output, "\n## %s\n", title)
+	_, _ = fmt.Fprintf(&output, "\n## %s\n", title)
 	for _, c := range cards {
-		fmt.Fprintf(&output, "- %s\n", c)
+		_, _ = fmt.Fprintf(&output, "- %s\n", c)
 	}
 	return output.String()
 }
@@ -339,17 +339,17 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	excluded := archidektExcludedCategories(deck.Categories)
 
 	// Header
-	fmt.Fprintf(&output, "# %s\n\n", deck.Name)
-	fmt.Fprintf(&output, "**Format:** %s\n", archidektFormatName(deck.DeckFormat))
-	fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
-	fmt.Fprintf(&output, "**Views:** %d\n", deck.ViewCount)
+	_, _ = fmt.Fprintf(&output, "# %s\n\n", deck.Name)
+	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", archidektFormatName(deck.DeckFormat))
+	_, _ = fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
+	_, _ = fmt.Fprintf(&output, "**Views:** %d\n", deck.ViewCount)
 	if deck.EdhBracket != nil {
-		fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
+		_, _ = fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
 	}
 	if deck.UpdatedAt != "" {
-		fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.UpdatedAt)
+		_, _ = fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.UpdatedAt)
 	}
-	fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n", deck.ID)
+	_, _ = fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n", deck.ID)
 
 	// Commanders (cards in premier categories)
 	var commanders []string
@@ -364,7 +364,7 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	if len(commanders) > 0 {
 		output.WriteString("\n## Commanders\n")
 		for _, c := range commanders {
-			fmt.Fprintf(&output, "- %s\n", c)
+			_, _ = fmt.Fprintf(&output, "- %s\n", c)
 		}
 	}
 
@@ -372,7 +372,7 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	groups := groupArchidektDeckCards(deck.Cards, premier, excluded)
 
 	output.WriteString("\n## Mainboard\n")
-	fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
+	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
 
 	output.WriteString(formatCardGroup("Creatures", groups.creatures))
 	output.WriteString(formatCardGroup("Instants", groups.instants))
@@ -471,11 +471,11 @@ func FormatArchidektSearchResultsForDisplay(commander string, bracket int, resul
 	var output strings.Builder
 
 	if bracket >= 1 && bracket <= 4 {
-		fmt.Fprintf(&output, "# Archidekt Decks: %s (Bracket %d)\n\n", commander, bracket)
+		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s (Bracket %d)\n\n", commander, bracket)
 	} else {
-		fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", commander)
+		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", commander)
 	}
-	fmt.Fprintf(&output, "**Total Results:** %d\n\n", result.Count)
+	_, _ = fmt.Fprintf(&output, "**Total Results:** %d\n\n", result.Count)
 
 	if len(result.Results) == 0 {
 		output.WriteString("No public decks found for this commander.\n")
@@ -483,14 +483,14 @@ func FormatArchidektSearchResultsForDisplay(commander string, bracket int, resul
 	}
 
 	for i, deck := range result.Results {
-		fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
-		fmt.Fprintf(&output, "- **Author:** %s\n", deck.Owner.Username)
-		fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
+		_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+		_, _ = fmt.Fprintf(&output, "- **Author:** %s\n", deck.Owner.Username)
+		_, _ = fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
 		if deck.EdhBracket != nil {
-			fmt.Fprintf(&output, "- **EDH Bracket:** %d\n", *deck.EdhBracket)
+			_, _ = fmt.Fprintf(&output, "- **EDH Bracket:** %d\n", *deck.EdhBracket)
 		}
-		fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
-		fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+		_, _ = fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
+		_, _ = fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 	}
 
 	return output.String()
@@ -504,12 +504,12 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 	premier := archidektPremierCategories(deck.Categories)
 	excluded := archidektExcludedCategories(deck.Categories)
 
-	fmt.Fprintf(&output, "# %s — Landbase\n\n", deck.Name)
-	fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
+	_, _ = fmt.Fprintf(&output, "# %s — Landbase\n\n", deck.Name)
+	_, _ = fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
 	if deck.EdhBracket != nil {
-		fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
+		_, _ = fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
 	}
-	fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+	_, _ = fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 
 	var lands []string
 	for _, entry := range deck.Cards {
@@ -533,9 +533,9 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 		}
 	}
 
-	fmt.Fprintf(&output, "## Lands (%d)\n", len(lands))
+	_, _ = fmt.Fprintf(&output, "## Lands (%d)\n", len(lands))
 	for _, l := range lands {
-		fmt.Fprintf(&output, "- %s\n", l)
+		_, _ = fmt.Fprintf(&output, "- %s\n", l)
 	}
 
 	return output.String()

@@ -97,24 +97,24 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# Archidekt Decks by %s\n\n", username)
-	fmt.Fprintf(&output, "**Total Decks:** %d\n", result.Count)
-	fmt.Fprintf(&output, "**Page:** %d\n\n", page)
+	_, _ = fmt.Fprintf(&output, "# Archidekt Decks by %s\n\n", username)
+	_, _ = fmt.Fprintf(&output, "**Total Decks:** %d\n", result.Count)
+	_, _ = fmt.Fprintf(&output, "**Page:** %d\n\n", page)
 
 	if len(result.Results) == 0 {
 		output.WriteString("No public decks found for this user.\n")
 	} else {
 		for i, deck := range result.Results {
-			fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
-			fmt.Fprintf(&output, "- **Format:** %s\n", archidektFormatName(deck.DeckFormat))
-			fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
-			fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
-			fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+			_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+			_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", archidektFormatName(deck.DeckFormat))
+			_, _ = fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
+			_, _ = fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
+			_, _ = fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 		}
 	}
 
 	if result.Next != "" {
-		fmt.Fprintf(&output, "*More decks available — use page %d to continue.*\n", page+1)
+		_, _ = fmt.Fprintf(&output, "*More decks available — use page %d to continue.*\n", page+1)
 	}
 
 	return mcp.NewToolResultText(output.String()), nil

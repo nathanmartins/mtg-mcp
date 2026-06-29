@@ -74,16 +74,16 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# Decks by %s\n\n", username)
-	fmt.Fprintf(&output, "**Total Decks:** %d\n", decks.TotalResults)
-	fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
+	_, _ = fmt.Fprintf(&output, "# Decks by %s\n\n", username)
+	_, _ = fmt.Fprintf(&output, "**Total Decks:** %d\n", decks.TotalResults)
+	_, _ = fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
 		len(decks.Data), decks.PageNumber, decks.TotalPages)
 
 	for i, deck := range decks.Data {
-		fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, deck.Name, deck.Format)
-		fmt.Fprintf(&output, "   - Deck ID: %s\n", deck.PublicID)
-		fmt.Fprintf(&output, "   - Views: %d | Likes: %d\n", deck.ViewCount, deck.LikeCount)
-		fmt.Fprintf(&output, "   - URL: %s\n\n", deck.PublicURL)
+		_, _ = fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, deck.Name, deck.Format)
+		_, _ = fmt.Fprintf(&output, "   - Deck ID: %s\n", deck.PublicID)
+		_, _ = fmt.Fprintf(&output, "   - Views: %d | Likes: %d\n", deck.ViewCount, deck.LikeCount)
+		_, _ = fmt.Fprintf(&output, "   - URL: %s\n\n", deck.PublicURL)
 	}
 
 	return mcp.NewToolResultText(output.String()), nil
@@ -161,21 +161,21 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
-	fmt.Fprintf(&output, "**Format:** %s\n", format)
-	fmt.Fprintf(&output, "**Total Results:** %d\n", results.TotalResults)
-	fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
+	_, _ = fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
+	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", format)
+	_, _ = fmt.Fprintf(&output, "**Total Results:** %d\n", results.TotalResults)
+	_, _ = fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
 		len(results.Data), results.PageNumber, results.TotalPages)
 
 	if len(results.Data) == 0 {
 		output.WriteString("No decks found for this commander.\n")
 	} else {
 		for i, deck := range results.Data {
-			fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
-			fmt.Fprintf(&output, "- **Format:** %s\n", deck.Format)
-			fmt.Fprintf(&output, "- **Deck ID:** %s\n", deck.PublicID)
-			fmt.Fprintf(&output, "- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount)
-			fmt.Fprintf(&output, "- **URL:** %s\n\n", deck.PublicURL)
+			_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+			_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", deck.Format)
+			_, _ = fmt.Fprintf(&output, "- **Deck ID:** %s\n", deck.PublicID)
+			_, _ = fmt.Fprintf(&output, "- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount)
+			_, _ = fmt.Fprintf(&output, "- **URL:** %s\n\n", deck.PublicURL)
 		}
 	}
 

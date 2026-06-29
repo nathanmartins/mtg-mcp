@@ -119,11 +119,6 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	return &deck, nil
 }
 
-// GetUserDecks fetches a user's deck list.
-func GetUserDecks(ctx context.Context, username string, pageSize int) (*MoxfieldUserDecksResponse, error) {
-	return getUserDecksWithURL(ctx, username, pageSize, "https://api.moxfield.com/v2")
-}
-
 // getUserDecksWithURL fetches user decks with a custom base URL.
 func getUserDecksWithURL(
 	ctx context.Context,
@@ -305,8 +300,8 @@ func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
 func formatDeckHeader(deck *MoxfieldDeck) string {
 	var output strings.Builder
 
-	fmt.Fprintf(&output, "# %s\n\n", deck.Name)
-	fmt.Fprintf(&output, "**Format:** %s\n", deck.Format)
+	_, _ = fmt.Fprintf(&output, "# %s\n\n", deck.Name)
+	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", deck.Format)
 
 	// Authors field can be either []string or an object, handle gracefully
 	if deck.Authors != nil {
@@ -323,26 +318,26 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 		}
 
 		if len(authorStrs) > 0 {
-			fmt.Fprintf(&output, "**Author:** %s\n", strings.Join(authorStrs, ", "))
+			_, _ = fmt.Fprintf(&output, "**Author:** %s\n", strings.Join(authorStrs, ", "))
 		}
 	}
 skipAuthors:
 
-	fmt.Fprintf(&output, "**Views:** %d | **Likes:** %d | **Comments:** %d\n",
+	_, _ = fmt.Fprintf(&output, "**Views:** %d | **Likes:** %d | **Comments:** %d\n",
 		deck.ViewCount, deck.LikeCount, deck.CommentCount)
 
 	if deck.LastUpdated != "" {
-		fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.LastUpdated)
+		_, _ = fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.LastUpdated)
 	}
 
 	if deck.Description != "" {
-		fmt.Fprintf(&output, "\n**Description:**\n%s\n", deck.Description)
+		_, _ = fmt.Fprintf(&output, "\n**Description:**\n%s\n", deck.Description)
 	}
 
 	if len(deck.Commanders) > 0 {
 		output.WriteString("\n## Commanders\n")
 		for _, entry := range deck.Commanders {
-			fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
+			_, _ = fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
 		}
 	}
 
@@ -356,9 +351,9 @@ func formatCardGroup(title string, cards []string) string {
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "**%s (%d):**\n", title, len(cards))
+	_, _ = fmt.Fprintf(&output, "**%s (%d):**\n", title, len(cards))
 	for _, c := range cards {
-		fmt.Fprintf(&output, "- %s\n", c)
+		_, _ = fmt.Fprintf(&output, "- %s\n", c)
 	}
 	output.WriteString("\n")
 
@@ -375,7 +370,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 
 	groups := groupDeckCards(deck.Mainboard)
 
-	fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders))
+	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders))
 
 	output.WriteString(formatCardGroup("Creatures", groups.creatures))
 	output.WriteString(formatCardGroup("Instants", groups.instants))
@@ -392,7 +387,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 	if len(deck.Sideboard) > 0 {
 		output.WriteString("\n## Sideboard\n")
 		for _, entry := range deck.Sideboard {
-			fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
+			_, _ = fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
 		}
 	}
 
@@ -400,7 +395,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 	if len(deck.Maybeboard) > 0 {
 		output.WriteString("\n## Maybeboard\n")
 		for _, entry := range deck.Maybeboard {
-			fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
+			_, _ = fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
 		}
 	}
 
