@@ -17,8 +17,6 @@ var (
 )
 
 const (
-	totalToolCount               = 14
-	totalResourceCount           = 2
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
 	maxPageSize                  = 100
@@ -64,7 +62,7 @@ func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "--version", "-version":
-			fmt.Fprintf(os.Stdout, "mtg-mcp version %s (commit: %s, built: %s)\n", version, commit, buildDate)
+			_, _ = fmt.Fprintf(os.Stdout, "mtg-mcp version %s (commit: %s, built: %s)\n", version, commit, buildDate)
 			os.Exit(0)
 		}
 	}
@@ -72,7 +70,7 @@ func main() {
 	// Initialize logger
 	logFilePath := "mtg-commander-server.log"
 	if err := InitLogger(logFilePath); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -108,12 +106,12 @@ func main() {
 	// Register all tools
 	log.Info().Msg("Registering MCP tools")
 	mtgServer.registerTools(mcpServer)
-	log.Info().Int("tool_count", totalToolCount).Msg("All tools registered successfully")
+	log.Info().Msg("All tools registered successfully")
 
 	// Register resources
 	log.Info().Msg("Registering MCP resources")
 	mtgServer.registerResources(mcpServer)
-	log.Info().Int("resource_count", totalResourceCount).Msg("All resources registered successfully")
+	log.Info().Msg("All resources registered successfully")
 
 	// Start server with stdio transport
 	log.Info().
