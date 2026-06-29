@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strings"
 
-	scryfall "github.com/BlueMonday/go-scryfall"
+	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -73,16 +74,16 @@ func (s *MTGCommanderServer) handleSearchCards(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "Found %d cards (showing first %d):\n\n", result.TotalCards, len(result.Cards))
+	_, _ = fmt.Fprintf(&output, "Found %d cards (showing first %d):\n\n", result.TotalCards, len(result.Cards))
 
 	for i, card := range result.Cards {
-		fmt.Fprintf(&output, "%d. **%s** %s\n", i+1, card.Name, card.ManaCost)
-		fmt.Fprintf(&output, "   Type: %s\n", card.TypeLine)
+		_, _ = fmt.Fprintf(&output, "%d. **%s** %s\n", i+1, card.Name, card.ManaCost)
+		_, _ = fmt.Fprintf(&output, "   Type: %s\n", card.TypeLine)
 		if card.OracleText != "" {
-			fmt.Fprintf(&output, "   Text: %s\n", card.OracleText)
+			_, _ = fmt.Fprintf(&output, "   Text: %s\n", card.OracleText)
 		}
-		fmt.Fprintf(&output, "   Set: %s (%s)\n", card.SetName, strings.ToUpper(card.Set))
-		fmt.Fprintf(&output, "   Commander Legal: %s\n\n", card.Legalities.Commander)
+		_, _ = fmt.Fprintf(&output, "   Set: %s (%s)\n", card.SetName, strings.ToUpper(card.Set))
+		_, _ = fmt.Fprintf(&output, "   Commander Legal: %s\n\n", card.Legalities.Commander)
 	}
 
 	return mcp.NewToolResultText(output.String()), nil
@@ -103,21 +104,21 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# %s %s\n\n", card.Name, card.ManaCost)
-	fmt.Fprintf(&output, "**Type:** %s\n", card.TypeLine)
-	fmt.Fprintf(&output, "**Set:** %s (%s) #%s\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
-	fmt.Fprintf(&output, "**Rarity:** %s\n\n", card.Rarity)
+	_, _ = fmt.Fprintf(&output, "# %s %s\n\n", card.Name, card.ManaCost)
+	_, _ = fmt.Fprintf(&output, "**Type:** %s\n", card.TypeLine)
+	_, _ = fmt.Fprintf(&output, "**Set:** %s (%s) #%s\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
+	_, _ = fmt.Fprintf(&output, "**Rarity:** %s\n\n", card.Rarity)
 
 	if card.OracleText != "" {
-		fmt.Fprintf(&output, "**Oracle Text:**\n%s\n\n", card.OracleText)
+		_, _ = fmt.Fprintf(&output, "**Oracle Text:**\n%s\n\n", card.OracleText)
 	}
 
 	if card.Power != nil && card.Toughness != nil {
-		fmt.Fprintf(&output, "**Power/Toughness:** %s/%s\n", *card.Power, *card.Toughness)
+		_, _ = fmt.Fprintf(&output, "**Power/Toughness:** %s/%s\n", *card.Power, *card.Toughness)
 	}
 
 	if card.Loyalty != nil {
-		fmt.Fprintf(&output, "**Loyalty:** %s\n", *card.Loyalty)
+		_, _ = fmt.Fprintf(&output, "**Loyalty:** %s\n", *card.Loyalty)
 	}
 
 	if len(card.ColorIdentity) > 0 {
@@ -125,21 +126,21 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 		for i, c := range card.ColorIdentity {
 			colors[i] = string(c)
 		}
-		fmt.Fprintf(&output, "**Color Identity:** %s\n", strings.Join(colors, ", "))
+		_, _ = fmt.Fprintf(&output, "**Color Identity:** %s\n", strings.Join(colors, ", "))
 	}
 
 	output.WriteString("\n**Format Legalities:**\n")
-	fmt.Fprintf(&output, "- Commander: %s\n", card.Legalities.Commander)
-	fmt.Fprintf(&output, "- Legacy: %s\n", card.Legalities.Legacy)
-	fmt.Fprintf(&output, "- Vintage: %s\n", card.Legalities.Vintage)
-	fmt.Fprintf(&output, "- Modern: %s\n", card.Legalities.Modern)
-	fmt.Fprintf(&output, "- Standard: %s\n", card.Legalities.Standard)
+	_, _ = fmt.Fprintf(&output, "- Commander: %s\n", card.Legalities.Commander)
+	_, _ = fmt.Fprintf(&output, "- Legacy: %s\n", card.Legalities.Legacy)
+	_, _ = fmt.Fprintf(&output, "- Vintage: %s\n", card.Legalities.Vintage)
+	_, _ = fmt.Fprintf(&output, "- Modern: %s\n", card.Legalities.Modern)
+	_, _ = fmt.Fprintf(&output, "- Standard: %s\n", card.Legalities.Standard)
 
 	if card.Artist != nil {
-		fmt.Fprintf(&output, "\n**Artist:** %s\n", *card.Artist)
+		_, _ = fmt.Fprintf(&output, "\n**Artist:** %s\n", *card.Artist)
 	}
 
-	fmt.Fprintf(&output, "\n**Scryfall Link:** %s\n", card.ScryfallURI)
+	_, _ = fmt.Fprintf(&output, "\n**Scryfall Link:** %s\n", card.ScryfallURI)
 
 	return mcp.NewToolResultText(output.String()), nil
 }
@@ -159,11 +160,11 @@ func (s *MTGCommanderServer) handleCheckLegality(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# Legality Check: %s\n\n", card.Name)
+	_, _ = fmt.Fprintf(&output, "# Legality Check: %s\n\n", card.Name)
 
 	legality := string(card.Legalities.Commander)
 	status := strings.ToUpper(legality[:1]) + legality[1:]
-	fmt.Fprintf(&output, "**Commander Format:** %s\n\n", status)
+	_, _ = fmt.Fprintf(&output, "**Commander Format:** %s\n\n", status)
 
 	switch card.Legalities.Commander {
 	case scryfall.LegalityBanned:
@@ -175,13 +176,13 @@ func (s *MTGCommanderServer) handleCheckLegality(
 	}
 
 	output.WriteString("**All Format Legalities:**\n")
-	fmt.Fprintf(&output, "- Standard: %s\n", card.Legalities.Standard)
-	fmt.Fprintf(&output, "- Pioneer: %s\n", card.Legalities.Pioneer)
-	fmt.Fprintf(&output, "- Modern: %s\n", card.Legalities.Modern)
-	fmt.Fprintf(&output, "- Legacy: %s\n", card.Legalities.Legacy)
-	fmt.Fprintf(&output, "- Vintage: %s\n", card.Legalities.Vintage)
-	fmt.Fprintf(&output, "- Pauper: %s\n", card.Legalities.Pauper)
-	fmt.Fprintf(&output, "- Commander: %s\n", card.Legalities.Commander)
+	_, _ = fmt.Fprintf(&output, "- Standard: %s\n", card.Legalities.Standard)
+	_, _ = fmt.Fprintf(&output, "- Pioneer: %s\n", card.Legalities.Pioneer)
+	_, _ = fmt.Fprintf(&output, "- Modern: %s\n", card.Legalities.Modern)
+	_, _ = fmt.Fprintf(&output, "- Legacy: %s\n", card.Legalities.Legacy)
+	_, _ = fmt.Fprintf(&output, "- Vintage: %s\n", card.Legalities.Vintage)
+	_, _ = fmt.Fprintf(&output, "- Pauper: %s\n", card.Legalities.Pauper)
+	_, _ = fmt.Fprintf(&output, "- Commander: %s\n", card.Legalities.Commander)
 
 	return mcp.NewToolResultText(output.String()), nil
 }
@@ -206,15 +207,15 @@ func (s *MTGCommanderServer) handleGetRulings(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# Rulings for %s\n\n", card.Name)
+	_, _ = fmt.Fprintf(&output, "# Rulings for %s\n\n", card.Name)
 
 	if len(rulings) == 0 {
 		output.WriteString("No official rulings found for this card.\n")
 	} else {
-		fmt.Fprintf(&output, "Found %d ruling(s):\n\n", len(rulings))
+		_, _ = fmt.Fprintf(&output, "Found %d ruling(s):\n\n", len(rulings))
 		for i, ruling := range rulings {
-			fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, ruling.PublishedAt, ruling.Source)
-			fmt.Fprintf(&output, "   %s\n\n", ruling.Comment)
+			_, _ = fmt.Fprintf(&output, "%d. **%s** (%s)\n", i+1, ruling.PublishedAt, ruling.Source)
+			_, _ = fmt.Fprintf(&output, "   %s\n\n", ruling.Comment)
 		}
 	}
 
@@ -258,10 +259,10 @@ func (s *MTGCommanderServer) handleGetPrice(
 	}
 
 	var output strings.Builder
-	fmt.Fprintf(&output, "# Pricing for %s\n", card.Name)
-	fmt.Fprintf(&output, "Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
+	_, _ = fmt.Fprintf(&output, "# Pricing for %s\n", card.Name)
+	_, _ = fmt.Fprintf(&output, "Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
 
-	usdToBRL, err := getUSDToBRLRate(ctx)
+	usdToBRL, err := exchangeRateFetcher(ctx)
 	if err != nil {
 		GetLogger().Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
 		usdToBRL = 5.40
@@ -270,36 +271,40 @@ func (s *MTGCommanderServer) handleGetPrice(
 	hasPricing := false
 
 	if card.Prices.USD != "" {
-		fmt.Fprintf(&output, "**USD:** $%s\n", card.Prices.USD)
-		fmt.Fprintf(&output, "**BRL:** R$ %.2f (converted)\n", convertToBRL(card.Prices.USD, usdToBRL))
+		_, _ = fmt.Fprintf(&output, "**USD:** $%s\n", card.Prices.USD)
+		_, _ = fmt.Fprintf(&output, "**BRL:** R$ %.2f (converted)\n", convertToBRL(card.Prices.USD, usdToBRL))
 		hasPricing = true
 	}
 
 	if card.Prices.USDFoil != "" {
-		fmt.Fprintf(&output, "**USD (Foil):** $%s\n", card.Prices.USDFoil)
-		fmt.Fprintf(&output, "**BRL (Foil):** R$ %.2f (converted)\n", convertToBRL(card.Prices.USDFoil, usdToBRL))
+		_, _ = fmt.Fprintf(&output, "**USD (Foil):** $%s\n", card.Prices.USDFoil)
+		_, _ = fmt.Fprintf(
+			&output,
+			"**BRL (Foil):** R$ %.2f (converted)\n",
+			convertToBRL(card.Prices.USDFoil, usdToBRL),
+		)
 		hasPricing = true
 	}
 
 	if card.Prices.EUR != "" {
-		fmt.Fprintf(&output, "**EUR:** €%s\n", card.Prices.EUR)
+		_, _ = fmt.Fprintf(&output, "**EUR:** €%s\n", card.Prices.EUR)
 		hasPricing = true
 	}
 
 	if card.Prices.EURFoil != "" {
-		fmt.Fprintf(&output, "**EUR (Foil):** €%s\n", card.Prices.EURFoil)
+		_, _ = fmt.Fprintf(&output, "**EUR (Foil):** €%s\n", card.Prices.EURFoil)
 		hasPricing = true
 	}
 
 	if card.Prices.Tix != "" {
-		fmt.Fprintf(&output, "**MTGO Tix:** %s\n", card.Prices.Tix)
+		_, _ = fmt.Fprintf(&output, "**MTGO Tix:** %s\n", card.Prices.Tix)
 		hasPricing = true
 	}
 
 	if !hasPricing {
 		output.WriteString("No pricing data available for this card.\n")
 	} else {
-		fmt.Fprintf(&output, "\n*Exchange rate: 1 USD = %.4f BRL*\n", usdToBRL)
+		_, _ = fmt.Fprintf(&output, "\n*Exchange rate: 1 USD = %.4f BRL*\n", usdToBRL)
 		output.WriteString(
 			"*Note: BRL prices are converted from USD and may not reflect Brazilian market conditions*\n",
 		)
@@ -322,10 +327,10 @@ func (s *MTGCommanderServer) handleGetBannedList(
 
 	var output strings.Builder
 	output.WriteString("# Commander Format Banned List\n\n")
-	fmt.Fprintf(&output, "Total banned cards: %d\n\n", result.TotalCards)
+	_, _ = fmt.Fprintf(&output, "Total banned cards: %d\n\n", result.TotalCards)
 
 	for i, card := range result.Cards {
-		fmt.Fprintf(&output, "%d. %s\n", i+1, card.Name)
+		_, _ = fmt.Fprintf(&output, "%d. %s\n", i+1, card.Name)
 	}
 
 	output.WriteString("\n*Source: Scryfall (powered by Wizards of the Coast official data)*\n")
@@ -363,8 +368,8 @@ func (s *MTGCommanderServer) handleValidateDeck(
 		colorIdentity[i] = string(c)
 	}
 
-	fmt.Fprintf(&output, "**Commander:** %s\n", commander.Name)
-	fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(colorIdentity, ", "))
+	_, _ = fmt.Fprintf(&output, "**Commander:** %s\n", commander.Name)
+	_, _ = fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(colorIdentity, ", "))
 
 	if commander.Legalities.Commander == "banned" {
 		output.WriteString("❌ **ERROR:** Your commander is banned in Commander format!\n\n")
@@ -380,7 +385,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	}
 
 	totalCards := len(cardNames)
-	fmt.Fprintf(&output, "**Deck Size:** %d cards ", totalCards)
+	_, _ = fmt.Fprintf(&output, "**Deck Size:** %d cards ", totalCards)
 	switch totalCards {
 	case deckValidationBasicCardCount:
 		output.WriteString("✅\n")
@@ -418,7 +423,7 @@ func (s *MTGCommanderServer) handleValidateDeck(
 	} else {
 		output.WriteString("❌ Found duplicates:\n")
 		for _, dup := range duplicates {
-			fmt.Fprintf(&output, "  - %s\n", dup)
+			_, _ = fmt.Fprintf(&output, "  - %s\n", dup)
 		}
 	}
 
@@ -475,13 +480,29 @@ func parseCardLine(line string) (string, int) {
 	return line, 1
 }
 
+const exchangeRateURL = "https://api.frankfurter.app/latest?from=USD&to=BRL"
+
+// httpGetter performs an HTTP GET; HTTPGet satisfies it in production, and a stub satisfies it in tests.
+type httpGetter func(ctx context.Context, rawURL string) (*http.Response, error)
+
+// exchangeRateFetcher fetches the current USD to BRL exchange rate.
+// It is a package variable, so tests can substitute a deterministic implementation.
+var exchangeRateFetcher = getUSDToBRLRate //nolint:gochecknoglobals // test seam for the price handler
+
 // getUSDToBRLRate fetches the current USD to BRL exchange rate.
 func getUSDToBRLRate(ctx context.Context) (float64, error) {
-	resp, err := HTTPGet(ctx, "https://api.frankfurter.app/latest?from=USD&to=BRL")
+	return getExchangeRate(ctx, exchangeRateURL, HTTPGet)
+}
+
+// getExchangeRate fetches and decodes the USD to BRL rate from the given URL using the provided getter.
+func getExchangeRate(ctx context.Context, rawURL string, get httpGetter) (float64, error) {
+	resp, err := get(ctx, rawURL)
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var result struct {
 		Rates struct {
