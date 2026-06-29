@@ -492,7 +492,10 @@ func TestGroupDeckCards(t *testing.T) {
 		"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Counterspell", TypeLine: "Instant"}},
 		"b": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Ponder", TypeLine: "Sorcery"}},
 		"c": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sylvan Library", TypeLine: "Enchantment"}},
-		"d": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Nissa, Who Shakes the World", TypeLine: "Legendary Planeswalker — Nissa"}},
+		"d": {
+			Quantity: 1,
+			Card:     MoxfieldCardInfo{Name: "Nissa, Who Shakes the World", TypeLine: "Legendary Planeswalker — Nissa"},
+		},
 		"e": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Island", TypeLine: "Basic Land — Island"}},
 		"f": {Quantity: 2, Card: MoxfieldCardInfo{Name: "Unknown Token", TypeLine: "Token"}},
 	}
