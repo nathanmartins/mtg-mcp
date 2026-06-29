@@ -134,7 +134,9 @@ func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
@@ -186,7 +188,9 @@ func getArchidektUserDecksWithURL(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
@@ -452,7 +456,9 @@ func searchArchidektDecksWithURL(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)

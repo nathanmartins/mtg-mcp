@@ -105,7 +105,9 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("moxfield API returned status %d", resp.StatusCode)
@@ -149,7 +151,9 @@ func getUserDecksWithURL(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("moxfield API returned status %d", resp.StatusCode)
@@ -216,7 +220,9 @@ func searchMoxfieldDecksWithURL(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("moxfield search API returned status %d", resp.StatusCode)
