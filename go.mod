@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/BlueMonday/go-scryfall v0.9.1
-	github.com/mark3labs/mcp-go v0.55.0
+	github.com/mark3labs/mcp-go v0.55.1
 	github.com/rs/zerolog v1.35.1
 )
 
@@ -19,6 +19,6 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.uber.org/ratelimit v0.3.1 // indirect
-	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.37.0 // indirect
 )
