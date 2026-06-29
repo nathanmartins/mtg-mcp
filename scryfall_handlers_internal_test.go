@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	scryfall "github.com/BlueMonday/go-scryfall"
+	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

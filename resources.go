@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	scryfall "github.com/BlueMonday/go-scryfall"
+	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	scryfall "github.com/BlueMonday/go-scryfall"
+	"github.com/BlueMonday/go-scryfall"
 )
 
 // TestScryfallSearchCardsE2E tests real Scryfall API card search.
