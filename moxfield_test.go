@@ -205,7 +205,7 @@ func TestGetUserDecks(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.mockResponse)
+					_ = json.NewEncoder(w).Encode(tt.mockResponse)
 				}
 			}))
 			defer server.Close()
@@ -317,7 +317,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
-					json.NewEncoder(w).Encode(tt.mockResponse)
+					_ = json.NewEncoder(w).Encode(tt.mockResponse)
 				}
 			}))
 			defer server.Close()
@@ -386,7 +386,7 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 				}
 
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(MoxfieldSearchResponse{
+				_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{
 					Data: []MoxfieldDeckSummary{},
 				})
 			}))
