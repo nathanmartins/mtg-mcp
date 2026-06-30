@@ -486,3 +486,117 @@ func TestFormatDeckForDisplay(t *testing.T) {
 		})
 	}
 }
+
+func TestGroupDeckCards(t *testing.T) {
+	mainboard := map[string]MoxfieldCardEntry{
+		"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Counterspell", TypeLine: "Instant"}},
+		"b": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Ponder", TypeLine: "Sorcery"}},
+		"c": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sylvan Library", TypeLine: "Enchantment"}},
+		"d": {
+			Quantity: 1,
+			Card:     MoxfieldCardInfo{Name: "Nissa, Who Shakes the World", TypeLine: "Legendary Planeswalker — Nissa"},
+		},
+		"e": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Island", TypeLine: "Basic Land — Island"}},
+		"f": {Quantity: 2, Card: MoxfieldCardInfo{Name: "Unknown Token", TypeLine: "Token"}},
+	}
+
+	groups := groupDeckCards(mainboard)
+
+	if len(groups.instants) != 1 || groups.instants[0] != "1x Counterspell" {
+		t.Errorf("instants = %v, want [1x Counterspell]", groups.instants)
+	}
+	if len(groups.sorceries) != 1 || groups.sorceries[0] != "1x Ponder" {
+		t.Errorf("sorceries = %v, want [1x Ponder]", groups.sorceries)
+	}
+	if len(groups.enchantments) != 1 || groups.enchantments[0] != "1x Sylvan Library" {
+		t.Errorf("enchantments = %v, want [1x Sylvan Library]", groups.enchantments)
+	}
+	if len(groups.planeswalkers) != 1 {
+		t.Errorf("planeswalkers = %v, want 1 entry", groups.planeswalkers)
+	}
+	if len(groups.lands) != 1 || groups.lands[0] != "1x Island" {
+		t.Errorf("lands = %v, want [1x Island]", groups.lands)
+	}
+	if len(groups.others) != 1 || groups.others[0] != "2x Unknown Token" {
+		t.Errorf("others = %v, want [2x Unknown Token]", groups.others)
+	}
+	if groups.totalCards != 7 {
+		t.Errorf("totalCards = %d, want 7", groups.totalCards)
+	}
+}
+
+func TestFormatDeckForDisplaySideboardAndMaybeboard(t *testing.T) {
+	deck := &MoxfieldDeck{
+		Name:   "Test Deck",
+		Format: "commander",
+		Mainboard: map[string]MoxfieldCardEntry{
+			"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
+		},
+		Sideboard: map[string]MoxfieldCardEntry{
+			"b": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Swan Song", TypeLine: "Instant"}},
+		},
+		Maybeboard: map[string]MoxfieldCardEntry{
+			"c": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Cyclonic Rift", TypeLine: "Instant"}},
+		},
+	}
+
+	got := FormatDeckForDisplay(deck)
+
+	if !strings.Contains(got, "## Sideboard") {
+		t.Error("FormatDeckForDisplay() missing Sideboard section")
+	}
+	if !strings.Contains(got, "Swan Song") {
+		t.Error("FormatDeckForDisplay() missing sideboard card")
+	}
+	if !strings.Contains(got, "## Maybeboard") {
+		t.Error("FormatDeckForDisplay() missing Maybeboard section")
+	}
+	if !strings.Contains(got, "Cyclonic Rift") {
+		t.Error("FormatDeckForDisplay() missing maybeboard card")
+	}
+}
+
+func TestFormatDeckForDisplayOthers(t *testing.T) {
+	deck := &MoxfieldDeck{
+		Name:   "Test Deck",
+		Format: "commander",
+		Mainboard: map[string]MoxfieldCardEntry{
+			"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Treasure Token", TypeLine: "Token"}},
+		},
+	}
+
+	got := FormatDeckForDisplay(deck)
+
+	if !strings.Contains(got, "Other") {
+		t.Error("FormatDeckForDisplay() missing Other section for untyped card")
+	}
+	if !strings.Contains(got, "Treasure Token") {
+		t.Error("FormatDeckForDisplay() missing card in Other section")
+	}
+}
+
+func TestFormatDeckHeaderAuthors(t *testing.T) {
+	t.Run("non-slice authors skipped gracefully", func(t *testing.T) {
+		deck := &MoxfieldDeck{
+			Name:    "Test",
+			Format:  "commander",
+			Authors: "not-a-slice",
+		}
+		got := formatDeckHeader(deck)
+		if strings.Contains(got, "**Author:**") {
+			t.Error("formatDeckHeader() should skip non-slice Authors")
+		}
+	})
+
+	t.Run("slice with non-string values skipped", func(t *testing.T) {
+		deck := &MoxfieldDeck{
+			Name:    "Test",
+			Format:  "commander",
+			Authors: []interface{}{42, true},
+		}
+		got := formatDeckHeader(deck)
+		if strings.Contains(got, "**Author:**") {
+			t.Error("formatDeckHeader() should skip non-string author values")
+		}
+	})
+}

@@ -187,11 +187,11 @@ func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ED
 func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 	var output strings.Builder
 
-	fmt.Fprintf(&output, "# EDHREC Recommendations for %s\n\n", data.Card.Name)
-	fmt.Fprintf(&output, "**Total Decks:** %d\n", data.NumDecks)
+	_, _ = fmt.Fprintf(&output, "# EDHREC Recommendations for %s\n\n", data.Card.Name)
+	_, _ = fmt.Fprintf(&output, "**Total Decks:** %d\n", data.NumDecks)
 
 	if len(data.Card.ColorID) > 0 {
-		fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(data.Card.ColorID, ", "))
+		_, _ = fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(data.Card.ColorID, ", "))
 	}
 
 	// Show each card list category
@@ -200,7 +200,7 @@ func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 			continue
 		}
 
-		fmt.Fprintf(&output, "\n## %s\n\n", cardList.Header)
+		_, _ = fmt.Fprintf(&output, "\n## %s\n\n", cardList.Header)
 
 		// Limit number of cards shown per category
 		count := len(cardList.CardViews)
@@ -214,22 +214,22 @@ func FormatCommanderRecsForDisplay(data *EDHRECData, limit int) string {
 			// Calculate percentage
 			percentage := float64(card.Inclusion) / float64(data.NumDecks) * percentageMultiplier
 
-			fmt.Fprintf(&output, "%d. **%s**\n", i+1, card.Name)
-			fmt.Fprintf(&output, "   - Inclusion: %d decks (%.1f%%)\n", card.Inclusion, percentage)
+			_, _ = fmt.Fprintf(&output, "%d. **%s**\n", i+1, card.Name)
+			_, _ = fmt.Fprintf(&output, "   - Inclusion: %d decks (%.1f%%)\n", card.Inclusion, percentage)
 
 			if card.Synergy != 0 {
-				fmt.Fprintf(&output, "   - Synergy: %.2f\n", card.Synergy)
+				_, _ = fmt.Fprintf(&output, "   - Synergy: %.2f\n", card.Synergy)
 			}
 
 			if card.Salt > 0 {
-				fmt.Fprintf(&output, "   - Salt Score: %.2f/4.0\n", card.Salt)
+				_, _ = fmt.Fprintf(&output, "   - Salt Score: %.2f/4.0\n", card.Salt)
 			}
 
 			output.WriteString("\n")
 		}
 
 		if len(cardList.CardViews) > count {
-			fmt.Fprintf(&output, "*...and %d more cards*\n", len(cardList.CardViews)-count)
+			_, _ = fmt.Fprintf(&output, "*...and %d more cards*\n", len(cardList.CardViews)-count)
 		}
 	}
 
@@ -241,7 +241,7 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	var output strings.Builder
 
 	output.WriteString("# Popular Combos\n\n")
-	fmt.Fprintf(&output, "**Total Combos:** %d\n\n", len(data.CardLists))
+	_, _ = fmt.Fprintf(&output, "**Total Combos:** %d\n\n", len(data.CardLists))
 
 	count := len(data.CardLists)
 	if limit > 0 && count > limit {
@@ -251,33 +251,28 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	for i := range count {
 		comboList := data.CardLists[i]
 
-		fmt.Fprintf(&output, "%d. **%s**\n", i+1, comboList.Header)
+		_, _ = fmt.Fprintf(&output, "%d. **%s**\n", i+1, comboList.Header)
 
 		if len(comboList.CardViews) > 0 {
 			cardNames := make([]string, len(comboList.CardViews))
 			for j, card := range comboList.CardViews {
 				cardNames[j] = card.Name
 			}
-			fmt.Fprintf(&output, "   **Cards:** %s\n", strings.Join(cardNames, " + "))
+			_, _ = fmt.Fprintf(&output, "   **Cards:** %s\n", strings.Join(cardNames, " + "))
 		}
 
 		if comboList.Combo != nil && len(comboList.Combo.Results) > 0 {
-			fmt.Fprintf(&output, "   **Results:** %s\n", strings.Join(comboList.Combo.Results, ", "))
+			_, _ = fmt.Fprintf(&output, "   **Results:** %s\n", strings.Join(comboList.Combo.Results, ", "))
 		}
 
 		output.WriteString("\n")
 	}
 
 	if len(data.CardLists) > count {
-		fmt.Fprintf(&output, "*...and %d more combos*\n", len(data.CardLists)-count)
+		_, _ = fmt.Fprintf(&output, "*...and %d more combos*\n", len(data.CardLists)-count)
 	}
 
 	return output.String()
-}
-
-// GetTopCardsForCategory fetches top cards for a specific category.
-func GetTopCardsForCategory(ctx context.Context, category string, page int) ([]EDHRECCardView, error) {
-	return getTopCardsForCategoryWithURL(ctx, category, page, "https://json.edhrec.com/pages")
 }
 
 // getTopCardsForCategoryWithURL fetches top cards with a custom base URL.

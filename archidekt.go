@@ -134,7 +134,9 @@ func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
@@ -186,7 +188,9 @@ func getArchidektUserDecksWithURL(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
@@ -273,24 +277,83 @@ func archidektPremierCategories(categories []ArchidektCategory) map[string]bool 
 	return premier
 }
 
+// archidektExcludedCategories returns the set of category names explicitly NOT included in the deck
+// (includedInDeck == false), e.g. "Maybeboard".
+func archidektExcludedCategories(categories []ArchidektCategory) map[string]bool {
+	excluded := make(map[string]bool)
+	for _, c := range categories {
+		if !c.IncludedInDeck {
+			excluded[c.Name] = true
+		}
+	}
+	return excluded
+}
+
+// Out-of-deck zone names. Commander has no real sideboard, so Archidekt's Sideboard category is
+// always treated as out of the deck (regardless of its includedInDeck flag).
+const (
+	archidektSideboardZone  = "Sideboard"
+	archidektMaybeboardZone = "Maybeboard"
+)
+
+// archidektEntryZone classifies a card entry's out-of-deck zone, returning archidektSideboardZone or
+// archidektMaybeboardZone for cards outside the playable deck, or "" for cards that count toward it.
+// A card belongs to a zone if ANY of its categories matches it, so cards tagged Sideboard alongside a
+// type category (e.g. ["Sideboard", "Creature"]) are still treated as sideboard. excluded holds the
+// category names flagged includedInDeck==false (e.g. Maybeboard).
+func archidektEntryZone(entry ArchidektCardEntry, excluded map[string]bool) string {
+	for _, cat := range entry.Categories {
+		if cat == archidektSideboardZone {
+			return archidektSideboardZone
+		}
+	}
+	for _, cat := range entry.Categories {
+		if excluded[cat] {
+			return archidektMaybeboardZone
+		}
+	}
+	return ""
+}
+
+// archidektEntryInDeck reports whether a card entry counts toward the playable deck (mainboard),
+// i.e. it is not in an out-of-deck zone (Sideboard / Maybeboard).
+func archidektEntryInDeck(entry ArchidektCardEntry, excluded map[string]bool) bool {
+	return archidektEntryZone(entry, excluded) == ""
+}
+
+// formatArchidektZone renders an out-of-deck zone as "## Title" followed by its card lines,
+// or "" when the zone is empty. Mirrors the Moxfield deck output style (plain heading, no count).
+func formatArchidektZone(title string, cards []string) string {
+	if len(cards) == 0 {
+		return ""
+	}
+	var output strings.Builder
+	_, _ = fmt.Fprintf(&output, "\n## %s\n", title)
+	for _, c := range cards {
+		_, _ = fmt.Fprintf(&output, "- %s\n", c)
+	}
+	return output.String()
+}
+
 // FormatArchidektDeckForDisplay formats an Archidekt deck for text display.
 func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	var output strings.Builder
 
 	premier := archidektPremierCategories(deck.Categories)
+	excluded := archidektExcludedCategories(deck.Categories)
 
 	// Header
-	fmt.Fprintf(&output, "# %s\n\n", deck.Name)
-	fmt.Fprintf(&output, "**Format:** %s\n", archidektFormatName(deck.DeckFormat))
-	fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
-	fmt.Fprintf(&output, "**Views:** %d\n", deck.ViewCount)
+	_, _ = fmt.Fprintf(&output, "# %s\n\n", deck.Name)
+	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", archidektFormatName(deck.DeckFormat))
+	_, _ = fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
+	_, _ = fmt.Fprintf(&output, "**Views:** %d\n", deck.ViewCount)
 	if deck.EdhBracket != nil {
-		fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
+		_, _ = fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
 	}
 	if deck.UpdatedAt != "" {
-		fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.UpdatedAt)
+		_, _ = fmt.Fprintf(&output, "**Last Updated:** %s\n", deck.UpdatedAt)
 	}
-	fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n", deck.ID)
+	_, _ = fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n", deck.ID)
 
 	// Commanders (cards in premier categories)
 	var commanders []string
@@ -305,15 +368,15 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	if len(commanders) > 0 {
 		output.WriteString("\n## Commanders\n")
 		for _, c := range commanders {
-			fmt.Fprintf(&output, "- %s\n", c)
+			_, _ = fmt.Fprintf(&output, "- %s\n", c)
 		}
 	}
 
-	// Group mainboard cards by type (exclude commander-category cards)
-	groups := groupArchidektDeckCards(deck.Cards, premier)
+	// Group mainboard cards by type (exclude commander-category and out-of-deck cards)
+	groups := groupArchidektDeckCards(deck.Cards, premier, excluded)
 
 	output.WriteString("\n## Mainboard\n")
-	fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
+	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
 
 	output.WriteString(formatCardGroup("Creatures", groups.creatures))
 	output.WriteString(formatCardGroup("Instants", groups.instants))
@@ -325,6 +388,20 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	if len(groups.others) > 0 {
 		output.WriteString(formatCardGroup("Other", groups.others))
 	}
+
+	// Out-of-deck zones (Sideboard / Maybeboard), listed separately
+	var maybeboard, sideboard []string
+	for _, entry := range deck.Cards {
+		line := fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name)
+		switch archidektEntryZone(entry, excluded) {
+		case archidektMaybeboardZone:
+			maybeboard = append(maybeboard, line)
+		case archidektSideboardZone:
+			sideboard = append(sideboard, line)
+		}
+	}
+	output.WriteString(formatArchidektZone(archidektSideboardZone, sideboard))
+	output.WriteString(formatArchidektZone(archidektMaybeboardZone, maybeboard))
 
 	return output.String()
 }
@@ -379,7 +456,9 @@ func searchArchidektDecksWithURL(
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
@@ -398,11 +477,11 @@ func FormatArchidektSearchResultsForDisplay(commander string, bracket int, resul
 	var output strings.Builder
 
 	if bracket >= 1 && bracket <= 4 {
-		fmt.Fprintf(&output, "# Archidekt Decks: %s (Bracket %d)\n\n", commander, bracket)
+		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s (Bracket %d)\n\n", commander, bracket)
 	} else {
-		fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", commander)
+		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", commander)
 	}
-	fmt.Fprintf(&output, "**Total Results:** %d\n\n", result.Count)
+	_, _ = fmt.Fprintf(&output, "**Total Results:** %d\n\n", result.Count)
 
 	if len(result.Results) == 0 {
 		output.WriteString("No public decks found for this commander.\n")
@@ -410,14 +489,14 @@ func FormatArchidektSearchResultsForDisplay(commander string, bracket int, resul
 	}
 
 	for i, deck := range result.Results {
-		fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
-		fmt.Fprintf(&output, "- **Author:** %s\n", deck.Owner.Username)
-		fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
+		_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+		_, _ = fmt.Fprintf(&output, "- **Author:** %s\n", deck.Owner.Username)
+		_, _ = fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
 		if deck.EdhBracket != nil {
-			fmt.Fprintf(&output, "- **EDH Bracket:** %d\n", *deck.EdhBracket)
+			_, _ = fmt.Fprintf(&output, "- **EDH Bracket:** %d\n", *deck.EdhBracket)
 		}
-		fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
-		fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+		_, _ = fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
+		_, _ = fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 	}
 
 	return output.String()
@@ -429,13 +508,14 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 	var output strings.Builder
 
 	premier := archidektPremierCategories(deck.Categories)
+	excluded := archidektExcludedCategories(deck.Categories)
 
-	fmt.Fprintf(&output, "# %s — Landbase\n\n", deck.Name)
-	fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
+	_, _ = fmt.Fprintf(&output, "# %s — Landbase\n\n", deck.Name)
+	_, _ = fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
 	if deck.EdhBracket != nil {
-		fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
+		_, _ = fmt.Fprintf(&output, "**EDH Bracket:** %d\n", *deck.EdhBracket)
 	}
-	fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
+	_, _ = fmt.Fprintf(&output, "**Archidekt URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 
 	var lands []string
 	for _, entry := range deck.Cards {
@@ -449,22 +529,27 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 		if isCommander {
 			continue
 		}
+		// Skip cards outside the deck (Sideboard / Maybeboard)
+		if !archidektEntryInDeck(entry, excluded) {
+			continue
+		}
 		typeLine := strings.ToLower(strings.Join(entry.Card.OracleCard.Types, " "))
 		if strings.Contains(typeLine, "land") {
 			lands = append(lands, fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name))
 		}
 	}
 
-	fmt.Fprintf(&output, "## Lands (%d)\n", len(lands))
+	_, _ = fmt.Fprintf(&output, "## Lands (%d)\n", len(lands))
 	for _, l := range lands {
-		fmt.Fprintf(&output, "- %s\n", l)
+		_, _ = fmt.Fprintf(&output, "- %s\n", l)
 	}
 
 	return output.String()
 }
 
-// groupArchidektDeckCards categorizes non-commander cards by oracle type.
-func groupArchidektDeckCards(cards []ArchidektCardEntry, premier map[string]bool) deckCardGroups {
+// groupArchidektDeckCards categorizes non-commander, in-deck cards by oracle type,
+// excluding cards that sit outside the deck (Sideboard / Maybeboard).
+func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[string]bool) deckCardGroups {
 	groups := deckCardGroups{
 		creatures:     []string{},
 		instants:      []string{},
@@ -486,6 +571,11 @@ func groupArchidektDeckCards(cards []ArchidektCardEntry, premier map[string]bool
 			}
 		}
 		if isCommander {
+			continue
+		}
+
+		// Skip cards outside the deck (Sideboard / Maybeboard)
+		if !archidektEntryInDeck(entry, excluded) {
 			continue
 		}
 

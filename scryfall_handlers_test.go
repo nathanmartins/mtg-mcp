@@ -174,3 +174,26 @@ func TestParseDecklistString(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToBRL(t *testing.T) {
+	tests := []struct {
+		price string
+		rate  float64
+		want  float64
+	}{
+		{price: "10.00", rate: 5.0, want: 50.0},
+		{price: "1.50", rate: 5.0, want: 7.5},
+		{price: "0.00", rate: 5.0, want: 0.0},
+		{price: "N/A", rate: 5.0, want: 0.0},
+		{price: "", rate: 5.0, want: 0.0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.price, func(t *testing.T) {
+			got := convertToBRL(tt.price, tt.rate)
+			if got != tt.want {
+				t.Errorf("convertToBRL(%q, %v) = %v, want %v", tt.price, tt.rate, got, tt.want)
+			}
+		})
+	}
+}
