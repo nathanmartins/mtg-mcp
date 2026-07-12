@@ -18,7 +18,7 @@ func (s *MTGCommanderServer) handleComprehensiveRulesResource(
 	return []mcp.ResourceContents{
 		&mcp.TextResourceContents{
 			URI:      request.Params.URI,
-			MIMEType: "text/plain",
+			MIMEType: mimeTypeTextPlain,
 			Text:     rules.Raw,
 		},
 	}, nil

@@ -29,6 +29,7 @@ const (
 	defaultSortDirection         = "Descending"
 	paramCommander               = "commander"
 	paramName                    = "name"
+	mimeTypeTextPlain            = "text/plain"
 
 	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
 	defaultArchidektBaseURL = "https://archidekt.com/api"
@@ -409,7 +410,7 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		"commander://rules",
 		"Commander Format Rules",
 		mcp.WithResourceDescription("Official Commander format rules and deck construction guidelines"),
-		mcp.WithMIMEType("text/plain"),
+		mcp.WithMIMEType(mimeTypeTextPlain),
 	)
 	mcpServer.AddResource(rulesResource, s.handleCommanderRules)
 
@@ -427,7 +428,7 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		"rules://comprehensive",
 		"Magic Comprehensive Rules",
 		mcp.WithResourceDescription("Full official Magic: The Gathering Comprehensive Rules (large)"),
-		mcp.WithMIMEType("text/plain"),
+		mcp.WithMIMEType(mimeTypeTextPlain),
 	)
 	mcpServer.AddResource(comprehensiveResource, s.handleComprehensiveRulesResource)
 }
