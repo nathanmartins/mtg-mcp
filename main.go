@@ -27,6 +27,10 @@ const (
 	defaultSortDirection         = "Descending"
 	paramCommander               = "commander"
 	paramName                    = "name"
+	paramLanguage                = "language"
+	paramSize                    = "size"
+	defaultCardImageLanguage     = "en"
+	defaultCardImageSize         = imageSizeNormal
 
 	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
 	defaultArchidektBaseURL = "https://archidekt.com/api"
@@ -303,12 +307,37 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 
+	// Tool 13: Get Card Image
+	cardImageTool := mcp.NewTool(
+		"get_card_image",
+		mcp.WithDescription(
+			"Get the image of a Magic: The Gathering card, preferring the requested language and "+
+				"falling back to English. Returns the image inline plus its direct URL.",
+		),
+		mcp.WithString(paramName,
+			mcp.Required(),
+			mcp.Description("Exact or fuzzy card name (e.g., 'Sol Ring', 'Delver of Secrets')"),
+		),
+		mcp.WithString(paramLanguage,
+			mcp.Description(
+				"ISO 639-1 language code for the printing (e.g., 'it', 'fr', 'de', 'ja'). "+
+					"Defaults to 'en'; falls back to English when no localized printing exists.",
+			),
+		),
+		mcp.WithString(paramSize,
+			mcp.Description(
+				"Image size/format: small, normal (default), large, png, art_crop, or border_crop.",
+			),
+		),
+	)
+	mcpServer.AddTool(cardImageTool, s.handleGetCardImage)
+
 	s.registerArchidektTools(mcpServer)
 }
 
 // registerArchidektTools registers Archidekt-related MCP tools (split out to keep registerTools within length limits).
 func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer) {
-	// Tool 13: Get Archidekt Deck
+	// Tool 14: Get Archidekt Deck
 	archidektDeckTool := mcp.NewTool(
 		"get_archidekt_deck",
 		mcp.WithDescription(
@@ -327,7 +356,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	)
 	mcpServer.AddTool(archidektDeckTool, s.handleGetArchidektDeck)
 
-	// Tool 14: Get Archidekt User Decks
+	// Tool 15: Get Archidekt User Decks
 	archidektUserDecksTool := mcp.NewTool(
 		"get_archidekt_user_decks",
 		mcp.WithDescription("Get a list of public decks for a specific Archidekt user"),
@@ -341,7 +370,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	)
 	mcpServer.AddTool(archidektUserDecksTool, s.handleGetArchidektUserDecks)
 
-	// Tool 15: Search Archidekt Decks
+	// Tool 16: Search Archidekt Decks
 	searchArchidektDecksTool := mcp.NewTool(
 		"search_archidekt_decks",
 		mcp.WithDescription(

@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -143,6 +145,98 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 	_, _ = fmt.Fprintf(&output, "\n**Scryfall Link:** %s\n", card.ScryfallURI)
 
 	return mcp.NewToolResultText(output.String()), nil
+}
+
+func (s *MTGCommanderServer) handleGetCardImage(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	name, err := request.RequireString(paramName)
+	if err != nil {
+		GetLogger().Error().Err(err).Str("tool", "get_card_image").Msg("Missing required name parameter")
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	args := request.GetArguments()
+	language := defaultCardImageLanguage
+	if langVal, ok := args[paramLanguage].(string); ok && strings.TrimSpace(langVal) != "" {
+		language = strings.ToLower(strings.TrimSpace(langVal))
+	}
+
+	size := defaultCardImageSize
+	if sizeVal, ok := args[paramSize].(string); ok && strings.TrimSpace(sizeVal) != "" {
+		size = strings.ToLower(strings.TrimSpace(sizeVal))
+	}
+	if !isValidImageSize(size) {
+		return mcp.NewToolResultError(fmt.Sprintf(
+			"Invalid size %q. Valid sizes: small, normal, large, png, art_crop, border_crop", size,
+		)), nil
+	}
+
+	GetLogger().Info().
+		Str("tool", "get_card_image").
+		Str(paramName, name).
+		Str(paramLanguage, language).
+		Str(paramSize, size).
+		Msg("Fetching card image")
+
+	card, usedLang, err := s.resolveCardForImage(ctx, name, language, size)
+	if err != nil {
+		GetLogger().Error().Err(err).Str("tool", "get_card_image").Str(paramName, name).Msg("Card not found")
+		return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", err)), nil
+	}
+
+	images := cardImages(card, size)
+	if len(images) == 0 {
+		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", size, card.Name)), nil
+	}
+
+	return buildCardImageResult(ctx, card, usedLang, language, size, images)
+}
+
+// buildCardImageResult downloads each face image, base64-encodes it, and assembles
+// a tool result with a text summary followed by one inline image per face.
+func buildCardImageResult(
+	ctx context.Context,
+	card scryfall.Card,
+	usedLang scryfall.Lang,
+	requestedLang, size string,
+	images []cardImage,
+) (*mcp.CallToolResult, error) {
+	mimeType := imageMIMEType(size)
+
+	var text strings.Builder
+	_, _ = fmt.Fprintf(&text, "# %s\n", card.Name)
+	if usedLang == scryfall.LangEnglish && requestedLang != string(scryfall.LangEnglish) {
+		_, _ = fmt.Fprintf(&text, "*No '%s' printing found; showing English.*\n", requestedLang)
+	}
+	_, _ = fmt.Fprintf(&text, "**Language:** %s\n", usedLang)
+	_, _ = fmt.Fprintf(&text, "**Size:** %s\n\n", size)
+
+	imageContents := make([]mcp.Content, 0, len(images))
+	for _, img := range images {
+		data, dlErr := cardImageBytesFetcher(ctx, img.url)
+		if dlErr != nil {
+			GetLogger().Error().
+				Err(dlErr).
+				Str("tool", "get_card_image").
+				Str("url", img.url).
+				Msg("Failed to download card image")
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to download image: %v", dlErr)), nil
+		}
+
+		if len(images) > 1 {
+			_, _ = fmt.Fprintf(&text, "**%s:** %s\n", img.faceName, img.url)
+		} else {
+			_, _ = fmt.Fprintf(&text, "**Image:** %s\n", img.url)
+		}
+
+		imageContents = append(imageContents, mcp.NewImageContent(base64.StdEncoding.EncodeToString(data), mimeType))
+	}
+
+	content := append([]mcp.Content{mcp.NewTextContent(text.String())}, imageContents...)
+
+	return &mcp.CallToolResult{Content: content}, nil
 }
 
 func (s *MTGCommanderServer) handleCheckLegality(
@@ -522,4 +616,157 @@ func convertToBRL(priceStr string, rate float64) float64 {
 	var price float64
 	_, _ = fmt.Sscanf(priceStr, "%f", &price)
 	return price * rate
+}
+
+const (
+	imageSizeSmall      = "small"
+	imageSizeNormal     = "normal"
+	imageSizeLarge      = "large"
+	imageSizePNG        = "png"
+	imageSizeArtCrop    = "art_crop"
+	imageSizeBorderCrop = "border_crop"
+
+	mimeJPEG = "image/jpeg"
+	mimePNG  = "image/png"
+)
+
+// cardImage is a single downloadable card face image.
+type cardImage struct {
+	faceName string
+	url      string
+}
+
+// isValidImageSize reports whether size is a recognized Scryfall image_uris key.
+func isValidImageSize(size string) bool {
+	_, ok := imageURLForSize(scryfall.ImageURIs{}, size)
+
+	return ok
+}
+
+// imageMIMEType returns the MIME type for a Scryfall image size. Only the "png"
+// size is a PNG; every other size is JPEG.
+func imageMIMEType(size string) string {
+	if size == imageSizePNG {
+		return mimePNG
+	}
+
+	return mimeJPEG
+}
+
+// imageURLForSize returns the URL for the requested size and whether size is a
+// recognized image_uris key.
+func imageURLForSize(iu scryfall.ImageURIs, size string) (string, bool) {
+	switch size {
+	case imageSizeSmall:
+		return iu.Small, true
+	case imageSizeNormal:
+		return iu.Normal, true
+	case imageSizeLarge:
+		return iu.Large, true
+	case imageSizePNG:
+		return iu.PNG, true
+	case imageSizeArtCrop:
+		return iu.ArtCrop, true
+	case imageSizeBorderCrop:
+		return iu.BorderCrop, true
+	default:
+		return "", false
+	}
+}
+
+// cardImages returns the downloadable images for a card at the requested size.
+// Single-faced cards yield one image; multi-faced cards (nil top-level ImageURIs)
+// yield one per face. Faces without a URL at that size are skipped.
+func cardImages(card scryfall.Card, size string) []cardImage {
+	if card.ImageURIs != nil {
+		if url, ok := imageURLForSize(*card.ImageURIs, size); ok && url != "" {
+			return []cardImage{{faceName: card.Name, url: url}}
+		}
+
+		return nil
+	}
+
+	var images []cardImage
+	for _, face := range card.CardFaces {
+		if url, ok := imageURLForSize(face.ImageURIs, size); ok && url != "" {
+			images = append(images, cardImage{faceName: face.Name, url: url})
+		}
+	}
+
+	return images
+}
+
+// resolveCardForImage resolves the card to render. It first fetches the canonical
+// English printing (also the fallback), then—if a non-English language is
+// requested—looks up a localized printing that has an image, falling back to
+// English when none exists. Returns the chosen card and the language actually used;
+// the error is non-nil only when the English lookup itself fails.
+func (s *MTGCommanderServer) resolveCardForImage(
+	ctx context.Context,
+	name, language, size string,
+) (scryfall.Card, scryfall.Lang, error) {
+	englishCard, err := s.scryfallClient.GetCardByName(ctx, name, false, scryfall.GetCardByNameOptions{})
+	if err != nil {
+		return scryfall.Card{}, "", err
+	}
+
+	if language == "" || language == string(scryfall.LangEnglish) {
+		return englishCard, scryfall.LangEnglish, nil
+	}
+
+	if localized, ok := s.findLocalizedCard(ctx, englishCard.Name, language, size); ok {
+		return localized, scryfall.Lang(language), nil
+	}
+
+	return englishCard, scryfall.LangEnglish, nil
+}
+
+// findLocalizedCard searches for a printing of the named card in the requested
+// language that has an image at the requested size.
+func (s *MTGCommanderServer) findLocalizedCard(
+	ctx context.Context,
+	canonicalName, language, size string,
+) (scryfall.Card, bool) {
+	query := fmt.Sprintf(`!"%s" lang:%s`, canonicalName, language)
+
+	result, err := s.scryfallClient.SearchCards(ctx, query, scryfall.SearchCardsOptions{
+		IncludeMultilingual: true,
+	})
+	if err != nil {
+		return scryfall.Card{}, false
+	}
+
+	for _, card := range result.Cards {
+		if len(cardImages(card, size)) > 0 {
+			return card, true
+		}
+	}
+
+	return scryfall.Card{}, false
+}
+
+// cardImageBytesFetcher downloads a card image and returns its raw bytes.
+// It is a package variable so tests can substitute a deterministic implementation.
+var cardImageBytesFetcher = fetchCardImageBytes //nolint:gochecknoglobals // test seam for the image handler
+
+// fetchCardImageBytes downloads the image at the given HTTPS URL.
+func fetchCardImageBytes(ctx context.Context, rawURL string) ([]byte, error) {
+	return getImageBytes(ctx, rawURL, HTTPGet)
+}
+
+// getImageBytes downloads and reads an image body using the provided getter.
+func getImageBytes(ctx context.Context, rawURL string, get httpGetter) ([]byte, error) {
+	resp, err := get(ctx, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("image download failed with status %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
 }
