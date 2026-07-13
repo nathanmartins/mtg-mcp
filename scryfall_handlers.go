@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"net/http"
 	"strings"
@@ -194,9 +195,20 @@ func (s *MTGCommanderServer) handleGetCardImage(
 	return buildCardImageResult(ctx, card, usedLang, language, size, images)
 }
 
-// buildCardImageResult downloads each face image and returns a text result that
-// embeds it as a base64 `data:` URI Markdown image (no external domain, so the
-// client's image CSP does not block it) alongside a clickable Scryfall link.
+const (
+	mimeHTML = "text/html"
+
+	cardImageHTMLHead = `<!doctype html><html><head><meta charset="utf-8"><style>` +
+		`body{margin:0;background:#0d0d0d;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:12px}` +
+		`img{max-width:100%;height:auto;border-radius:14px}</style></head><body>`
+	cardImageHTMLTail = `</body></html>`
+)
+
+// buildCardImageResult downloads each face image and returns an MCP Apps (MCP-UI)
+// result: a `ui://` HTML resource with the image inlined as a base64 `data:` URI
+// (so the sandboxed iframe's CSP doesn't block an external fetch), referenced via
+// `_meta.ui.resourceUri`, plus a text summary with a clickable Scryfall link as a
+// fallback for clients that don't render the UI resource.
 func buildCardImageResult(
 	ctx context.Context,
 	card scryfall.Card,
@@ -206,13 +218,12 @@ func buildCardImageResult(
 ) (*mcp.CallToolResult, error) {
 	mimeType := imageMIMEType(size)
 
-	var text strings.Builder
+	var text, imgs strings.Builder
 	_, _ = fmt.Fprintf(&text, "# %s\n", card.Name)
 	if usedLang == scryfall.LangEnglish && requestedLang != string(scryfall.LangEnglish) {
 		_, _ = fmt.Fprintf(&text, "*No '%s' printing found; showing English.*\n", requestedLang)
 	}
-	_, _ = fmt.Fprintf(&text, "**Language:** %s\n", usedLang)
-	_, _ = fmt.Fprintf(&text, "**Size:** %s\n\n", size)
+	_, _ = fmt.Fprintf(&text, "**Language:** %s\n**Size:** %s\n\n", usedLang, size)
 
 	for _, img := range images {
 		data, dlErr := cardImageBytesFetcher(ctx, img.url)
@@ -225,12 +236,38 @@ func buildCardImageResult(
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to download image: %v", dlErr)), nil
 		}
 
+		alt := html.EscapeString(img.faceName)
 		encoded := base64.StdEncoding.EncodeToString(data)
-		_, _ = fmt.Fprintf(&text, "![%s](data:%s;base64,%s)\n\n", img.faceName, mimeType, encoded)
+		_, _ = fmt.Fprintf(&imgs, `<img src="data:%s;base64,%s" alt="%s">`, mimeType, encoded, alt)
 		_, _ = fmt.Fprintf(&text, "[%s — view on Scryfall](%s)\n\n", img.faceName, img.url)
 	}
 
-	return mcp.NewToolResultText(text.String()), nil
+	uiURI := cardImageUIURI(card)
+	result := &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.NewTextContent(text.String()),
+			mcp.NewEmbeddedResource(mcp.TextResourceContents{
+				URI:      uiURI,
+				MIMEType: mimeHTML,
+				Text:     cardImageHTMLHead + imgs.String() + cardImageHTMLTail,
+			}),
+		},
+	}
+	result.Meta = mcp.NewMetaFromMap(map[string]any{
+		"ui": map[string]any{"resourceUri": uiURI},
+	})
+
+	return result, nil
+}
+
+// cardImageUIURI builds the ui:// URI for a card's UI resource.
+func cardImageUIURI(card scryfall.Card) string {
+	slug := card.ID
+	if slug == "" {
+		slug = "image"
+	}
+
+	return "ui://mtg-card/" + slug
 }
 
 func (s *MTGCommanderServer) handleCheckLegality(

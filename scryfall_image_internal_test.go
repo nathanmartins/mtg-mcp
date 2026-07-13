@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	scryfall "github.com/BlueMonday/go-scryfall"
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 // stubImageFetcher replaces the download seam with one that echoes the URL back
@@ -21,6 +22,38 @@ func stubImageFetcher(t *testing.T) {
 		return []byte("IMG:" + rawURL), nil
 	}
 	t.Cleanup(func() { cardImageBytesFetcher = prev })
+}
+
+// embeddedHTML returns the text/html EmbeddedResource carried by a tool result.
+func embeddedHTML(t *testing.T, res *mcp.CallToolResult) mcp.TextResourceContents {
+	t.Helper()
+
+	for _, c := range res.Content {
+		if er, ok := mcp.AsEmbeddedResource(c); ok {
+			if trc, isText := er.Resource.(mcp.TextResourceContents); isText {
+				return trc
+			}
+		}
+	}
+	t.Fatal("result has no text embedded resource")
+
+	return mcp.TextResourceContents{}
+}
+
+// uiResourceURI returns _meta.ui.resourceUri from a tool result.
+func uiResourceURI(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+
+	if res.Meta == nil {
+		t.Fatal("result has no _meta")
+	}
+	ui, ok := res.Meta.AdditionalFields["ui"].(map[string]any)
+	if !ok {
+		t.Fatal("_meta.ui missing")
+	}
+	uri, _ := ui["resourceUri"].(string)
+
+	return uri
 }
 
 // assertContainsAll fails the test for each wanted substring missing from text.
@@ -135,11 +168,19 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			t.Error("English lookup should not hit the search endpoint")
 		}
 
-		enData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en-normal.jpg"))
 		assertContainsAll(t, resultText(t, res),
 			"# Sol Ring", "**Language:** en", "**Size:** normal",
-			"data:image/jpeg;base64,"+enData,
 			"view on Scryfall](https://img.test/en-normal.jpg)")
+
+		er := embeddedHTML(t, res)
+		if er.MIMEType != "text/html" {
+			t.Errorf("resource mime = %q, want text/html", er.MIMEType)
+		}
+		enData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en-normal.jpg"))
+		assertContainsAll(t, er.Text, "<img ", "data:image/jpeg;base64,"+enData)
+		if got := uiResourceURI(t, res); got != er.URI {
+			t.Errorf("_meta.ui.resourceUri %q != embedded resource URI %q", got, er.URI)
+		}
 	})
 
 	t.Run("size parameter selects png and mime", func(t *testing.T) {
@@ -152,9 +193,10 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			"size": "png",
 		}))
 		pngData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en.png"))
-		assertContainsAll(t, resultText(t, res),
-			"data:image/png;base64,"+pngData,
-			"view on Scryfall](https://img.test/en.png)")
+		assertContainsAll(t, embeddedHTML(t, res).Text, "data:image/png;base64,"+pngData)
+		if !strings.Contains(resultText(t, res), "view on Scryfall](https://img.test/en.png)") {
+			t.Errorf("expected Scryfall link in text:\n%s", resultText(t, res))
+		}
 	})
 
 	t.Run("double-faced card yields one image per face", func(t *testing.T) {
@@ -169,9 +211,9 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 		}
 		front := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/front.jpg"))
 		back := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/back.jpg"))
-		assertContainsAll(t, resultText(t, res),
-			"![Delver of Secrets](data:image/jpeg;base64,"+front+")",
-			"![Insectile Aberration](data:image/jpeg;base64,"+back+")")
+		assertContainsAll(t, embeddedHTML(t, res).Text,
+			"data:image/jpeg;base64,"+front,
+			"data:image/jpeg;base64,"+back)
 	})
 }
 
