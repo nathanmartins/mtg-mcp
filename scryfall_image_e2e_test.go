@@ -43,15 +43,10 @@ func TestGetCardImageEnglishE2E(t *testing.T) {
 	if !strings.Contains(text, "**Language:** en") {
 		t.Errorf("expected English language marker, got:\n%s", text)
 	}
-
-	imgs := imageContents(t, res)
-	if len(imgs) != 1 {
-		t.Fatalf("expected 1 image, got %d", len(imgs))
+	if !strings.Contains(text, "data:image/jpeg;base64,") {
+		t.Fatal("expected an embedded base64 data URI in the result")
 	}
-	if imgs[0].MIMEType != "image/jpeg" || len(imgs[0].Data) == 0 {
-		t.Errorf("expected non-empty jpeg image, got mime=%q len=%d", imgs[0].MIMEType, len(imgs[0].Data))
-	}
-	t.Logf("✓ Downloaded Sol Ring image (%d base64 chars)", len(imgs[0].Data))
+	t.Logf("✓ Embedded Sol Ring image (%d chars of result text)", len(text))
 }
 
 // TestGetCardImageItalianE2E fetches an Italian printing (Sol Ring -> Anello Solare).
@@ -75,11 +70,12 @@ func TestGetCardImageItalianE2E(t *testing.T) {
 		t.Fatalf("unexpected error result: %s", resultText(t, res))
 	}
 
-	if !strings.Contains(resultText(t, res), "**Language:** it") {
-		t.Errorf("expected Italian printing, got:\n%s", resultText(t, res))
+	text := resultText(t, res)
+	if !strings.Contains(text, "**Language:** it") {
+		t.Errorf("expected Italian printing, got:\n%s", text)
 	}
-	if len(imageContents(t, res)) == 0 {
-		t.Error("expected at least one image for the Italian printing")
+	if !strings.Contains(text, "data:image/") {
+		t.Error("expected an embedded data URI for the Italian printing")
 	}
 }
 
@@ -122,7 +118,7 @@ func TestGetCardImageDoubleFacedE2E(t *testing.T) {
 		t.Fatalf("handleGetCardImage() failed: %v", err)
 	}
 
-	if imgs := imageContents(t, res); len(imgs) != 2 {
-		t.Fatalf("expected 2 images for a double-faced card, got %d", len(imgs))
+	if n := strings.Count(resultText(t, res), "data:image/jpeg;base64,"); n != 2 {
+		t.Fatalf("expected 2 embedded images for a double-faced card, got %d", n)
 	}
 }

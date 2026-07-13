@@ -9,22 +9,7 @@ import (
 	"testing"
 
 	scryfall "github.com/BlueMonday/go-scryfall"
-	"github.com/mark3labs/mcp-go/mcp"
 )
-
-// imageContents extracts the ImageContent blocks from a tool result.
-func imageContents(t *testing.T, res *mcp.CallToolResult) []mcp.ImageContent {
-	t.Helper()
-
-	var imgs []mcp.ImageContent
-	for _, c := range res.Content {
-		if ic, ok := mcp.AsImageContent(c); ok {
-			imgs = append(imgs, *ic)
-		}
-	}
-
-	return imgs
-}
 
 // stubImageFetcher replaces the download seam with one that echoes the URL back
 // as fake image bytes, restoring the original when the test ends.
@@ -150,20 +135,11 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			t.Error("English lookup should not hit the search endpoint")
 		}
 
+		enData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en-normal.jpg"))
 		assertContainsAll(t, resultText(t, res),
-			"# Sol Ring", "**Language:** en", "**Size:** normal", "https://img.test/en-normal.jpg")
-
-		imgs := imageContents(t, res)
-		if len(imgs) != 1 {
-			t.Fatalf("expected 1 image, got %d", len(imgs))
-		}
-		if imgs[0].MIMEType != mimeJPEG {
-			t.Errorf("mime = %q, want %q", imgs[0].MIMEType, mimeJPEG)
-		}
-		decoded, _ := base64.StdEncoding.DecodeString(imgs[0].Data)
-		if !strings.Contains(string(decoded), "https://img.test/en-normal.jpg") {
-			t.Errorf("image bytes should echo the normal URL, got %q", decoded)
-		}
+			"# Sol Ring", "**Language:** en", "**Size:** normal",
+			"data:image/jpeg;base64,"+enData,
+			"view on Scryfall](https://img.test/en-normal.jpg)")
 	})
 
 	t.Run("size parameter selects png and mime", func(t *testing.T) {
@@ -175,13 +151,10 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			"name": "Sol Ring",
 			"size": "png",
 		}))
-		imgs := imageContents(t, res)
-		if len(imgs) != 1 || imgs[0].MIMEType != mimePNG {
-			t.Fatalf("expected 1 png image, got %+v", imgs)
-		}
-		if !strings.Contains(resultText(t, res), "https://img.test/en.png") {
-			t.Errorf("expected png URL in text:\n%s", resultText(t, res))
-		}
+		pngData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en.png"))
+		assertContainsAll(t, resultText(t, res),
+			"data:image/png;base64,"+pngData,
+			"view on Scryfall](https://img.test/en.png)")
 	})
 
 	t.Run("double-faced card yields one image per face", func(t *testing.T) {
@@ -194,12 +167,11 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		front := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/front.jpg"))
+		back := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/back.jpg"))
 		assertContainsAll(t, resultText(t, res),
-			"Delver of Secrets:** https://img.test/front.jpg",
-			"Insectile Aberration:** https://img.test/back.jpg")
-		if imgs := imageContents(t, res); len(imgs) != 2 {
-			t.Fatalf("expected 2 images for a double-faced card, got %d", len(imgs))
-		}
+			"![Delver of Secrets](data:image/jpeg;base64,"+front+")",
+			"![Insectile Aberration](data:image/jpeg;base64,"+back+")")
 	})
 }
 

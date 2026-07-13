@@ -194,8 +194,9 @@ func (s *MTGCommanderServer) handleGetCardImage(
 	return buildCardImageResult(ctx, card, usedLang, language, size, images)
 }
 
-// buildCardImageResult downloads each face image, base64-encodes it, and assembles
-// a tool result with a text summary followed by one inline image per face.
+// buildCardImageResult downloads each face image and returns a text result that
+// embeds it as a base64 `data:` URI Markdown image (no external domain, so the
+// client's image CSP does not block it) alongside a clickable Scryfall link.
 func buildCardImageResult(
 	ctx context.Context,
 	card scryfall.Card,
@@ -213,7 +214,6 @@ func buildCardImageResult(
 	_, _ = fmt.Fprintf(&text, "**Language:** %s\n", usedLang)
 	_, _ = fmt.Fprintf(&text, "**Size:** %s\n\n", size)
 
-	imageContents := make([]mcp.Content, 0, len(images))
 	for _, img := range images {
 		data, dlErr := cardImageBytesFetcher(ctx, img.url)
 		if dlErr != nil {
@@ -225,18 +225,12 @@ func buildCardImageResult(
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to download image: %v", dlErr)), nil
 		}
 
-		if len(images) > 1 {
-			_, _ = fmt.Fprintf(&text, "**%s:** %s\n", img.faceName, img.url)
-		} else {
-			_, _ = fmt.Fprintf(&text, "**Image:** %s\n", img.url)
-		}
-
-		imageContents = append(imageContents, mcp.NewImageContent(base64.StdEncoding.EncodeToString(data), mimeType))
+		encoded := base64.StdEncoding.EncodeToString(data)
+		_, _ = fmt.Fprintf(&text, "![%s](data:%s;base64,%s)\n\n", img.faceName, mimeType, encoded)
+		_, _ = fmt.Fprintf(&text, "[%s — view on Scryfall](%s)\n\n", img.faceName, img.url)
 	}
 
-	content := append([]mcp.Content{mcp.NewTextContent(text.String())}, imageContents...)
-
-	return &mcp.CallToolResult{Content: content}, nil
+	return mcp.NewToolResultText(text.String()), nil
 }
 
 func (s *MTGCommanderServer) handleCheckLegality(
