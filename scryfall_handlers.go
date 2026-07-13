@@ -197,6 +197,9 @@ func (s *MTGCommanderServer) handleGetCardImage(
 
 const (
 	mimeHTML = "text/html"
+	// mimeMCPAppHTML is the MIME type required by the MCP Apps (io.modelcontextprotocol/ui)
+	// spec for a ui:// HTML resource; plain text/html is rejected as an unsupported format.
+	mimeMCPAppHTML = "text/html;profile=mcp-app"
 
 	// MCP Apps UI extension _meta keys: _meta.ui.resourceUri.
 	metaKeyUI          = "ui"

@@ -39,7 +39,7 @@ func (s *MTGCommanderServer) registerUIRenderTest(mcpServer *server.MCPServer) {
 		uiRenderTestURI,
 		"MTG UI Render Test",
 		mcp.WithResourceDescription("Temporary probe: static HTML widget with an inlined card image"),
-		mcp.WithMIMEType(mimeHTML),
+		mcp.WithMIMEType(mimeMCPAppHTML),
 	)
 	mcpServer.AddResource(resource, s.handleUIRenderTestResource)
 
@@ -92,7 +92,7 @@ func (s *MTGCommanderServer) handleUIRenderTestResource(
 	return []mcp.ResourceContents{
 		&mcp.TextResourceContents{
 			URI:      uiRenderTestURI,
-			MIMEType: mimeHTML,
+			MIMEType: mimeMCPAppHTML,
 			Text:     uiRenderTestHTMLHead + img + uiRenderTestHTMLTail,
 		},
 	}, nil

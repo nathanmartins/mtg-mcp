@@ -38,8 +38,8 @@ func TestHandleUIRenderTestResource(t *testing.T) {
 	if !ok {
 		t.Fatalf("content is not *TextResourceContents: %T", contents[0])
 	}
-	if trc.MIMEType != mimeHTML {
-		t.Errorf("mime = %q, want %q", trc.MIMEType, mimeHTML)
+	if trc.MIMEType != mimeMCPAppHTML {
+		t.Errorf("mime = %q, want %q", trc.MIMEType, mimeMCPAppHTML)
 	}
 	assertContainsAll(t, trc.Text, "MCP-UI RENDER OK", "<img ", "data:image/jpeg;base64,")
 }
