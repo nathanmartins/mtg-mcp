@@ -51,7 +51,7 @@ func TestHandleCommanderRules(t *testing.T) {
 	if contents[0].(*mcp.TextResourceContents).URI != "commander://rules" {
 		t.Error("expected URI to be echoed back")
 	}
-	if contents[0].(*mcp.TextResourceContents).MIMEType != "text/plain" {
+	if contents[0].(*mcp.TextResourceContents).MIMEType != mimeTypeTextPlain {
 		t.Error("expected text/plain MIME type")
 	}
 }
