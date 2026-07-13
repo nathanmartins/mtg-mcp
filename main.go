@@ -409,4 +409,7 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		mcp.WithMIMEType("application/json"),
 	)
 	mcpServer.AddResource(bannedResource, s.handleBannedListResource)
+
+	// TEMPORARY: UI-render probe (tool + ui:// resource). Remove once resolved.
+	s.registerUIRenderTest(mcpServer)
 }

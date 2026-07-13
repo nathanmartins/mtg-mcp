@@ -198,6 +198,10 @@ func (s *MTGCommanderServer) handleGetCardImage(
 const (
 	mimeHTML = "text/html"
 
+	// MCP Apps UI extension _meta keys: _meta.ui.resourceUri.
+	metaKeyUI          = "ui"
+	metaKeyResourceURI = "resourceUri"
+
 	cardImageHTMLHead = `<!doctype html><html><head><meta charset="utf-8"><style>` +
 		`body{margin:0;background:#0d0d0d;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:12px}` +
 		`img{max-width:100%;height:auto;border-radius:14px}</style></head><body>`
@@ -254,7 +258,7 @@ func buildCardImageResult(
 		},
 	}
 	result.Meta = mcp.NewMetaFromMap(map[string]any{
-		"ui": map[string]any{"resourceUri": uiURI},
+		metaKeyUI: map[string]any{metaKeyResourceURI: uiURI},
 	})
 
 	return result, nil
