@@ -29,8 +29,19 @@ const (
 		`.ok{font-size:20px;font-weight:700;color:#4ade80;margin-bottom:12px}` +
 		`img{max-width:100%;height:auto;border-radius:12px}` +
 		`</style></head><body><div class="ok">MCP-UI RENDER OK</div>`
-	uiRenderTestHTMLTail = `<p>If you see this box as a rendered widget, the iframe works. ` +
-		`If the card image shows too, data: images are allowed.</p></body></html>`
+	uiRenderTestHTMLTail = `<p>If you see this box, the widget renders (data: image = images allowed).</p>` +
+		`<script>(function(){var n=1;` +
+		`function send(m,p){parent.postMessage({jsonrpc:"2.0",id:n++,method:m,params:p||{}},"*");}` +
+		`function note(m,p){parent.postMessage({jsonrpc:"2.0",method:m,params:p||{}},"*");}` +
+		`function size(){note("ui/notifications/size-changed",` +
+		`{width:document.body.scrollWidth,height:document.body.scrollHeight});}` +
+		`addEventListener("message",function(e){var d=e.data||{};` +
+		`if(d.id===1&&d.result){note("ui/notifications/initialized",{});size();}});` +
+		`send("ui/initialize",{appCapabilities:{},clientInfo:{name:"mtg-mcp",version:"1.0.0"},` +
+		`protocolVersion:"2026-01-26"});` +
+		`addEventListener("load",size);` +
+		`if(window.ResizeObserver){new ResizeObserver(size).observe(document.body);}` +
+		`})();</script></body></html>`
 )
 
 // registerUIRenderTest wires the temporary UI-render probe (tool + ui:// resource).
