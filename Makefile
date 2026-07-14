@@ -27,7 +27,7 @@ COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS=-ldflags="-w -s -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)"
 
-.PHONY: all build test test-unit test-e2e test-coverage clean fmt lint help install deps tidy
+.PHONY: all build test test-unit test-e2e test-coverage clean fmt lint help install deps tidy docker-build docker-run docker-proxy
 
 # Default target
 all: fmt lint test-unit build
@@ -135,6 +135,22 @@ install: build
 run: build
 	@echo "Running application..."
 	./$(BINARY_NAME)
+
+## docker-build: Build the stdio (distroless) image
+docker-build:
+	@echo "Building stdio image mtg-mcp:$(VERSION)..."
+	docker build --target runtime -f docker/Dockerfile \
+		--build-arg VERSION=$(VERSION) --build-arg COMMIT=$(COMMIT) --build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t $(BINARY_NAME):$(VERSION) -t $(BINARY_NAME):latest .
+
+## docker-run: Smoke-test the stdio image (prints version and exits)
+docker-run: docker-build
+	docker run --rm $(BINARY_NAME):latest --version
+
+## docker-proxy: Build & run the mcp-proxy (HTTP) service via compose
+docker-proxy:
+	@echo "Starting mcp-proxy HTTP service..."
+	VERSION=$(VERSION) COMMIT=$(COMMIT) BUILD_DATE=$(BUILD_DATE) docker compose up --build
 
 ## check: Run all checks (fmt, lint, test)
 check: fmt lint test-unit
