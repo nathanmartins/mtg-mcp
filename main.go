@@ -31,6 +31,11 @@ const (
 	paramName                    = "name"
 	paramLanguage                = "language"
 	paramSize                    = "size"
+	paramSet                     = "set"
+	paramCollectorNumber         = "collector_number"
+	paramFace                    = "face"
+	faceFront                    = "front"
+	faceBack                     = "back"
 	defaultCardImageLanguage     = "en"
 	defaultCardImageSize         = imageSizeNormal
 	mimeTypeTextPlain            = "text/plain"
@@ -197,7 +202,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 			mcp.Required(),
 			mcp.Description("Card name to get pricing for"),
 		),
-		mcp.WithString("set",
+		mcp.WithString(paramSet,
 			mcp.Description("Specific set code (optional, e.g., 'MH2', 'CMR')"),
 		),
 	)
@@ -312,6 +317,15 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 
+	s.registerCardImageTool(mcpServer)
+	s.registerArchidektTools(mcpServer)
+	s.registerRulesTools(mcpServer)
+}
+
+// registerCardImageTool registers the get_card_image tool and binds it to the
+// ui://mtg-card MCP Apps widget via the tool's _meta.ui (split out of registerTools
+// to keep it within the funlen limit).
+func (s *MTGCommanderServer) registerCardImageTool(mcpServer *server.MCPServer) {
 	// Tool 13: Get Card Image
 	cardImageTool := mcp.NewTool(
 		"get_card_image",
@@ -334,6 +348,23 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 				"Image size/format: small, normal (default), large, png, art_crop, or border_crop.",
 			),
 		),
+		mcp.WithString(paramSet,
+			mcp.Description(
+				"Set code to pick a specific edition's printing (e.g., 'mh2', 'c21'). "+
+					"Falls back to the default printing when the card is not in that set.",
+			),
+		),
+		mcp.WithString(paramCollectorNumber,
+			mcp.Description(
+				"Collector number to pin the exact printing/variant within the set (requires set; "+
+					"e.g., '263'). Falls back to the default printing when not found.",
+			),
+		),
+		mcp.WithString(paramFace,
+			mcp.Description(
+				"For double-faced cards, which face to return: 'front' or 'back' (default: all faces).",
+			),
+		),
 	)
 	// Associate the tool with its MCP Apps widget at registration (the spec binds UI
 	// via the tool's _meta.ui, enabling the host to prefetch the resource).
@@ -341,9 +372,6 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 		metaKeyUI: map[string]any{metaKeyResourceURI: cardImageWidgetURI},
 	})
 	mcpServer.AddTool(cardImageTool, s.handleGetCardImage)
-
-	s.registerArchidektTools(mcpServer)
-	s.registerRulesTools(mcpServer)
 }
 
 // registerArchidektTools registers Archidekt-related MCP tools (split out to keep registerTools within length limits).

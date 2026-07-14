@@ -24,6 +24,11 @@ func stubImageFetcher(t *testing.T) {
 	t.Cleanup(func() { cardImageBytesFetcher = prev })
 }
 
+// stubbedSrc is the data URI stubImageFetcher produces for a given size/url pair.
+func stubbedSrc(mime, rawURL string) string {
+	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString([]byte("IMG:"+rawURL))
+}
+
 // structuredCardData returns the cardImageData carried in a tool result's
 // structuredContent (the per-call data the host forwards to the ui:// widget).
 func structuredCardData(t *testing.T, res *mcp.CallToolResult) cardImageData {
@@ -101,6 +106,15 @@ const (
 			{"name":"Delver of Secrets","image_uris":{"normal":"https://img.test/front.jpg"}},
 			{"name":"Insectile Aberration","image_uris":{"normal":"https://img.test/back.jpg"}}
 		],
+		"legalities":{"commander":"legal"}
+	}`
+
+	solRingC21JSON = `{
+		"id":"sol-c21","name":"Sol Ring","lang":"en","set":"c21","set_name":"Commander 2021",
+		"collector_number":"263",
+		"image_uris":{"small":"https://img.test/c21-small.jpg","normal":"https://img.test/c21-normal.jpg",
+			"large":"https://img.test/c21-large.jpg","png":"https://img.test/c21.png",
+			"art_crop":"https://img.test/c21-art.jpg","border_crop":"https://img.test/c21-border.jpg"},
 		"legalities":{"commander":"legal"}
 	}`
 )
@@ -219,7 +233,7 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 		if data.Size != imageSizePNG {
 			t.Errorf("data size = %q, want png", data.Size)
 		}
-		pngSrc := "data:image/png;base64," + base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en.png"))
+		pngSrc := stubbedSrc(mimePNG, "https://img.test/en.png")
 		if len(data.Images) != 1 || data.Images[0].Src != pngSrc {
 			t.Errorf("images = %+v, want the png data URI", data.Images)
 		}
@@ -301,6 +315,180 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 			"No 'it' printing found; showing English.", "**Language:** en", "https://img.test/en-normal.jpg")
 		if data := structuredCardData(t, res); data.Language != "en" || !data.Fallback {
 			t.Errorf("structured data = %+v, want language en, fallback true", data)
+		}
+	})
+}
+
+func TestHandleGetCardImageEdition(t *testing.T) {
+	t.Run("set selects that set's printing", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/cards/named") && r.URL.Query().Get("set") == "c21" {
+				jsonResponse(w, solRingC21JSON)
+				return
+			}
+			t.Errorf("unexpected request %s?%s", r.URL.Path, r.URL.RawQuery)
+		})
+
+		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "set": "c21",
+		}))
+		if err != nil || res.IsError {
+			t.Fatalf("unexpected failure: err=%v result=%v", err, res)
+		}
+		data := structuredCardData(t, res)
+		if len(data.Images) != 1 || data.Images[0].Src != stubbedSrc(mimeJPEG, "https://img.test/c21-normal.jpg") {
+			t.Errorf("images = %+v, want the c21 printing", data.Images)
+		}
+		if data.Fallback {
+			t.Error("did not expect a fallback for a valid set")
+		}
+	})
+
+	t.Run("set + collector_number selects the exact printing", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/cards/c21/263" {
+				jsonResponse(w, solRingC21JSON)
+				return
+			}
+			t.Errorf("unexpected request %s", r.URL.Path)
+		})
+
+		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "set": "c21", "collector_number": "263",
+		}))
+		if err != nil || res.IsError {
+			t.Fatalf("unexpected failure: err=%v result=%v", err, res)
+		}
+		if data := structuredCardData(
+			t,
+			res,
+		); data.Images[0].Src != stubbedSrc(
+			mimeJPEG,
+			"https://img.test/c21-normal.jpg",
+		) {
+			t.Errorf("images = %+v, want the exact c21 #263 printing", data.Images)
+		}
+	})
+
+	t.Run("collector_number pointing at a different card falls back to default", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.URL.Path == "/cards/xyz/999":
+				jsonResponse(w, `{"id":"other","name":"Fellwar Stone","lang":"en","set":"xyz",
+					"collector_number":"999","image_uris":{"normal":"https://img.test/other.jpg"},
+					"legalities":{"commander":"legal"}}`)
+			case r.URL.Query().Get("set") == "xyz":
+				scryfallError(w, http.StatusNotFound)
+			default:
+				jsonResponse(w, solRingImageJSON)
+			}
+		})
+
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "set": "xyz", "collector_number": "999",
+		}))
+		data := structuredCardData(t, res)
+		if data.Name != "Sol Ring" || data.Images[0].Src != stubbedSrc(mimeJPEG, "https://img.test/en-normal.jpg") {
+			t.Errorf("expected fallback to the Sol Ring default printing, got %+v", data)
+		}
+	})
+
+	t.Run("collector_number without set is an error", func(t *testing.T) {
+		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
+			t.Error("scryfall should not be called when collector_number lacks set")
+		})
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "collector_number": "263",
+		}))
+		if !res.IsError {
+			t.Error("expected an error when collector_number is given without set")
+		}
+	})
+
+	t.Run("unknown set falls back to the default printing", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Query().Get("set") == "zzz" {
+				scryfallError(w, http.StatusNotFound)
+				return
+			}
+			jsonResponse(w, solRingImageJSON)
+		})
+
+		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "set": "zzz",
+		}))
+		if err != nil || res.IsError {
+			t.Fatalf("unexpected failure: err=%v result=%v", err, res)
+		}
+		if data := structuredCardData(
+			t,
+			res,
+		); data.Images[0].Src != stubbedSrc(
+			mimeJPEG,
+			"https://img.test/en-normal.jpg",
+		) {
+			t.Errorf("images = %+v, want the default printing after fallback", data.Images)
+		}
+	})
+}
+
+func TestHandleGetCardImageFace(t *testing.T) {
+	dfc := func(t *testing.T) *MTGCommanderServer {
+		t.Helper()
+		return newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonResponse(w, delverImageJSON)
+		})
+	}
+
+	t.Run("face=back returns only the back face", func(t *testing.T) {
+		stubImageFetcher(t)
+		res, _ := dfc(t).handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Delver of Secrets", "face": "back",
+		}))
+		data := structuredCardData(t, res)
+		if len(data.Images) != 1 || data.Images[0].Face != "Insectile Aberration" ||
+			data.Images[0].Src != stubbedSrc(mimeJPEG, "https://img.test/back.jpg") {
+			t.Errorf("images = %+v, want only the back face", data.Images)
+		}
+	})
+
+	t.Run("face=front returns only the front face", func(t *testing.T) {
+		stubImageFetcher(t)
+		res, _ := dfc(t).handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Delver of Secrets", "face": "front",
+		}))
+		data := structuredCardData(t, res)
+		if len(data.Images) != 1 || data.Images[0].Face != "Delver of Secrets" {
+			t.Errorf("images = %+v, want only the front face", data.Images)
+		}
+	})
+
+	t.Run("face=back on a single-faced card is an error", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonResponse(w, solRingImageJSON)
+		})
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "face": "back",
+		}))
+		if !res.IsError {
+			t.Error("expected an error when requesting a back face of a single-faced card")
+		}
+	})
+
+	t.Run("invalid face is an error", func(t *testing.T) {
+		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
+			t.Error("scryfall should not be called for an invalid face")
+		})
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Sol Ring", "face": "sideways",
+		}))
+		if !res.IsError {
+			t.Error("expected an error for an invalid face value")
 		}
 	})
 }

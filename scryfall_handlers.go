@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -147,6 +148,32 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
+// imageQuery holds the resolved get_card_image arguments.
+type imageQuery struct {
+	name            string
+	language        string
+	size            string
+	set             string
+	collectorNumber string
+	face            string
+}
+
+// validate reports the first invalid-argument error, or nil when the query is valid.
+func (q imageQuery) validate() error {
+	if !isValidImageSize(q.size) {
+		return fmt.Errorf(
+			"invalid size %q; valid sizes: small, normal, large, png, art_crop, border_crop", q.size)
+	}
+	if q.face != "" && q.face != faceFront && q.face != faceBack {
+		return fmt.Errorf("invalid face %q; valid faces: front, back", q.face)
+	}
+	if q.collectorNumber != "" && q.set == "" {
+		return errors.New("collector_number requires set")
+	}
+
+	return nil
+}
+
 func (s *MTGCommanderServer) handleGetCardImage(
 	ctx context.Context,
 	request mcp.CallToolRequest,
@@ -157,41 +184,70 @@ func (s *MTGCommanderServer) handleGetCardImage(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
+	q := imageQuery{name: name, language: defaultCardImageLanguage, size: defaultCardImageSize}
 	args := request.GetArguments()
-	language := defaultCardImageLanguage
-	if langVal, ok := args[paramLanguage].(string); ok && strings.TrimSpace(langVal) != "" {
-		language = strings.ToLower(strings.TrimSpace(langVal))
+	if v, ok := args[paramLanguage].(string); ok && strings.TrimSpace(v) != "" {
+		q.language = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := args[paramSize].(string); ok && strings.TrimSpace(v) != "" {
+		q.size = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := args[paramSet].(string); ok {
+		q.set = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := args[paramCollectorNumber].(string); ok {
+		q.collectorNumber = strings.TrimSpace(v)
+	}
+	if v, ok := args[paramFace].(string); ok && strings.TrimSpace(v) != "" {
+		q.face = strings.ToLower(strings.TrimSpace(v))
 	}
 
-	size := defaultCardImageSize
-	if sizeVal, ok := args[paramSize].(string); ok && strings.TrimSpace(sizeVal) != "" {
-		size = strings.ToLower(strings.TrimSpace(sizeVal))
-	}
-	if !isValidImageSize(size) {
-		return mcp.NewToolResultError(fmt.Sprintf(
-			"Invalid size %q. Valid sizes: small, normal, large, png, art_crop, border_crop", size,
-		)), nil
+	if validateErr := q.validate(); validateErr != nil {
+		return mcp.NewToolResultError(validateErr.Error()), nil
 	}
 
 	GetLogger().Info().
 		Str("tool", "get_card_image").
-		Str(paramName, name).
-		Str(paramLanguage, language).
-		Str(paramSize, size).
+		Str(paramName, q.name).Str(paramLanguage, q.language).Str(paramSize, q.size).
+		Str(paramSet, q.set).Str(paramCollectorNumber, q.collectorNumber).Str(paramFace, q.face).
 		Msg("Fetching card image")
 
-	card, usedLang, err := s.resolveCardForImage(ctx, name, language, size)
+	card, usedLang, err := s.resolveCardForImage(ctx, q)
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_card_image").Str(paramName, name).Msg("Card not found")
+		GetLogger().Error().Err(err).Str("tool", "get_card_image").Str(paramName, q.name).Msg("Card not found")
 		return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", err)), nil
 	}
 
-	images := cardImages(card, size)
+	images := cardImages(card, q.size)
 	if len(images) == 0 {
-		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", size, card.Name)), nil
+		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", q.size, card.Name)), nil
+	}
+	images, err = selectFace(images, q.face)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	return buildCardImageResult(ctx, card, usedLang, language, size, images)
+	return buildCardImageResult(ctx, card, usedLang, q.language, q.size, images)
+}
+
+// selectFace narrows images to the requested face. Empty keeps all; "front"/"back"
+// pick the first/second image, erroring when the requested face is absent.
+func selectFace(images []cardImage, face string) ([]cardImage, error) {
+	switch face {
+	case "":
+		return images, nil
+	case faceFront:
+		return images[:1], nil
+	case faceBack:
+		const backFaceIndex = 1
+		if len(images) <= backFaceIndex {
+			return nil, errors.New("no back face image available for this card")
+		}
+
+		return images[backFaceIndex : backFaceIndex+1], nil
+	default:
+		return nil, fmt.Errorf("invalid face %q; valid faces: front, back", face)
+	}
 }
 
 const (
@@ -282,7 +338,17 @@ func buildCardImageResult(
 	if fallback {
 		_, _ = fmt.Fprintf(&text, "*No '%s' printing found; showing English.*\n", requestedLang)
 	}
-	_, _ = fmt.Fprintf(&text, "**Language:** %s\n**Size:** %s\n\n", usedLang, size)
+	_, _ = fmt.Fprintf(&text, "**Language:** %s\n**Size:** %s\n", usedLang, size)
+	if card.Set != "" {
+		_, _ = fmt.Fprintf(
+			&text,
+			"**Set:** %s (%s) #%s\n",
+			card.SetName,
+			strings.ToUpper(card.Set),
+			card.CollectorNumber,
+		)
+	}
+	text.WriteString("\n")
 
 	data := cardImageData{Name: card.Name, Language: string(usedLang), Size: size, Fallback: fallback}
 	for _, img := range images {
@@ -414,7 +480,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 
 	setCode := ""
 	args := request.GetArguments()
-	if setVal, hasSet := args["set"]; hasSet {
+	if setVal, hasSet := args[paramSet]; hasSet {
 		if set, ok := setVal.(string); ok {
 			setCode = set
 		}
@@ -790,31 +856,104 @@ func cardImages(card scryfall.Card, size string) []cardImage {
 // the error is non-nil only when the English lookup itself fails.
 func (s *MTGCommanderServer) resolveCardForImage(
 	ctx context.Context,
-	name, language, size string,
+	q imageQuery,
 ) (scryfall.Card, scryfall.Lang, error) {
-	englishCard, err := s.scryfallClient.GetCardByName(ctx, name, false, scryfall.GetCardByNameOptions{})
+	// Prefer an explicit printing (set [+ collector number]); fall back to default.
+	if q.set != "" && q.collectorNumber != "" {
+		if card, ok := s.pinnedPrinting(ctx, q); ok {
+			return card, card.Lang, nil
+		}
+	}
+	if q.set != "" {
+		if card, ok := s.setPrinting(ctx, q); ok {
+			return card, card.Lang, nil
+		}
+	}
+
+	englishCard, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{})
 	if err != nil {
 		return scryfall.Card{}, "", err
 	}
 
-	if language == "" || language == string(scryfall.LangEnglish) {
+	if q.language == "" || q.language == string(scryfall.LangEnglish) {
 		return englishCard, scryfall.LangEnglish, nil
 	}
 
-	if localized, ok := s.findLocalizedCard(ctx, englishCard.Name, language, size); ok {
-		return localized, scryfall.Lang(language), nil
+	if localized, ok := s.findLocalizedCard(ctx, englishCard.Name, q.language, q.size, ""); ok {
+		return localized, scryfall.Lang(q.language), nil
 	}
 
 	return englishCard, scryfall.LangEnglish, nil
+}
+
+// pinnedPrinting fetches the exact printing for set + collector number (in the
+// requested language when non-English), reporting false to trigger a fallback.
+func (s *MTGCommanderServer) pinnedPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
+	var (
+		card scryfall.Card
+		err  error
+	)
+	if q.language != "" && q.language != string(scryfall.LangEnglish) {
+		card, err = s.scryfallClient.GetCardBySetCodeAndCollectorNumberInLang(
+			ctx, q.set, q.collectorNumber, scryfall.Lang(q.language))
+	} else {
+		card, err = s.scryfallClient.GetCardBySetCodeAndCollectorNumber(ctx, q.set, q.collectorNumber)
+	}
+	if err != nil {
+		GetLogger().Warn().Err(err).Str("tool", "get_card_image").
+			Str(paramSet, q.set).Str(paramCollectorNumber, q.collectorNumber).
+			Msg("Exact printing not found; falling back to default")
+		return scryfall.Card{}, false
+	}
+
+	// A set+collector-number lookup is name-independent, so guard against pinning a
+	// different card than the one requested (e.g. a wrong collector number).
+	if !cardMatchesName(card, q.name) {
+		GetLogger().Warn().Str("tool", "get_card_image").
+			Str(paramName, q.name).Str("printing", card.Name).
+			Msg("Pinned printing does not match the requested name; falling back to default")
+		return scryfall.Card{}, false
+	}
+
+	return card, len(cardImages(card, q.size)) > 0
+}
+
+// cardMatchesName reports whether card is (loosely) the card the user named. The
+// requested name may be fuzzy, so it matches when the printing's full name contains
+// it (case-insensitive) — which also covers "front // back" double-faced names.
+func cardMatchesName(card scryfall.Card, name string) bool {
+	return strings.Contains(strings.ToLower(card.Name), strings.ToLower(strings.TrimSpace(name)))
+}
+
+// setPrinting fetches the named card's printing within a set, preferring the
+// requested language, reporting false to trigger a fallback to the default printing.
+func (s *MTGCommanderServer) setPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
+	base, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{Set: q.set})
+	if err != nil {
+		GetLogger().Warn().Err(err).Str("tool", "get_card_image").
+			Str(paramSet, q.set).Msg("Set printing not found; falling back to default")
+		return scryfall.Card{}, false
+	}
+
+	if q.language != "" && q.language != string(scryfall.LangEnglish) {
+		if localized, ok := s.findLocalizedCard(ctx, base.Name, q.language, q.size, q.set); ok {
+			return localized, true
+		}
+	}
+
+	return base, len(cardImages(base, q.size)) > 0
 }
 
 // findLocalizedCard searches for a printing of the named card in the requested
 // language that has an image at the requested size.
 func (s *MTGCommanderServer) findLocalizedCard(
 	ctx context.Context,
-	canonicalName, language, size string,
+	canonicalName, language, size, set string,
 ) (scryfall.Card, bool) {
 	query := fmt.Sprintf(`!"%s" lang:%s`, canonicalName, language)
+	if set != "" {
+		query += " set:" + set
+	}
 
 	result, err := s.scryfallClient.SearchCards(ctx, query, scryfall.SearchCardsOptions{
 		IncludeMultilingual: true,
