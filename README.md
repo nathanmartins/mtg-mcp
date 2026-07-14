@@ -100,6 +100,14 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Results sorted by view count descending
     - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 
+#### Comprehensive Rules (3 tools)
+
+1. **get_rule** - Get a specific Comprehensive Rule by number (e.g. `702.19`), including its subrules.
+
+2. **search_rules** - Search the Comprehensive Rules text by keyword (default 10 results, max 20).
+
+3. **get_glossary_term** - Get a Comprehensive Rules glossary definition by term.
+
 #### EDHREC Meta Data (2 tools)
 
 1. **get_edhrec_recommendations** – Get EDHREC recommendations for a commander
@@ -129,6 +137,11 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Real-time data
     - Card names, types, and mana costs
     - Total count of banned cards
+
+3. **rules://comprehensive** - Full official Magic: The Gathering Comprehensive Rules (fetched from WotC, large)
+   - Fetched at runtime from the official WotC page
+   - Cached for repeated use
+   - Includes all rules sections and glossary
 
 ## Installation
 

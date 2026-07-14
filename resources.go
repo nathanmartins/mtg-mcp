@@ -48,7 +48,7 @@ Commander is a multiplayer format for Magic: The Gathering, emphasizing social i
 	return []mcp.ResourceContents{
 		&mcp.TextResourceContents{
 			URI:      request.Params.URI,
-			MIMEType: "text/plain",
+			MIMEType: mimeTypeTextPlain,
 			Text:     rules,
 		},
 	}, nil

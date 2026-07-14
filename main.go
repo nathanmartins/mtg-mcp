@@ -17,6 +17,8 @@ var (
 )
 
 const (
+	totalToolCount               = 17
+	totalResourceCount           = 3
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
 	maxPageSize                  = 100
@@ -31,6 +33,7 @@ const (
 	paramSize                    = "size"
 	defaultCardImageLanguage     = "en"
 	defaultCardImageSize         = imageSizeNormal
+	mimeTypeTextPlain            = "text/plain"
 
 	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
 	defaultArchidektBaseURL = "https://archidekt.com/api"
@@ -44,6 +47,7 @@ type MTGCommanderServer struct {
 	moxfieldBaseURL  string
 	archidektBaseURL string
 	edhrecBaseURL    string
+	rules            *rulesCache
 }
 
 // NewMTGCommanderServer creates a new MTG Commander MCP server.
@@ -58,6 +62,7 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 		moxfieldBaseURL:  defaultMoxfieldBaseURL,
 		archidektBaseURL: defaultArchidektBaseURL,
 		edhrecBaseURL:    defaultEDHRECBaseURL,
+		rules:            &rulesCache{},
 	}, nil
 }
 
@@ -333,6 +338,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	mcpServer.AddTool(cardImageTool, s.handleGetCardImage)
 
 	s.registerArchidektTools(mcpServer)
+	s.registerRulesTools(mcpServer)
 }
 
 // registerArchidektTools registers Archidekt-related MCP tools (split out to keep registerTools within length limits).
@@ -390,6 +396,42 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	mcpServer.AddTool(searchArchidektDecksTool, s.handleSearchArchidektDecks)
 }
 
+// registerRulesTools registers Comprehensive Rules lookup tools.
+func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
+	getRuleTool := mcp.NewTool(
+		"get_rule",
+		mcp.WithDescription("Get a specific Comprehensive Rule by number (e.g. '702.19'); includes its subrules"),
+		mcp.WithString("rule",
+			mcp.Required(),
+			mcp.Description("Rule number, e.g. '702.19' or a subrule like '702.19a'"),
+		),
+	)
+	mcpServer.AddTool(getRuleTool, s.handleGetRule)
+
+	searchRulesTool := mcp.NewTool(
+		"search_rules",
+		mcp.WithDescription("Search the Comprehensive Rules text by keyword"),
+		mcp.WithString("keyword",
+			mcp.Required(),
+			mcp.Description("Keyword or phrase to search for"),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Max results (default: 10, max: 20)"),
+		),
+	)
+	mcpServer.AddTool(searchRulesTool, s.handleSearchRules)
+
+	glossaryTool := mcp.NewTool(
+		"get_glossary_term",
+		mcp.WithDescription("Get a Comprehensive Rules glossary definition by term"),
+		mcp.WithString("term",
+			mcp.Required(),
+			mcp.Description("Glossary term, e.g. 'Trample'"),
+		),
+	)
+	mcpServer.AddTool(glossaryTool, s.handleGetGlossaryTerm)
+}
+
 // registerResources registers MCP resources.
 func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 	// Resource 1: Commander Rules
@@ -397,7 +439,7 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		"commander://rules",
 		"Commander Format Rules",
 		mcp.WithResourceDescription("Official Commander format rules and deck construction guidelines"),
-		mcp.WithMIMEType("text/plain"),
+		mcp.WithMIMEType(mimeTypeTextPlain),
 	)
 	mcpServer.AddResource(rulesResource, s.handleCommanderRules)
 
@@ -409,6 +451,15 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		mcp.WithMIMEType("application/json"),
 	)
 	mcpServer.AddResource(bannedResource, s.handleBannedListResource)
+
+	// Resource 3: Comprehensive Rules (full text, fetched from WotC)
+	comprehensiveResource := mcp.NewResource(
+		"rules://comprehensive",
+		"Magic Comprehensive Rules",
+		mcp.WithResourceDescription("Full official Magic: The Gathering Comprehensive Rules (large)"),
+		mcp.WithMIMEType(mimeTypeTextPlain),
+	)
+	mcpServer.AddResource(comprehensiveResource, s.handleComprehensiveRulesResource)
 
 	// Resource template: card image widget. get_card_image points _meta.ui.resourceUri
 	// at a ui://mtg-card/<payload> URI matching this template; the host reads it to
