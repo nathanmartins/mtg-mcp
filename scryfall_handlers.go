@@ -192,11 +192,10 @@ func (s *MTGCommanderServer) handleGetCardImage(
 		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", size, card.Name)), nil
 	}
 
-	return buildCardImageResult(ctx, card, usedLang, language, size, images)
+	return buildCardImageResult(card, usedLang, language, size, images), nil
 }
 
 const (
-	mimeHTML = "text/html"
 	// mimeMCPAppHTML is the MIME type required by the MCP Apps (io.modelcontextprotocol/ui)
 	// spec for a ui:// HTML resource; plain text/html is rejected as an unsupported format.
 	mimeMCPAppHTML = "text/html;profile=mcp-app"
@@ -205,27 +204,63 @@ const (
 	metaKeyUI          = "ui"
 	metaKeyResourceURI = "resourceUri"
 
-	cardImageHTMLHead = `<!doctype html><html><head><meta charset="utf-8"><style>` +
+	// cardImageURIPrefix prefixes the ui:// resource URI for a card image widget;
+	// the resolved image set is base64url(JSON)-encoded after it.
+	cardImageURIPrefix = "ui://mtg-card/"
+	// cardImageURITemplate is the RFC 6570 template registered for card image widgets.
+	cardImageURITemplate = cardImageURIPrefix + "{spec}"
+
+	cardWidgetHTMLHead = `<!doctype html><html><head><meta charset="utf-8"><style>` +
 		`body{margin:0;background:#0d0d0d;display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:12px}` +
 		`img{max-width:100%;height:auto;border-radius:14px}</style></head><body>`
-	cardImageHTMLTail = `</body></html>`
+	cardWidgetHTMLTail = `</body></html>`
+
+	// mcpAppHandshakeScript runs the MCP Apps postMessage handshake DEFENSIVELY: it
+	// sends ui/initialize then, via three triggers (the initialize result, the first
+	// ui/* message from the host, and a setTimeout fallback), the initialized +
+	// size-changed notifications — because on claude.ai web the ui/initialize response
+	// often never reaches the widget. size-changed is mandatory or the iframe stays blank.
+	mcpAppHandshakeScript = `<script>(function(){var n=1,done=false;` +
+		`function send(m,p){parent.postMessage({jsonrpc:"2.0",id:n++,method:m,params:p||{}},"*");}` +
+		`function note(m,p){parent.postMessage({jsonrpc:"2.0",method:m,params:p||{}},"*");}` +
+		`function size(){note("ui/notifications/size-changed",` +
+		`{width:document.body.scrollWidth,height:document.body.scrollHeight});}` +
+		`function ready(){if(done)return;done=true;note("ui/notifications/initialized",{});size();}` +
+		`addEventListener("message",function(e){var d=e.data||{};` +
+		`if((d.id===1&&d.result)||(typeof d.method==="string"&&d.method.lastIndexOf("ui/",0)===0))ready();});` +
+		`send("ui/initialize",{appCapabilities:{},clientInfo:{name:"mtg-mcp",version:"1.0.0"},` +
+		`protocolVersion:"2026-01-26"});` +
+		`setTimeout(ready,400);setTimeout(size,900);addEventListener("load",size);` +
+		`if(window.ResizeObserver){new ResizeObserver(size).observe(document.body);}` +
+		`})();</script>`
 )
 
-// buildCardImageResult downloads each face image and returns an MCP Apps (MCP-UI)
-// result: a `ui://` HTML resource with the image inlined as a base64 `data:` URI
-// (so the sandboxed iframe's CSP doesn't block an external fetch), referenced via
-// `_meta.ui.resourceUri`, plus a text summary with a clickable Scryfall link as a
-// fallback for clients that don't render the UI resource.
+// cardImagePayload is the image set encoded into a card image ui:// resource URI,
+// so the resource handler can rebuild and download the images on read.
+type cardImagePayload struct {
+	Name   string          `json:"name"`
+	Size   string          `json:"size"`
+	Images []cardImageFace `json:"images"`
+}
+
+// cardImageFace is one downloadable face within a cardImagePayload.
+type cardImageFace struct {
+	Face string `json:"face"`
+	URL  string `json:"url"`
+}
+
+// buildCardImageResult returns an MCP Apps (MCP-UI) result: a text summary with a
+// clickable Scryfall link per face (the fallback for clients that don't render UI
+// resources), plus a `_meta.ui.resourceUri` pointing at a `ui://mtg-card/` resource
+// that encodes the resolved image set. The host reads that resource to render the
+// widget; the download happens there (see handleCardImageUIResource), not here.
 func buildCardImageResult(
-	ctx context.Context,
 	card scryfall.Card,
 	usedLang scryfall.Lang,
 	requestedLang, size string,
 	images []cardImage,
-) (*mcp.CallToolResult, error) {
-	mimeType := imageMIMEType(size)
-
-	var text, imgs strings.Builder
+) *mcp.CallToolResult {
+	var text strings.Builder
 	_, _ = fmt.Fprintf(&text, "# %s\n", card.Name)
 	if usedLang == scryfall.LangEnglish && requestedLang != string(scryfall.LangEnglish) {
 		_, _ = fmt.Fprintf(&text, "*No '%s' printing found; showing English.*\n", requestedLang)
@@ -233,48 +268,85 @@ func buildCardImageResult(
 	_, _ = fmt.Fprintf(&text, "**Language:** %s\n**Size:** %s\n\n", usedLang, size)
 
 	for _, img := range images {
-		data, dlErr := cardImageBytesFetcher(ctx, img.url)
-		if dlErr != nil {
-			GetLogger().Error().
-				Err(dlErr).
-				Str("tool", "get_card_image").
-				Str("url", img.url).
-				Msg("Failed to download card image")
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to download image: %v", dlErr)), nil
-		}
-
-		alt := html.EscapeString(img.faceName)
-		encoded := base64.StdEncoding.EncodeToString(data)
-		_, _ = fmt.Fprintf(&imgs, `<img src="data:%s;base64,%s" alt="%s">`, mimeType, encoded, alt)
 		_, _ = fmt.Fprintf(&text, "[%s — view on Scryfall](%s)\n\n", img.faceName, img.url)
 	}
 
-	uiURI := cardImageUIURI(card)
-	result := &mcp.CallToolResult{
-		Content: []mcp.Content{
-			mcp.NewTextContent(text.String()),
-			mcp.NewEmbeddedResource(mcp.TextResourceContents{
-				URI:      uiURI,
-				MIMEType: mimeHTML,
-				Text:     cardImageHTMLHead + imgs.String() + cardImageHTMLTail,
-			}),
-		},
-	}
+	uiURI := cardImageUIURI(card.Name, size, images)
+	result := mcp.NewToolResultText(text.String())
 	result.Meta = mcp.NewMetaFromMap(map[string]any{
 		metaKeyUI: map[string]any{metaKeyResourceURI: uiURI},
 	})
 
-	return result, nil
+	return result
 }
 
-// cardImageUIURI builds the ui:// URI for a card's UI resource.
-func cardImageUIURI(card scryfall.Card) string {
-	slug := card.ID
-	if slug == "" {
-		slug = "image"
+// cardImageUIURI encodes the resolved image set into a ui://mtg-card/ resource URI
+// as base64url(JSON), so handleCardImageUIResource can decode and render it.
+func cardImageUIURI(name, size string, images []cardImage) string {
+	payload := cardImagePayload{Name: name, Size: size}
+	for _, img := range images {
+		payload.Images = append(payload.Images, cardImageFace{Face: img.faceName, URL: img.url})
 	}
 
-	return "ui://mtg-card/" + slug
+	data, _ := json.Marshal(payload)
+
+	return cardImageURIPrefix + base64.RawURLEncoding.EncodeToString(data)
+}
+
+// decodeCardImagePayload reverses cardImageUIURI, recovering the image set encoded
+// into a ui://mtg-card/ resource URI.
+func decodeCardImagePayload(uri string) (cardImagePayload, error) {
+	raw, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(uri, cardImageURIPrefix))
+	if err != nil {
+		return cardImagePayload{}, fmt.Errorf("decode card image URI: %w", err)
+	}
+
+	var payload cardImagePayload
+	if unmarshalErr := json.Unmarshal(raw, &payload); unmarshalErr != nil {
+		return cardImagePayload{}, fmt.Errorf("parse card image payload: %w", unmarshalErr)
+	}
+
+	return payload, nil
+}
+
+// handleCardImageUIResource serves the MCP Apps widget for a ui://mtg-card/ resource.
+// It decodes the image set from the URI, downloads each face, inlines it as a base64
+// `data:` URI (the sandboxed iframe's CSP blocks external fetches), and wraps the
+// images in the MCP Apps handshake script so claude.ai web renders the widget.
+func (s *MTGCommanderServer) handleCardImageUIResource(
+	ctx context.Context,
+	request mcp.ReadResourceRequest,
+) ([]mcp.ResourceContents, error) {
+	payload, err := decodeCardImagePayload(request.Params.URI)
+	if err != nil {
+		GetLogger().Error().Err(err).Str("tool", "get_card_image").
+			Str("uri", request.Params.URI).Msg("Invalid card image resource URI")
+		return nil, err
+	}
+
+	mimeType := imageMIMEType(payload.Size)
+
+	var imgs strings.Builder
+	for _, img := range payload.Images {
+		data, dlErr := cardImageBytesFetcher(ctx, img.URL)
+		if dlErr != nil {
+			GetLogger().Error().Err(dlErr).Str("tool", "get_card_image").
+				Str("url", img.URL).Msg("Failed to download card image")
+			return nil, fmt.Errorf("download card image: %w", dlErr)
+		}
+
+		encoded := base64.StdEncoding.EncodeToString(data)
+		_, _ = fmt.Fprintf(&imgs, `<img src="data:%s;base64,%s" alt="%s">`,
+			mimeType, encoded, html.EscapeString(img.Face))
+	}
+
+	return []mcp.ResourceContents{
+		&mcp.TextResourceContents{
+			URI:      request.Params.URI,
+			MIMEType: mimeMCPAppHTML,
+			Text:     cardWidgetHTMLHead + imgs.String() + mcpAppHandshakeScript + cardWidgetHTMLTail,
+		},
+	}, nil
 }
 
 func (s *MTGCommanderServer) handleCheckLegality(

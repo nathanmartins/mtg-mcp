@@ -30,19 +30,7 @@ const (
 		`img{max-width:100%;height:auto;border-radius:12px}` +
 		`</style></head><body><div class="ok">MCP-UI RENDER OK</div>`
 	uiRenderTestHTMLTail = `<p>If you see this box, the widget renders (data: image = images allowed).</p>` +
-		`<script>(function(){var n=1,done=false;` +
-		`function send(m,p){parent.postMessage({jsonrpc:"2.0",id:n++,method:m,params:p||{}},"*");}` +
-		`function note(m,p){parent.postMessage({jsonrpc:"2.0",method:m,params:p||{}},"*");}` +
-		`function size(){note("ui/notifications/size-changed",` +
-		`{width:document.body.scrollWidth,height:document.body.scrollHeight});}` +
-		`function ready(){if(done)return;done=true;note("ui/notifications/initialized",{});size();}` +
-		`addEventListener("message",function(e){var d=e.data||{};` +
-		`if((d.id===1&&d.result)||(typeof d.method==="string"&&d.method.lastIndexOf("ui/",0)===0))ready();});` +
-		`send("ui/initialize",{appCapabilities:{},clientInfo:{name:"mtg-mcp",version:"1.0.0"},` +
-		`protocolVersion:"2026-01-26"});` +
-		`setTimeout(ready,400);setTimeout(size,900);addEventListener("load",size);` +
-		`if(window.ResizeObserver){new ResizeObserver(size).observe(document.body);}` +
-		`})();</script></body></html>`
+		mcpAppHandshakeScript + `</body></html>`
 )
 
 // registerUIRenderTest wires the temporary UI-render probe (tool + ui:// resource).

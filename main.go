@@ -410,6 +410,17 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddResource(bannedResource, s.handleBannedListResource)
 
+	// Resource template: card image widget. get_card_image points _meta.ui.resourceUri
+	// at a ui://mtg-card/<payload> URI matching this template; the host reads it to
+	// render the MCP Apps widget with the inlined card image(s).
+	cardImageTemplate := mcp.NewResourceTemplate(
+		cardImageURITemplate,
+		"MTG Card Image",
+		mcp.WithTemplateDescription("Inline card image widget rendered for get_card_image"),
+		mcp.WithTemplateMIMEType(mimeMCPAppHTML),
+	)
+	mcpServer.AddResourceTemplate(cardImageTemplate, s.handleCardImageUIResource)
+
 	// TEMPORARY: UI-render probe (tool + ui:// resource). Remove once resolved.
 	s.registerUIRenderTest(mcpServer)
 }
