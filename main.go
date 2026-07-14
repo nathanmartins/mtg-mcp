@@ -17,7 +17,7 @@ var (
 )
 
 const (
-	totalToolCount               = 17
+	totalToolCount               = 19
 	totalResourceCount           = 3
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
@@ -398,6 +398,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 
 // registerRulesTools registers Comprehensive Rules lookup tools.
 func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
+	// Tool 17: Get Rule
 	getRuleTool := mcp.NewTool(
 		"get_rule",
 		mcp.WithDescription("Get a specific Comprehensive Rule by number (e.g. '702.19'); includes its subrules"),
@@ -408,6 +409,7 @@ func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(getRuleTool, s.handleGetRule)
 
+	// Tool 18: Search Rules
 	searchRulesTool := mcp.NewTool(
 		"search_rules",
 		mcp.WithDescription("Search the Comprehensive Rules text by keyword"),
@@ -421,6 +423,7 @@ func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(searchRulesTool, s.handleSearchRules)
 
+	// Tool 19: Get Glossary Term
 	glossaryTool := mcp.NewTool(
 		"get_glossary_term",
 		mcp.WithDescription("Get a Comprehensive Rules glossary definition by term"),
