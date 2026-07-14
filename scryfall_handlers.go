@@ -2,8 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -145,6 +148,226 @@ func (s *MTGCommanderServer) handleGetCardDetails(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
+// imageQuery holds the resolved get_card_image arguments.
+type imageQuery struct {
+	name            string
+	language        string
+	size            string
+	set             string
+	collectorNumber string
+	face            string
+}
+
+// validate reports the first invalid-argument error, or nil when the query is valid.
+func (q imageQuery) validate() error {
+	if !isValidImageSize(q.size) {
+		return fmt.Errorf(
+			"invalid size %q; valid sizes: small, normal, large, png, art_crop, border_crop", q.size)
+	}
+	if q.face != "" && q.face != faceFront && q.face != faceBack {
+		return fmt.Errorf("invalid face %q; valid faces: front, back", q.face)
+	}
+	if q.collectorNumber != "" && q.set == "" {
+		return errors.New("collector_number requires set")
+	}
+
+	return nil
+}
+
+func (s *MTGCommanderServer) handleGetCardImage(
+	ctx context.Context,
+	request mcp.CallToolRequest,
+) (*mcp.CallToolResult, error) {
+	name, err := request.RequireString(paramName)
+	if err != nil {
+		GetLogger().Error().Err(err).Str("tool", "get_card_image").Msg("Missing required name parameter")
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+
+	q := imageQuery{name: name, language: defaultCardImageLanguage, size: defaultCardImageSize}
+	args := request.GetArguments()
+	if v, ok := args[paramLanguage].(string); ok && strings.TrimSpace(v) != "" {
+		q.language = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := args[paramSize].(string); ok && strings.TrimSpace(v) != "" {
+		q.size = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := args[paramSet].(string); ok {
+		q.set = strings.ToLower(strings.TrimSpace(v))
+	}
+	if v, ok := args[paramCollectorNumber].(string); ok {
+		q.collectorNumber = strings.TrimSpace(v)
+	}
+	if v, ok := args[paramFace].(string); ok && strings.TrimSpace(v) != "" {
+		q.face = strings.ToLower(strings.TrimSpace(v))
+	}
+
+	if validateErr := q.validate(); validateErr != nil {
+		return mcp.NewToolResultError(validateErr.Error()), nil
+	}
+
+	GetLogger().Info().
+		Str("tool", "get_card_image").
+		Str(paramName, q.name).Str(paramLanguage, q.language).Str(paramSize, q.size).
+		Str(paramSet, q.set).Str(paramCollectorNumber, q.collectorNumber).Str(paramFace, q.face).
+		Msg("Fetching card image")
+
+	card, usedLang, err := s.resolveCardForImage(ctx, q)
+	if err != nil {
+		GetLogger().Error().Err(err).Str("tool", "get_card_image").Str(paramName, q.name).Msg("Card not found")
+		return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", err)), nil
+	}
+
+	images, err := cardImagesForFace(card, q.size, q.face)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if len(images) == 0 {
+		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", q.size, card.Name)), nil
+	}
+
+	return buildCardImageResult(ctx, card, usedLang, q.language, q.size, images)
+}
+
+const (
+	// mimeMCPAppHTML is the MIME type required by the MCP Apps (io.modelcontextprotocol/ui)
+	// spec for a ui:// HTML resource; plain text/html is rejected as an unsupported format.
+	mimeMCPAppHTML = "text/html;profile=mcp-app"
+
+	// MCP Apps UI extension _meta keys: _meta.ui.resourceUri.
+	metaKeyUI          = "ui"
+	metaKeyResourceURI = "resourceUri"
+
+	// cardImageWidgetURI is the fixed, statically-registered ui:// resource for the
+	// card image widget. get_card_image points _meta.ui.resourceUri here (on the tool
+	// AND the result); per-card images are delivered to the widget as structuredContent
+	// via the host's ui/notifications/tool-result — MCP Apps does not support resource
+	// templates, so the referenced URI must be a concrete, readable resource.
+	cardImageWidgetURI = "ui://mtg-card"
+
+	// cardImageAppScript runs the MCP Apps handshake (defensively) AND renders
+	// the card image(s) the host delivers via ui/notifications/tool-result: it reads
+	// result.structuredContent.images[].src (base64 data: URIs) and injects <img>. The
+	// widget resource is fixed, so the per-card data must arrive over this channel.
+	cardImageAppScript = `<script>(function(){var n=1,done=false;` +
+		`function note(m,p){parent.postMessage({jsonrpc:"2.0",method:m,params:p||{}},"*");}` +
+		`function req(m,p){parent.postMessage({jsonrpc:"2.0",id:n++,method:m,params:p||{}},"*");}` +
+		`function size(){note("ui/notifications/size-changed",` +
+		`{width:document.body.scrollWidth,height:document.body.scrollHeight});}` +
+		`function ready(){if(done)return;done=true;note("ui/notifications/initialized",{});size();}` +
+		`function render(res){var sc=res&&res.structuredContent;if(!sc||!sc.images)return;` +
+		`var root=document.getElementById("cards"),st=document.getElementById("status");if(!root)return;` +
+		`root.innerHTML="";for(var i=0;i<sc.images.length;i++){var im=document.createElement("img");` +
+		`im.src=sc.images[i].src;im.alt=sc.images[i].face||"";root.appendChild(im);}` +
+		`if(st)st.style.display=sc.images.length?"none":"block";size();}` +
+		`addEventListener("message",function(e){var d=e.data||{};` +
+		`if(d.method==="ui/notifications/tool-result"){render(d.params||{});}` +
+		`if((d.id===1&&d.result)||(typeof d.method==="string"&&d.method.lastIndexOf("ui/",0)===0))ready();});` +
+		`req("ui/initialize",{appCapabilities:{},clientInfo:{name:"mtg-mcp",version:"1.0.0"},` +
+		`protocolVersion:"2026-01-26"});` +
+		`setTimeout(ready,400);setTimeout(size,900);addEventListener("load",size);` +
+		`if(window.ResizeObserver){new ResizeObserver(size).observe(document.body);}` +
+		`})();</script>`
+
+	// cardImageWidgetHTML is the fixed MCP Apps document served for cardImageWidgetURI.
+	// It renders no card by itself; cardImageAppScript fills #cards from tool-result data.
+	cardImageWidgetHTML = `<!doctype html><html><head><meta charset="utf-8"><style>` +
+		`body{margin:0;background:#0d0d0d;color:#e6e6e6;font-family:system-ui,sans-serif}` +
+		`#cards{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;padding:12px}` +
+		`#cards img{max-width:100%;height:auto;border-radius:14px}` +
+		`#status{padding:16px;text-align:center;opacity:.7;font-size:14px}` +
+		`</style></head><body><div id="cards"></div>` +
+		`<div id="status">Loading card image…</div>` +
+		cardImageAppScript + `</body></html>`
+)
+
+// cardImageData is the structuredContent payload for get_card_image. The host
+// forwards it to the ui://mtg-card widget via ui/notifications/tool-result; the
+// widget renders images[].src (base64 data: URIs). It is not added to model context.
+type cardImageData struct {
+	Name     string           `json:"name"`
+	Language string           `json:"language"`
+	Size     string           `json:"size"`
+	Fallback bool             `json:"fallback"`
+	Images   []cardImageDatum `json:"images"`
+}
+
+// cardImageDatum is one rendered face: an alt label and a base64 data: image URI.
+type cardImageDatum struct {
+	Face string `json:"face"`
+	Src  string `json:"src"`
+}
+
+// buildCardImageResult downloads each face, inlines it as a base64 data: URI, and
+// returns an MCP Apps result: a text summary with a per-face Scryfall link (the
+// fallback for non-UI clients), the images in structuredContent (rendered by the
+// ui://mtg-card widget), and _meta.ui.resourceUri pointing at that fixed widget.
+func buildCardImageResult(
+	ctx context.Context,
+	card scryfall.Card,
+	usedLang scryfall.Lang,
+	requestedLang, size string,
+	images []cardImage,
+) (*mcp.CallToolResult, error) {
+	mimeType := imageMIMEType(size)
+	fallback := usedLang == scryfall.LangEnglish && requestedLang != string(scryfall.LangEnglish)
+
+	var text strings.Builder
+	_, _ = fmt.Fprintf(&text, "# %s\n", card.Name)
+	if fallback {
+		_, _ = fmt.Fprintf(&text, "*No '%s' printing found; showing English.*\n", requestedLang)
+	}
+	_, _ = fmt.Fprintf(&text, "**Language:** %s\n**Size:** %s\n", usedLang, size)
+	if card.Set != "" {
+		_, _ = fmt.Fprintf(
+			&text,
+			"**Set:** %s (%s) #%s\n",
+			card.SetName,
+			strings.ToUpper(card.Set),
+			card.CollectorNumber,
+		)
+	}
+	text.WriteString("\n")
+
+	data := cardImageData{Name: card.Name, Language: string(usedLang), Size: size, Fallback: fallback}
+	for _, img := range images {
+		raw, dlErr := cardImageBytesFetcher(ctx, img.url)
+		if dlErr != nil {
+			GetLogger().Error().Err(dlErr).Str("tool", "get_card_image").
+				Str("url", img.url).Msg("Failed to download card image")
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to download image: %v", dlErr)), nil
+		}
+
+		src := fmt.Sprintf("data:%s;base64,%s", mimeType, base64.StdEncoding.EncodeToString(raw))
+		data.Images = append(data.Images, cardImageDatum{Face: img.faceName, Src: src})
+		_, _ = fmt.Fprintf(&text, "[%s — view on Scryfall](%s)\n\n", img.faceName, img.url)
+	}
+
+	result := mcp.NewToolResultText(text.String())
+	result.StructuredContent = data
+	result.Meta = mcp.NewMetaFromMap(map[string]any{
+		metaKeyUI: map[string]any{metaKeyResourceURI: cardImageWidgetURI},
+	})
+
+	return result, nil
+}
+
+// handleCardImageUIResource serves the fixed MCP Apps widget for cardImageWidgetURI.
+// The document renders no card by itself; the host delivers the per-card images to it
+// as structuredContent via ui/notifications/tool-result (see cardImageAppScript).
+func (s *MTGCommanderServer) handleCardImageUIResource(
+	_ context.Context,
+	request mcp.ReadResourceRequest,
+) ([]mcp.ResourceContents, error) {
+	return []mcp.ResourceContents{
+		&mcp.TextResourceContents{
+			URI:      request.Params.URI,
+			MIMEType: mimeMCPAppHTML,
+			Text:     cardImageWidgetHTML,
+		},
+	}, nil
+}
+
 func (s *MTGCommanderServer) handleCheckLegality(
 	ctx context.Context,
 	request mcp.CallToolRequest,
@@ -233,7 +456,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 
 	setCode := ""
 	args := request.GetArguments()
-	if setVal, hasSet := args["set"]; hasSet {
+	if setVal, hasSet := args[paramSet]; hasSet {
 		if set, ok := setVal.(string); ok {
 			setCode = set
 		}
@@ -522,4 +745,258 @@ func convertToBRL(priceStr string, rate float64) float64 {
 	var price float64
 	_, _ = fmt.Sscanf(priceStr, "%f", &price)
 	return price * rate
+}
+
+const (
+	imageSizeSmall      = "small"
+	imageSizeNormal     = "normal"
+	imageSizeLarge      = "large"
+	imageSizePNG        = "png"
+	imageSizeArtCrop    = "art_crop"
+	imageSizeBorderCrop = "border_crop"
+
+	mimeJPEG = "image/jpeg"
+	mimePNG  = "image/png"
+)
+
+// cardImage is a single downloadable card face image.
+type cardImage struct {
+	faceName string
+	url      string
+}
+
+// isValidImageSize reports whether size is a recognized Scryfall image_uris key.
+func isValidImageSize(size string) bool {
+	_, ok := imageURLForSize(scryfall.ImageURIs{}, size)
+
+	return ok
+}
+
+// imageMIMEType returns the MIME type for a Scryfall image size. Only the "png"
+// size is a PNG; every other size is JPEG.
+func imageMIMEType(size string) string {
+	if size == imageSizePNG {
+		return mimePNG
+	}
+
+	return mimeJPEG
+}
+
+// imageURLForSize returns the URL for the requested size and whether size is a
+// recognized image_uris key.
+func imageURLForSize(iu scryfall.ImageURIs, size string) (string, bool) {
+	switch size {
+	case imageSizeSmall:
+		return iu.Small, true
+	case imageSizeNormal:
+		return iu.Normal, true
+	case imageSizeLarge:
+		return iu.Large, true
+	case imageSizePNG:
+		return iu.PNG, true
+	case imageSizeArtCrop:
+		return iu.ArtCrop, true
+	case imageSizeBorderCrop:
+		return iu.BorderCrop, true
+	default:
+		return "", false
+	}
+}
+
+// cardImages returns the downloadable images for a card at the requested size.
+// Single-faced cards yield one image; multi-faced cards (nil top-level ImageURIs)
+// yield one per face. Faces without a URL at that size are skipped.
+func cardImages(card scryfall.Card, size string) []cardImage {
+	images, _ := cardImagesForFace(card, size, "")
+
+	return images
+}
+
+// cardImagesForFace returns a card's downloadable images at the requested size,
+// narrowed to the requested face ("" = all, "front"/"back" = that face). Face
+// selection keys on the card's face order (front, then back) BEFORE filtering by
+// image availability, so a face that lacks an image at this size never shifts the
+// selection. Requesting a back face a card does not have is an error.
+func cardImagesForFace(card scryfall.Card, size, face string) ([]cardImage, error) {
+	if card.ImageURIs != nil {
+		if face == faceBack {
+			return nil, errors.New("no back face image available for this card")
+		}
+		if url, ok := imageURLForSize(*card.ImageURIs, size); ok && url != "" {
+			return []cardImage{{faceName: card.Name, url: url}}, nil
+		}
+
+		return nil, nil
+	}
+
+	faces := card.CardFaces
+	switch face {
+	case faceFront:
+		if len(faces) > 0 {
+			faces = faces[:1]
+		}
+	case faceBack:
+		const backFaceIndex = 1
+		if len(faces) <= backFaceIndex {
+			return nil, errors.New("no back face image available for this card")
+		}
+		faces = faces[backFaceIndex : backFaceIndex+1]
+	}
+
+	var images []cardImage
+	for _, f := range faces {
+		if url, ok := imageURLForSize(f.ImageURIs, size); ok && url != "" {
+			images = append(images, cardImage{faceName: f.Name, url: url})
+		}
+	}
+
+	return images, nil
+}
+
+// resolveCardForImage resolves the card to render. It first fetches the canonical
+// English printing (also the fallback), then—if a non-English language is
+// requested—looks up a localized printing that has an image, falling back to
+// English when none exists. Returns the chosen card and the language actually used;
+// the error is non-nil only when the English lookup itself fails.
+func (s *MTGCommanderServer) resolveCardForImage(
+	ctx context.Context,
+	q imageQuery,
+) (scryfall.Card, scryfall.Lang, error) {
+	// Prefer an explicit printing (set [+ collector number]); fall back to default.
+	if q.set != "" && q.collectorNumber != "" {
+		if card, ok := s.pinnedPrinting(ctx, q); ok {
+			return card, card.Lang, nil
+		}
+	}
+	if q.set != "" {
+		if card, ok := s.setPrinting(ctx, q); ok {
+			return card, card.Lang, nil
+		}
+	}
+
+	englishCard, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{})
+	if err != nil {
+		return scryfall.Card{}, "", err
+	}
+
+	if q.language == "" || q.language == string(scryfall.LangEnglish) {
+		return englishCard, scryfall.LangEnglish, nil
+	}
+
+	if localized, ok := s.findLocalizedCard(ctx, englishCard.Name, q.language, q.size, ""); ok {
+		return localized, scryfall.Lang(q.language), nil
+	}
+
+	return englishCard, scryfall.LangEnglish, nil
+}
+
+// pinnedPrinting fetches the exact printing for set + collector number (in the
+// requested language when non-English), reporting false to trigger a fallback.
+func (s *MTGCommanderServer) pinnedPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
+	var (
+		card scryfall.Card
+		err  error
+	)
+	if q.language != "" && q.language != string(scryfall.LangEnglish) {
+		card, err = s.scryfallClient.GetCardBySetCodeAndCollectorNumberInLang(
+			ctx, q.set, q.collectorNumber, scryfall.Lang(q.language))
+	} else {
+		card, err = s.scryfallClient.GetCardBySetCodeAndCollectorNumber(ctx, q.set, q.collectorNumber)
+	}
+	if err != nil {
+		GetLogger().Warn().Err(err).Str("tool", "get_card_image").
+			Str(paramSet, q.set).Str(paramCollectorNumber, q.collectorNumber).
+			Msg("Exact printing not found; falling back to default")
+		return scryfall.Card{}, false
+	}
+
+	// A set+collector-number lookup is name-independent, so guard against pinning a
+	// different card than the one requested (e.g. a wrong collector number).
+	if !cardMatchesName(card, q.name) {
+		GetLogger().Warn().Str("tool", "get_card_image").
+			Str(paramName, q.name).Str("printing", card.Name).
+			Msg("Pinned printing does not match the requested name; falling back to default")
+		return scryfall.Card{}, false
+	}
+
+	return card, len(cardImages(card, q.size)) > 0
+}
+
+// cardMatchesName reports whether card is (loosely) the card the user named. The
+// requested name may be fuzzy, so it matches when the printing's full name contains
+// it (case-insensitive) — which also covers "front // back" double-faced names.
+func cardMatchesName(card scryfall.Card, name string) bool {
+	return strings.Contains(strings.ToLower(card.Name), strings.ToLower(strings.TrimSpace(name)))
+}
+
+// setPrinting fetches the named card's printing within a set, preferring the
+// requested language, reporting false to trigger a fallback to the default printing.
+func (s *MTGCommanderServer) setPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
+	base, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{Set: q.set})
+	if err != nil {
+		GetLogger().Warn().Err(err).Str("tool", "get_card_image").
+			Str(paramSet, q.set).Msg("Set printing not found; falling back to default")
+		return scryfall.Card{}, false
+	}
+
+	if q.language != "" && q.language != string(scryfall.LangEnglish) {
+		if localized, ok := s.findLocalizedCard(ctx, base.Name, q.language, q.size, q.set); ok {
+			return localized, true
+		}
+	}
+
+	return base, len(cardImages(base, q.size)) > 0
+}
+
+// findLocalizedCard searches for a printing of the named card in the requested
+// language that has an image at the requested size.
+func (s *MTGCommanderServer) findLocalizedCard(
+	ctx context.Context,
+	canonicalName, language, size, set string,
+) (scryfall.Card, bool) {
+	query := fmt.Sprintf(`!"%s" lang:%s`, canonicalName, language)
+	if set != "" {
+		query += " set:" + set
+	}
+
+	result, err := s.scryfallClient.SearchCards(ctx, query, scryfall.SearchCardsOptions{
+		IncludeMultilingual: true,
+	})
+	if err != nil {
+		return scryfall.Card{}, false
+	}
+
+	for _, card := range result.Cards {
+		if len(cardImages(card, size)) > 0 {
+			return card, true
+		}
+	}
+
+	return scryfall.Card{}, false
+}
+
+// cardImageBytesFetcher downloads a card image and returns its raw bytes.
+// It is a package variable so tests can substitute a deterministic implementation.
+var cardImageBytesFetcher = fetchCardImageBytes //nolint:gochecknoglobals // test seam for the image handler
+
+// fetchCardImageBytes downloads the image at the given HTTPS URL.
+func fetchCardImageBytes(ctx context.Context, rawURL string) ([]byte, error) {
+	return getImageBytes(ctx, rawURL, HTTPGet)
+}
+
+// getImageBytes downloads and reads an image body using the provided getter.
+func getImageBytes(ctx context.Context, rawURL string, get httpGetter) ([]byte, error) {
+	resp, err := get(ctx, rawURL)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("image download failed with status %d", resp.StatusCode)
+	}
+
+	return io.ReadAll(resp.Body)
 }

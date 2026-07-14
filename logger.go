@@ -40,9 +40,10 @@ func InitLogger(logFilePath string) error {
 		return err
 	}
 
-	// Console writer with colors
+	// Console writer with colors. MUST be stderr: the MCP stdio transport owns
+	// stdout, so any diagnostics on stdout corrupt the JSON-RPC stream.
 	consoleWriter := zerolog.ConsoleWriter{
-		Out:        os.Stdout,
+		Out:        os.Stderr,
 		TimeFormat: time.RFC3339,
 		NoColor:    false,
 	}

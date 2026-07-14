@@ -13,7 +13,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 ### Tools (AI-Callable Functions)
 
-#### Scryfall Card Data (7 tools)
+#### Scryfall Card Data (8 tools)
 
 1. **search_cards** – Search for MTG cards using Scryfall search syntax
     - Supports advanced queries (colors, types, abilities, etc.)
@@ -54,6 +54,12 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Commander legality check
     - Color identity validation
     - Supports JSON array or text format decklists
+
+8. **get_card_image** – Get a card's image, localized by language
+    - Language-specific printing with English fallback
+    - Selectable size (small, normal, large, png, art_crop, border_crop)
+    - Renders inline in MCP Apps hosts via a `ui://mtg-card` widget
+    - Text summary with a Scryfall link as a fallback
 
 #### Moxfield Integration (3 tools)
 
