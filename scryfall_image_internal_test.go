@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,48 +24,17 @@ func stubImageFetcher(t *testing.T) {
 	t.Cleanup(func() { cardImageBytesFetcher = prev })
 }
 
-// failIfFetched fails the test if the image download seam is invoked, proving the
-// tool call performs no download itself (that is deferred to the ui:// resource read).
-func failIfFetched(t *testing.T) {
+// structuredCardData returns the cardImageData carried in a tool result's
+// structuredContent (the per-call data the host forwards to the ui:// widget).
+func structuredCardData(t *testing.T, res *mcp.CallToolResult) cardImageData {
 	t.Helper()
 
-	prev := cardImageBytesFetcher
-	cardImageBytesFetcher = func(_ context.Context, rawURL string) ([]byte, error) {
-		t.Errorf("unexpected image download during tool call: %s", rawURL)
-		return nil, nil
-	}
-	t.Cleanup(func() { cardImageBytesFetcher = prev })
-}
-
-// uiPayload mirrors the JSON encoded into a ui://mtg-card/ resource URI.
-type uiPayload struct {
-	Name   string `json:"name"`
-	Size   string `json:"size"`
-	Images []struct {
-		Face string `json:"face"`
-		URL  string `json:"url"`
-	} `json:"images"`
-}
-
-// decodedCardImageURI decodes the payload carried by a result's _meta.ui.resourceUri.
-func decodedCardImageURI(t *testing.T, res *mcp.CallToolResult) uiPayload {
-	t.Helper()
-
-	const prefix = "ui://mtg-card/"
-	uri := uiResourceURI(t, res)
-	if !strings.HasPrefix(uri, prefix) {
-		t.Fatalf("resourceUri %q missing prefix %q", uri, prefix)
-	}
-	raw, err := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(uri, prefix))
-	if err != nil {
-		t.Fatalf("resourceUri payload not base64url: %v", err)
-	}
-	var p uiPayload
-	if unmarshalErr := json.Unmarshal(raw, &p); unmarshalErr != nil {
-		t.Fatalf("resourceUri payload not JSON: %v", unmarshalErr)
+	data, ok := res.StructuredContent.(cardImageData)
+	if !ok {
+		t.Fatalf("structuredContent is not cardImageData: %T", res.StructuredContent)
 	}
 
-	return p
+	return data
 }
 
 // firstTextResource returns the single TextResourceContents from a resource read,
@@ -173,11 +141,27 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 			t.Error("expected error result for missing card")
 		}
 	})
+
+	t.Run("download failure returns error", func(t *testing.T) {
+		prev := cardImageBytesFetcher
+		cardImageBytesFetcher = func(context.Context, string) ([]byte, error) {
+			return nil, http.ErrHandlerTimeout
+		}
+		t.Cleanup(func() { cardImageBytesFetcher = prev })
+
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonResponse(w, solRingImageJSON)
+		})
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{"name": "Sol Ring"}))
+		if !res.IsError {
+			t.Error("expected error result when the image download fails")
+		}
+	})
 }
 
 func TestHandleGetCardImageRendering(t *testing.T) {
-	t.Run("english single-faced card encodes a ui:// resource URI", func(t *testing.T) {
-		failIfFetched(t)
+	t.Run("english single-faced card returns structuredContent + fixed ui:// URI", func(t *testing.T) {
+		stubImageFetcher(t)
 		searched := false
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/search") {
@@ -201,20 +185,28 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			"# Sol Ring", "**Language:** en", "**Size:** normal",
 			"view on Scryfall](https://img.test/en-normal.jpg)")
 
-		p := decodedCardImageURI(t, res)
-		if p.Name != "Sol Ring" || p.Size != imageSizeNormal {
-			t.Errorf("payload = {name:%q size:%q}, want {Sol Ring, normal}", p.Name, p.Size)
+		// The tool points at the fixed widget resource (not a per-card URI).
+		if got := uiResourceURI(t, res); got != cardImageWidgetURI {
+			t.Errorf("_meta.ui.resourceUri = %q, want %q", got, cardImageWidgetURI)
 		}
-		if len(p.Images) != 1 {
-			t.Fatalf("expected 1 image in payload, got %d", len(p.Images))
+
+		data := structuredCardData(t, res)
+		if data.Name != "Sol Ring" || data.Language != "en" || data.Size != imageSizeNormal || data.Fallback {
+			t.Errorf("structured data = %+v, want {Sol Ring, en, normal, fallback:false}", data)
 		}
-		if p.Images[0].Face != "Sol Ring" || p.Images[0].URL != "https://img.test/en-normal.jpg" {
-			t.Errorf("image = %+v, want {Sol Ring, .../en-normal.jpg}", p.Images[0])
+		if len(data.Images) != 1 {
+			t.Fatalf("expected 1 image, got %d", len(data.Images))
+		}
+		enSrc := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(
+			[]byte("IMG:https://img.test/en-normal.jpg"),
+		)
+		if data.Images[0].Face != "Sol Ring" || data.Images[0].Src != enSrc {
+			t.Errorf("image = %+v, want face 'Sol Ring' with the en-normal data URI", data.Images[0])
 		}
 	})
 
-	t.Run("size parameter is carried in the payload", func(t *testing.T) {
-		failIfFetched(t)
+	t.Run("size parameter selects png data URI", func(t *testing.T) {
+		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
@@ -223,19 +215,20 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			"size": "png",
 		}))
 
-		p := decodedCardImageURI(t, res)
-		if p.Size != imageSizePNG {
-			t.Errorf("payload size = %q, want png", p.Size)
+		data := structuredCardData(t, res)
+		if data.Size != imageSizePNG {
+			t.Errorf("data size = %q, want png", data.Size)
 		}
-		if len(p.Images) != 1 || p.Images[0].URL != "https://img.test/en.png" {
-			t.Errorf("payload images = %+v, want the png URL", p.Images)
+		pngSrc := "data:image/png;base64," + base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en.png"))
+		if len(data.Images) != 1 || data.Images[0].Src != pngSrc {
+			t.Errorf("images = %+v, want the png data URI", data.Images)
 		}
 		assertContainsAll(t, resultText(t, res),
 			"**Size:** png", "view on Scryfall](https://img.test/en.png)")
 	})
 
 	t.Run("double-faced card yields one image per face", func(t *testing.T) {
-		failIfFetched(t)
+		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverImageJSON)
 		})
@@ -244,19 +237,21 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		p := decodedCardImageURI(t, res)
-		if len(p.Images) != 2 {
-			t.Fatalf("expected 2 images in payload, got %d", len(p.Images))
+		data := structuredCardData(t, res)
+		if len(data.Images) != 2 {
+			t.Fatalf("expected 2 images, got %d", len(data.Images))
 		}
-		if p.Images[0].URL != "https://img.test/front.jpg" || p.Images[1].URL != "https://img.test/back.jpg" {
-			t.Errorf("payload images = %+v, want front.jpg then back.jpg", p.Images)
+		front := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/front.jpg"))
+		back := "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/back.jpg"))
+		if data.Images[0].Src != front || data.Images[1].Src != back {
+			t.Errorf("images = %+v, want front then back data URIs", data.Images)
 		}
 	})
 }
 
 func TestHandleGetCardImageLanguage(t *testing.T) {
 	t.Run("localized italian printing", func(t *testing.T) {
-		failIfFetched(t)
+		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/cards/named"):
@@ -280,10 +275,13 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 		if strings.Contains(text, "showing English") {
 			t.Errorf("should not report a fallback when the localized printing exists:\n%s", text)
 		}
+		if data := structuredCardData(t, res); data.Language != "it" || data.Fallback {
+			t.Errorf("structured data = %+v, want language it, fallback false", data)
+		}
 	})
 
 	t.Run("falls back to english when no localized printing", func(t *testing.T) {
-		failIfFetched(t)
+		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/search") {
 				scryfallError(w, http.StatusNotFound)
@@ -301,91 +299,35 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 		}
 		assertContainsAll(t, resultText(t, res),
 			"No 'it' printing found; showing English.", "**Language:** en", "https://img.test/en-normal.jpg")
+		if data := structuredCardData(t, res); data.Language != "en" || !data.Fallback {
+			t.Errorf("structured data = %+v, want language en, fallback true", data)
+		}
 	})
 }
 
 func TestHandleCardImageUIResource(t *testing.T) {
-	// uriFor drives the tool to obtain the ui:// resource URI for a card fixture.
-	uriFor := func(t *testing.T, cardJSON string, args map[string]any) (*MTGCommanderServer, string) {
-		t.Helper()
-		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
-			jsonResponse(w, cardJSON)
-		})
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(args))
-		if err != nil || res.IsError {
-			t.Fatalf("handleGetCardImage failed: err=%v result=%v", err, res)
-		}
+	// The widget is a fixed, static resource: it renders no card itself and performs
+	// no download. Per-card images arrive via ui/notifications/tool-result, so the
+	// widget script reads structuredContent.images and runs the MCP Apps handshake.
+	s := &MTGCommanderServer{}
 
-		return s, uiResourceURI(t, res)
+	contents, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(cardImageWidgetURI))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-
-	t.Run("renders an mcp-app widget with an inlined image and handshake", func(t *testing.T) {
-		stubImageFetcher(t)
-		s, uri := uriFor(t, solRingImageJSON, map[string]any{"name": "Sol Ring"})
-
-		contents, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(uri))
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		trc := firstTextResource(t, contents)
-		if trc.MIMEType != mimeMCPAppHTML {
-			t.Errorf("mime = %q, want %q", trc.MIMEType, mimeMCPAppHTML)
-		}
-		if trc.URI != uri {
-			t.Errorf("resource URI = %q, want %q", trc.URI, uri)
-		}
-		enData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en-normal.jpg"))
-		assertContainsAll(t, trc.Text,
-			"<img ", "data:image/jpeg;base64,"+enData,
-			"ui/initialize", "ui/notifications/initialized", "ui/notifications/size-changed")
-	})
-
-	t.Run("png size selects the png mime", func(t *testing.T) {
-		stubImageFetcher(t)
-		s, uri := uriFor(t, solRingImageJSON, map[string]any{"name": "Sol Ring", "size": "png"})
-
-		contents, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(uri))
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		pngData := base64.StdEncoding.EncodeToString([]byte("IMG:https://img.test/en.png"))
-		assertContainsAll(t, firstTextResource(t, contents).Text, "data:image/png;base64,"+pngData)
-	})
-
-	t.Run("double-faced card inlines one image per face", func(t *testing.T) {
-		stubImageFetcher(t)
-		s, uri := uriFor(t, delverImageJSON, map[string]any{"name": "Delver of Secrets"})
-
-		contents, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(uri))
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if n := strings.Count(firstTextResource(t, contents).Text, "data:image/jpeg;base64,"); n != 2 {
-			t.Fatalf("expected 2 inlined images, got %d", n)
-		}
-	})
-
-	t.Run("download failure returns an error", func(t *testing.T) {
-		s, uri := uriFor(t, solRingImageJSON, map[string]any{"name": "Sol Ring"})
-
-		prev := cardImageBytesFetcher
-		cardImageBytesFetcher = func(context.Context, string) ([]byte, error) {
-			return nil, http.ErrHandlerTimeout
-		}
-		t.Cleanup(func() { cardImageBytesFetcher = prev })
-
-		if _, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(uri)); err == nil {
-			t.Error("expected an error when the image download fails")
-		}
-	})
-
-	t.Run("malformed resource URI returns an error", func(t *testing.T) {
-		s := &MTGCommanderServer{}
-		_, err := s.handleCardImageUIResource(context.Background(), readResourceRequest("ui://mtg-card/!not-base64!"))
-		if err == nil {
-			t.Error("expected an error for a malformed resource URI")
-		}
-	})
+	trc := firstTextResource(t, contents)
+	if trc.MIMEType != mimeMCPAppHTML {
+		t.Errorf("mime = %q, want %q", trc.MIMEType, mimeMCPAppHTML)
+	}
+	if trc.URI != cardImageWidgetURI {
+		t.Errorf("resource URI = %q, want %q", trc.URI, cardImageWidgetURI)
+	}
+	assertContainsAll(t, trc.Text,
+		`id="cards"`, "structuredContent", "ui/notifications/tool-result",
+		"ui/initialize", "ui/notifications/initialized", "ui/notifications/size-changed")
+	if strings.Contains(trc.Text, "data:image/") {
+		t.Error("fixed widget resource must not embed a card image; images arrive via tool-result")
+	}
 }
 
 func TestImageURLForSize(t *testing.T) {

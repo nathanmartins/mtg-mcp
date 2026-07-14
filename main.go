@@ -335,6 +335,11 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 			),
 		),
 	)
+	// Associate the tool with its MCP Apps widget at registration (the spec binds UI
+	// via the tool's _meta.ui, enabling the host to prefetch the resource).
+	cardImageTool.Meta = mcp.NewMetaFromMap(map[string]any{
+		metaKeyUI: map[string]any{metaKeyResourceURI: cardImageWidgetURI},
+	})
 	mcpServer.AddTool(cardImageTool, s.handleGetCardImage)
 
 	s.registerArchidektTools(mcpServer)
@@ -464,16 +469,17 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddResource(comprehensiveResource, s.handleComprehensiveRulesResource)
 
-	// Resource template: card image widget. get_card_image points _meta.ui.resourceUri
-	// at a ui://mtg-card/<payload> URI matching this template; the host reads it to
-	// render the MCP Apps widget with the inlined card image(s).
-	cardImageTemplate := mcp.NewResourceTemplate(
-		cardImageURITemplate,
+	// Card image widget: a fixed MCP Apps resource. get_card_image points
+	// _meta.ui.resourceUri here (on the tool + result); per-card images arrive at the
+	// widget as structuredContent via the host's ui/notifications/tool-result. MCP Apps
+	// does not support resource templates, so this must be a concrete resource.
+	cardImageResource := mcp.NewResource(
+		cardImageWidgetURI,
 		"MTG Card Image",
-		mcp.WithTemplateDescription("Inline card image widget rendered for get_card_image"),
-		mcp.WithTemplateMIMEType(mimeMCPAppHTML),
+		mcp.WithResourceDescription("Inline card image widget rendered for get_card_image"),
+		mcp.WithMIMEType(mimeMCPAppHTML),
 	)
-	mcpServer.AddResourceTemplate(cardImageTemplate, s.handleCardImageUIResource)
+	mcpServer.AddResource(cardImageResource, s.handleCardImageUIResource)
 
 	// TEMPORARY: UI-render probe (tool + ui:// resource). Remove once resolved.
 	s.registerUIRenderTest(mcpServer)

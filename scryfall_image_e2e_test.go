@@ -44,6 +44,12 @@ func TestGetCardImageEnglishE2E(t *testing.T) {
 		t.Errorf("expected English language marker, got:\n%s", text)
 	}
 
+	data := structuredCardData(t, res)
+	if len(data.Images) != 1 || !strings.HasPrefix(data.Images[0].Src, "data:image/jpeg;base64,") {
+		t.Fatalf("expected one base64 jpeg data URI in structuredContent, got %+v", data.Images)
+	}
+
+	// The widget resource is fixed and served as an MCP Apps document.
 	contents, err := s.handleCardImageUIResource(ctx, readResourceRequest(uiResourceURI(t, res)))
 	if err != nil {
 		t.Fatalf("handleCardImageUIResource() failed: %v", err)
@@ -52,10 +58,7 @@ func TestGetCardImageEnglishE2E(t *testing.T) {
 	if trc.MIMEType != mimeMCPAppHTML {
 		t.Errorf("resource mime = %q, want %q", trc.MIMEType, mimeMCPAppHTML)
 	}
-	if !strings.Contains(trc.Text, "data:image/jpeg;base64,") {
-		t.Fatal("expected a base64 data URI image in the UI resource")
-	}
-	t.Logf("✓ Rendered Sol Ring UI resource (%d chars HTML)", len(trc.Text))
+	t.Logf("✓ Sol Ring: %d-byte data URI, %d-byte widget HTML", len(data.Images[0].Src), len(trc.Text))
 }
 
 // TestGetCardImageItalianE2E fetches an Italian printing (Sol Ring -> Anello Solare).
@@ -83,12 +86,12 @@ func TestGetCardImageItalianE2E(t *testing.T) {
 	if !strings.Contains(text, "**Language:** it") {
 		t.Errorf("expected Italian printing, got:\n%s", text)
 	}
-	contents, err := s.handleCardImageUIResource(ctx, readResourceRequest(uiResourceURI(t, res)))
-	if err != nil {
-		t.Fatalf("handleCardImageUIResource() failed: %v", err)
+	data := structuredCardData(t, res)
+	if data.Language != "it" {
+		t.Errorf("structured language = %q, want it", data.Language)
 	}
-	if !strings.Contains(firstTextResource(t, contents).Text, "data:image/") {
-		t.Error("expected a data URI image in the Italian UI resource")
+	if len(data.Images) == 0 || !strings.HasPrefix(data.Images[0].Src, "data:image/") {
+		t.Errorf("expected a data URI image in structuredContent, got %+v", data.Images)
 	}
 }
 
@@ -131,11 +134,7 @@ func TestGetCardImageDoubleFacedE2E(t *testing.T) {
 		t.Fatalf("handleGetCardImage() failed: %v", err)
 	}
 
-	contents, err := s.handleCardImageUIResource(ctx, readResourceRequest(uiResourceURI(t, res)))
-	if err != nil {
-		t.Fatalf("handleCardImageUIResource() failed: %v", err)
-	}
-	if n := strings.Count(firstTextResource(t, contents).Text, "data:image/jpeg;base64,"); n != 2 {
-		t.Fatalf("expected 2 inlined images for a double-faced card, got %d", n)
+	if n := len(structuredCardData(t, res).Images); n != 2 {
+		t.Fatalf("expected 2 images in structuredContent for a double-faced card, got %d", n)
 	}
 }
