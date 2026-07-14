@@ -218,36 +218,15 @@ func (s *MTGCommanderServer) handleGetCardImage(
 		return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", err)), nil
 	}
 
-	images := cardImages(card, q.size)
-	if len(images) == 0 {
-		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", q.size, card.Name)), nil
-	}
-	images, err = selectFace(images, q.face)
+	images, err := cardImagesForFace(card, q.size, q.face)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
+	if len(images) == 0 {
+		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", q.size, card.Name)), nil
+	}
 
 	return buildCardImageResult(ctx, card, usedLang, q.language, q.size, images)
-}
-
-// selectFace narrows images to the requested face. Empty keeps all; "front"/"back"
-// pick the first/second image, erroring when the requested face is absent.
-func selectFace(images []cardImage, face string) ([]cardImage, error) {
-	switch face {
-	case "":
-		return images, nil
-	case faceFront:
-		return images[:1], nil
-	case faceBack:
-		const backFaceIndex = 1
-		if len(images) <= backFaceIndex {
-			return nil, errors.New("no back face image available for this card")
-		}
-
-		return images[backFaceIndex : backFaceIndex+1], nil
-	default:
-		return nil, fmt.Errorf("invalid face %q; valid faces: front, back", face)
-	}
 }
 
 const (
@@ -380,9 +359,6 @@ func (s *MTGCommanderServer) handleCardImageUIResource(
 	_ context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
-	GetLogger().Info().Str("tool", "get_card_image").Str("uri", request.Params.URI).
-		Msg("Serving card image widget resource")
-
 	return []mcp.ResourceContents{
 		&mcp.TextResourceContents{
 			URI:      request.Params.URI,
@@ -831,22 +807,50 @@ func imageURLForSize(iu scryfall.ImageURIs, size string) (string, bool) {
 // Single-faced cards yield one image; multi-faced cards (nil top-level ImageURIs)
 // yield one per face. Faces without a URL at that size are skipped.
 func cardImages(card scryfall.Card, size string) []cardImage {
+	images, _ := cardImagesForFace(card, size, "")
+
+	return images
+}
+
+// cardImagesForFace returns a card's downloadable images at the requested size,
+// narrowed to the requested face ("" = all, "front"/"back" = that face). Face
+// selection keys on the card's face order (front, then back) BEFORE filtering by
+// image availability, so a face that lacks an image at this size never shifts the
+// selection. Requesting a back face a card does not have is an error.
+func cardImagesForFace(card scryfall.Card, size, face string) ([]cardImage, error) {
 	if card.ImageURIs != nil {
+		if face == faceBack {
+			return nil, errors.New("no back face image available for this card")
+		}
 		if url, ok := imageURLForSize(*card.ImageURIs, size); ok && url != "" {
-			return []cardImage{{faceName: card.Name, url: url}}
+			return []cardImage{{faceName: card.Name, url: url}}, nil
 		}
 
-		return nil
+		return nil, nil
+	}
+
+	faces := card.CardFaces
+	switch face {
+	case faceFront:
+		if len(faces) > 0 {
+			faces = faces[:1]
+		}
+	case faceBack:
+		const backFaceIndex = 1
+		if len(faces) <= backFaceIndex {
+			return nil, errors.New("no back face image available for this card")
+		}
+		faces = faces[backFaceIndex : backFaceIndex+1]
 	}
 
 	var images []cardImage
-	for _, face := range card.CardFaces {
-		if url, ok := imageURLForSize(face.ImageURIs, size); ok && url != "" {
-			images = append(images, cardImage{faceName: face.Name, url: url})
+	for _, f := range faces {
+		if url, ok := imageURLForSize(f.ImageURIs, size); ok && url != "" {
+			images = append(images, cardImage{faceName: f.Name, url: url})
 		}
 	}
 
-	return images
+	return images, nil
 }
 
 // resolveCardForImage resolves the card to render. It first fetches the canonical

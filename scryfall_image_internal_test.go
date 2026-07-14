@@ -109,6 +109,18 @@ const (
 		"legalities":{"commander":"legal"}
 	}`
 
+	// delverFrontlessJSON is a double-faced card whose FRONT lacks a "normal" image
+	// (only "large") while the BACK has "normal" — used to prove face selection keys
+	// on the card's face order, not on the image-filtered slice position.
+	delverFrontlessJSON = `{
+		"id":"delver2","name":"Delver of Secrets // Insectile Aberration","lang":"en",
+		"card_faces":[
+			{"name":"Delver of Secrets","image_uris":{"large":"https://img.test/front-large.jpg"}},
+			{"name":"Insectile Aberration","image_uris":{"normal":"https://img.test/back.jpg"}}
+		],
+		"legalities":{"commander":"legal"}
+	}`
+
 	solRingC21JSON = `{
 		"id":"sol-c21","name":"Sol Ring","lang":"en","set":"c21","set_name":"Commander 2021",
 		"collector_number":"263",
@@ -464,6 +476,36 @@ func TestHandleGetCardImageFace(t *testing.T) {
 		data := structuredCardData(t, res)
 		if len(data.Images) != 1 || data.Images[0].Face != "Delver of Secrets" {
 			t.Errorf("images = %+v, want only the front face", data.Images)
+		}
+	})
+
+	t.Run("face=front keys on card face order, not the image-filtered slice", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonResponse(w, delverFrontlessJSON)
+		})
+		// Front has no "normal" image; asking for the front at normal must NOT return
+		// the back — it should report no image for the requested face.
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Delver of Secrets", "face": "front",
+		}))
+		if !res.IsError {
+			data := structuredCardData(t, res)
+			t.Errorf("expected an error (front has no normal image), got %+v", data.Images)
+		}
+	})
+
+	t.Run("face=back returns the back even when the front lacks that size", func(t *testing.T) {
+		stubImageFetcher(t)
+		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
+			jsonResponse(w, delverFrontlessJSON)
+		})
+		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+			"name": "Delver of Secrets", "face": "back",
+		}))
+		data := structuredCardData(t, res)
+		if len(data.Images) != 1 || data.Images[0].Face != "Insectile Aberration" {
+			t.Errorf("images = %+v, want only the back face", data.Images)
 		}
 	})
 
