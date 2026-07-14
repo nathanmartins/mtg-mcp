@@ -333,6 +333,9 @@ func (s *MTGCommanderServer) handleCardImageUIResource(
 	_ context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
+	GetLogger().Info().Str("tool", "get_card_image").Str("uri", request.Params.URI).
+		Msg("Serving card image widget resource")
+
 	return []mcp.ResourceContents{
 		&mcp.TextResourceContents{
 			URI:      request.Params.URI,
