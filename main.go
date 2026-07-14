@@ -480,7 +480,4 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		mcp.WithMIMEType(mimeMCPAppHTML),
 	)
 	mcpServer.AddResource(cardImageResource, s.handleCardImageUIResource)
-
-	// TEMPORARY: UI-render probe (tool + ui:// resource). Remove once resolved.
-	s.registerUIRenderTest(mcpServer)
 }

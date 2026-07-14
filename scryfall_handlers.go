@@ -210,26 +210,7 @@ const (
 	// templates, so the referenced URI must be a concrete, readable resource.
 	cardImageWidgetURI = "ui://mtg-card"
 
-	// mcpAppHandshakeScript runs the MCP Apps postMessage handshake DEFENSIVELY: it
-	// sends ui/initialize then, via three triggers (the initialize result, the first
-	// ui/* message from the host, and a setTimeout fallback), the initialized +
-	// size-changed notifications — because on claude.ai web the ui/initialize response
-	// often never reaches the widget. size-changed is mandatory or the iframe stays blank.
-	mcpAppHandshakeScript = `<script>(function(){var n=1,done=false;` +
-		`function send(m,p){parent.postMessage({jsonrpc:"2.0",id:n++,method:m,params:p||{}},"*");}` +
-		`function note(m,p){parent.postMessage({jsonrpc:"2.0",method:m,params:p||{}},"*");}` +
-		`function size(){note("ui/notifications/size-changed",` +
-		`{width:document.body.scrollWidth,height:document.body.scrollHeight});}` +
-		`function ready(){if(done)return;done=true;note("ui/notifications/initialized",{});size();}` +
-		`addEventListener("message",function(e){var d=e.data||{};` +
-		`if((d.id===1&&d.result)||(typeof d.method==="string"&&d.method.lastIndexOf("ui/",0)===0))ready();});` +
-		`send("ui/initialize",{appCapabilities:{},clientInfo:{name:"mtg-mcp",version:"1.0.0"},` +
-		`protocolVersion:"2026-01-26"});` +
-		`setTimeout(ready,400);setTimeout(size,900);addEventListener("load",size);` +
-		`if(window.ResizeObserver){new ResizeObserver(size).observe(document.body);}` +
-		`})();</script>`
-
-	// cardImageAppScript runs the MCP Apps handshake (defensively, as above) AND renders
+	// cardImageAppScript runs the MCP Apps handshake (defensively) AND renders
 	// the card image(s) the host delivers via ui/notifications/tool-result: it reads
 	// result.structuredContent.images[].src (base64 data: URIs) and injects <img>. The
 	// widget resource is fixed, so the per-card data must arrive over this channel.
