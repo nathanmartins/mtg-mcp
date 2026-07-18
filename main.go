@@ -17,7 +17,7 @@ var (
 )
 
 const (
-	totalToolCount               = 17
+	totalToolCount               = 19
 	totalResourceCount           = 3
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
@@ -29,6 +29,15 @@ const (
 	defaultSortDirection         = "Descending"
 	paramCommander               = "commander"
 	paramName                    = "name"
+	paramLanguage                = "language"
+	paramSize                    = "size"
+	paramSet                     = "set"
+	paramCollectorNumber         = "collector_number"
+	paramFace                    = "face"
+	faceFront                    = "front"
+	faceBack                     = "back"
+	defaultCardImageLanguage     = "en"
+	defaultCardImageSize         = imageSizeNormal
 	mimeTypeTextPlain            = "text/plain"
 
 	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
@@ -193,7 +202,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 			mcp.Required(),
 			mcp.Description("Card name to get pricing for"),
 		),
-		mcp.WithString("set",
+		mcp.WithString(paramSet,
 			mcp.Description("Specific set code (optional, e.g., 'MH2', 'CMR')"),
 		),
 	)
@@ -308,13 +317,66 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)
 
+	s.registerCardImageTool(mcpServer)
 	s.registerArchidektTools(mcpServer)
 	s.registerRulesTools(mcpServer)
 }
 
+// registerCardImageTool registers the get_card_image tool and binds it to the
+// ui://mtg-card MCP Apps widget via the tool's _meta.ui (split out of registerTools
+// to keep it within the funlen limit).
+func (s *MTGCommanderServer) registerCardImageTool(mcpServer *server.MCPServer) {
+	// Tool 13: Get Card Image
+	cardImageTool := mcp.NewTool(
+		"get_card_image",
+		mcp.WithDescription(
+			"Get the image of a Magic: The Gathering card, preferring the requested language and "+
+				"falling back to English. Returns the image inline plus its direct URL.",
+		),
+		mcp.WithString(paramName,
+			mcp.Required(),
+			mcp.Description("Exact or fuzzy card name (e.g., 'Sol Ring', 'Delver of Secrets')"),
+		),
+		mcp.WithString(paramLanguage,
+			mcp.Description(
+				"ISO 639-1 language code for the printing (e.g., 'it', 'fr', 'de', 'ja'). "+
+					"Defaults to 'en'; falls back to English when no localized printing exists.",
+			),
+		),
+		mcp.WithString(paramSize,
+			mcp.Description(
+				"Image size/format: small, normal (default), large, png, art_crop, or border_crop.",
+			),
+		),
+		mcp.WithString(paramSet,
+			mcp.Description(
+				"Set code to pick a specific edition's printing (e.g., 'mh2', 'c21'). "+
+					"Falls back to the default printing when the card is not in that set.",
+			),
+		),
+		mcp.WithString(paramCollectorNumber,
+			mcp.Description(
+				"Collector number to pin the exact printing/variant within the set (requires set; "+
+					"e.g., '263'). Falls back to the default printing when not found.",
+			),
+		),
+		mcp.WithString(paramFace,
+			mcp.Description(
+				"For double-faced cards, which face to return: 'front' or 'back' (default: all faces).",
+			),
+		),
+	)
+	// Associate the tool with its MCP Apps widget at registration (the spec binds UI
+	// via the tool's _meta.ui, enabling the host to prefetch the resource).
+	cardImageTool.Meta = mcp.NewMetaFromMap(map[string]any{
+		metaKeyUI: map[string]any{metaKeyResourceURI: cardImageWidgetURI},
+	})
+	mcpServer.AddTool(cardImageTool, s.handleGetCardImage)
+}
+
 // registerArchidektTools registers Archidekt-related MCP tools (split out to keep registerTools within length limits).
 func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer) {
-	// Tool 13: Get Archidekt Deck
+	// Tool 14: Get Archidekt Deck
 	archidektDeckTool := mcp.NewTool(
 		"get_archidekt_deck",
 		mcp.WithDescription(
@@ -333,7 +395,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	)
 	mcpServer.AddTool(archidektDeckTool, s.handleGetArchidektDeck)
 
-	// Tool 14: Get Archidekt User Decks
+	// Tool 15: Get Archidekt User Decks
 	archidektUserDecksTool := mcp.NewTool(
 		"get_archidekt_user_decks",
 		mcp.WithDescription("Get a list of public decks for a specific Archidekt user"),
@@ -347,7 +409,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	)
 	mcpServer.AddTool(archidektUserDecksTool, s.handleGetArchidektUserDecks)
 
-	// Tool 15: Search Archidekt Decks
+	// Tool 16: Search Archidekt Decks
 	searchArchidektDecksTool := mcp.NewTool(
 		"search_archidekt_decks",
 		mcp.WithDescription(
@@ -369,6 +431,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 
 // registerRulesTools registers Comprehensive Rules lookup tools.
 func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
+	// Tool 17: Get Rule
 	getRuleTool := mcp.NewTool(
 		"get_rule",
 		mcp.WithDescription("Get a specific Comprehensive Rule by number (e.g. '702.19'); includes its subrules"),
@@ -379,6 +442,7 @@ func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(getRuleTool, s.handleGetRule)
 
+	// Tool 18: Search Rules
 	searchRulesTool := mcp.NewTool(
 		"search_rules",
 		mcp.WithDescription("Search the Comprehensive Rules text by keyword"),
@@ -392,6 +456,7 @@ func (s *MTGCommanderServer) registerRulesTools(mcpServer *server.MCPServer) {
 	)
 	mcpServer.AddTool(searchRulesTool, s.handleSearchRules)
 
+	// Tool 19: Get Glossary Term
 	glossaryTool := mcp.NewTool(
 		"get_glossary_term",
 		mcp.WithDescription("Get a Comprehensive Rules glossary definition by term"),
@@ -431,4 +496,16 @@ func (s *MTGCommanderServer) registerResources(mcpServer *server.MCPServer) {
 		mcp.WithMIMEType(mimeTypeTextPlain),
 	)
 	mcpServer.AddResource(comprehensiveResource, s.handleComprehensiveRulesResource)
+
+	// Card image widget: a fixed MCP Apps resource. get_card_image points
+	// _meta.ui.resourceUri here (on the tool + result); per-card images arrive at the
+	// widget as structuredContent via the host's ui/notifications/tool-result. MCP Apps
+	// does not support resource templates, so this must be a concrete resource.
+	cardImageResource := mcp.NewResource(
+		cardImageWidgetURI,
+		"MTG Card Image",
+		mcp.WithResourceDescription("Inline card image widget rendered for get_card_image"),
+		mcp.WithMIMEType(mimeMCPAppHTML),
+	)
+	mcpServer.AddResource(cardImageResource, s.handleCardImageUIResource)
 }

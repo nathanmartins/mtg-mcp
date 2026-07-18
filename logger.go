@@ -40,9 +40,8 @@ func InitLogger(logFilePath string) error {
 		return err
 	}
 
-	// Console writer with colors. Writes to stderr, not stdout: the MCP stdio
-	// transport owns stdout for JSON-RPC, so any log line on stdout corrupts the
-	// protocol stream (matters for `docker run -i` and the mcp-proxy path alike).
+	// Console writer with colors. MUST be stderr: the MCP stdio transport owns
+	// stdout, so any diagnostics on stdout corrupt the JSON-RPC stream.
 	consoleWriter := zerolog.ConsoleWriter{
 		Out:        os.Stderr,
 		TimeFormat: time.RFC3339,
