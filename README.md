@@ -153,7 +153,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 ### Prerequisites
 
-- Go 1.26 or later
+- Go 1.27 or later
 - Internet connection (for Scryfall API and currency conversion)
 
 ### Building from Source
@@ -331,7 +331,7 @@ Once connected to Claude Desktop, you can ask questions like:
 
 ### Technology Stack
 
-- **Language:** Go 1.26+
+- **Language:** Go 1.27+
 - **MCP Framework:** [mark3labs/mcp-go](https://github.com/mark3labs/mcp-go)
 - **Card Data API:** [Scryfall API](https://scryfall.com/docs/api)
   via [go-scryfall](https://github.com/BlueMonday/go-scryfall)
