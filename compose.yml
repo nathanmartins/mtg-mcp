@@ -1,0 +1,57 @@
+# Optional Docker Compose setup for mtg-mcp. Using it is never required — the
+# native `make build` / `./mtg-mcp` flow keeps working exactly as before.
+#
+#   docker compose up --build          # run the mcp-proxy HTTP service
+#   docker compose run --rm stdio --version   # smoke-test the stdio image
+#
+# Override the published port with MTG_MCP_PORT (default 8080). Version metadata
+# is injected via VERSION / COMMIT / BUILD_DATE build args (default to dev/none).
+name: mtg-mcp
+
+services:
+  # Long-running remote connector: mcp-proxy wraps the stdio binary as HTTP so
+  # claude.ai (or any Streamable HTTP client) can reach it. Only meaningful as a
+  # daemon because the bare stdio server has no listener of its own.
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: proxy
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-none}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    image: mtg-mcp:proxy
+    ports:
+      # Internal port is fixed at 8080; change only the host side via MTG_MCP_PORT.
+      - "${MTG_MCP_PORT:-8080}:8080"
+    volumes:
+      - mtg-mcp-logs:/data          # persists mtg-commander-server.log
+    restart: unless-stopped
+    healthcheck:
+      # MCP has no plain /health endpoint; just confirm the listener is up.
+      test: ["CMD", "node", "-e", "require('net').connect(8080,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # On-demand stdio image (NOT a daemon). Use for a build/smoke test:
+  #   docker compose run --rm stdio --version
+  # Real MCP clients use `docker run -i --rm mtg-mcp:latest` (see README).
+  stdio:
+    profiles: ["stdio"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: runtime
+      args:
+        VERSION: ${VERSION:-dev}
+        COMMIT: ${COMMIT:-none}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    image: mtg-mcp:latest
+    stdin_open: true   # -i: keep stdin open for JSON-RPC
+    tty: false         # never allocate a TTY (corrupts framing)
+
+volumes:
+  mtg-mcp-logs:

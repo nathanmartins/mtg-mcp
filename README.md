@@ -249,6 +249,50 @@ claude mcp list
 
 You should see `mtg-commander` in the list of available servers.
 
+### Running with Docker (optional)
+
+Docker is **entirely optional** — everything above (build from source, run
+`./mtg-mcp`) keeps working unchanged. The container just saves you from
+recompiling the binary on each machine.
+
+Build the image (no local Go toolchain required):
+
+```bash
+make docker-build          # builds mtg-mcp:latest (tiny distroless, stdio)
+```
+
+Register the image with an MCP client instead of a local binary path:
+
+```json
+{
+  "mcpServers": {
+    "mtg-commander": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "mtg-mcp:latest"],
+      "transport": "stdio"
+    }
+  }
+}
+```
+
+Or via the CLI:
+
+```bash
+claude mcp add --transport stdio mtg-commander -- docker run -i --rm mtg-mcp:latest
+```
+
+**Remote connector over HTTP.** To expose the server as a Streamable HTTP
+endpoint (e.g. for the claude.ai remote connector), run the `mcp-proxy` service
+with Compose:
+
+```bash
+make docker-proxy          # or: docker compose up --build
+```
+
+This publishes the endpoint on `http://localhost:8080/mcp` (override the port
+with `MTG_MCP_PORT`). The proxy runs in stateful mode, which multi-step tool
+flows require.
+
 ## Example Queries
 
 Once connected to Claude Desktop, you can ask questions like:
@@ -430,6 +474,9 @@ make ci
 | `make clean`                 | Clean build artifacts                              |
 | `make deps`                  | Download dependencies                              |
 | `make tidy`                  | Tidy go.mod                                        |
+| `make docker-build`          | Build the stdio (distroless) Docker image          |
+| `make docker-run`            | Smoke-test the stdio image (`--version`)           |
+| `make docker-proxy`          | Run the mcp-proxy HTTP service via Compose         |
 
 ### Running Tests
 

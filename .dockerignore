@@ -1,0 +1,50 @@
+# Keep the build context small and cache-stable. Version metadata is passed via
+# build args, so .git is not needed in-context; excluding *_test.go means editing
+# a test never busts the compiled-binary layer.
+
+# VCS / CI
+.git
+.gitignore
+.github/
+
+# Stray build artifacts (a prebuilt ~9MB mtg-mcp often sits in the repo root)
+mtg-mcp
+dist/
+build/
+*.test
+*.out
+coverage.html
+
+# Logs (incl. the committed mtg-commander-server.log)
+*.log
+
+# Vendored deps (the module cache is used instead)
+vendor/
+
+# Test sources — not needed to build the binary
+*_test.go
+
+# Docker + tooling meta not needed by the build
+docker/
+compose.yml
+Makefile
+.golangci.yml
+.markdownlint.json
+.yamllint.yaml
+.goreleaser.yaml
+scripts/
+
+# Docs / editors / agent dirs
+docs/
+README.md
+CLAUDE.md
+codebase-graph.html
+.idea/
+.vscode/
+.DS_Store
+.serena/
+.superpowers/
+.claude/
+.codebase-memory/
+.pi/
+.mcp.json
