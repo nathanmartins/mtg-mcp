@@ -286,8 +286,9 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "trending",
 		}))
-		if !res.IsError {
-			t.Error("expected an error result for an unsupported sort")
+		if !res.IsError || !strings.Contains(resultText(t, res), "unsupported sort") {
+			t.Errorf("expected an unsupported-sort error result, got IsError=%v: %s",
+				res.IsError, resultText(t, res))
 		}
 	})
 }

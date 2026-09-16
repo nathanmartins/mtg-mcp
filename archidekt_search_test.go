@@ -33,6 +33,113 @@ func syntheticArchidektPage(apiPage, count int) ArchidektUserDecksResponse {
 	return ArchidektUserDecksResponse{Count: count, Next: next, Results: results}
 }
 
+// archidektPageSlice builds the upstream page apiPage would return for a result set of
+// total decks, so short pages and pages past the end behave like the real API.
+func archidektPageSlice(total, apiPage int) ArchidektUserDecksResponse {
+	start := (apiPage - 1) * archidektAPIPageSize
+	end := min(start+archidektAPIPageSize, total)
+	results := make([]ArchidektDeckSummary, 0, archidektAPIPageSize)
+	for i := start; i < end; i++ {
+		results = append(results, ArchidektDeckSummary{
+			ID:         i + 1,
+			Name:       fmt.Sprintf("deck-%d", i+1),
+			DeckFormat: 3,
+			UpdatedAt:  "2026-01-01T00:00:00Z",
+			Owner:      ArchidektOwner{Username: "owner"},
+		})
+	}
+	next := ""
+	if end < total {
+		next = fmt.Sprintf("http://archidekt.com/api/decks/v3/?page=%d", apiPage+1)
+	}
+	return ArchidektUserDecksResponse{Count: total, Next: next, Results: results}
+}
+
+func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
+	var requestedPages []string
+	fixtureServer := func(total int) *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestedPages = append(requestedPages, r.URL.Query().Get("page"))
+			apiPage := 1
+			if raw := r.URL.Query().Get("page"); raw != "" {
+				parsed, err := strconv.Atoi(raw)
+				if err != nil {
+					t.Errorf("unparseable page parameter %q", raw)
+				}
+				apiPage = parsed
+			}
+			_ = json.NewEncoder(w).Encode(archidektPageSlice(total, apiPage))
+		}))
+	}
+
+	t.Run("window inside a short page", func(t *testing.T) {
+		requestedPages = nil
+		server := fixtureServer(25)
+		defer server.Close()
+
+		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 10,
+		}, server.URL)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got.Decks) != 10 {
+			t.Fatalf("returned %d decks, want 10", len(got.Decks))
+		}
+		if got.Decks[0].Name != "deck-11" || got.Decks[9].Name != "deck-20" {
+			t.Errorf("wrong window: first=%q last=%q", got.Decks[0].Name, got.Decks[9].Name)
+		}
+		if len(requestedPages) != 1 {
+			t.Errorf("expected 1 upstream request, got %d (%v)", len(requestedPages), requestedPages)
+		}
+	})
+
+	t.Run("page past the end returns no decks", func(t *testing.T) {
+		requestedPages = nil
+		server := fixtureServer(25)
+		defer server.Close()
+
+		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+			Commander: "Atraxa", Sort: archidektSortViews, Page: 9, Limit: 10,
+		}, server.URL)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got.Decks) != 0 {
+			t.Errorf("returned %d decks, want 0", len(got.Decks))
+		}
+		if got.Total != 25 || !got.TotalKnown {
+			t.Errorf("total = (%d, known=%v), want (25, known=true)", got.Total, got.TotalKnown)
+		}
+		if len(requestedPages) != 1 {
+			t.Errorf("expected 1 upstream request, got %d (%v)", len(requestedPages), requestedPages)
+		}
+	})
+
+	t.Run("straddling window stops at a short first page", func(t *testing.T) {
+		requestedPages = nil
+		server := fixtureServer(55)
+		defer server.Close()
+
+		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 50,
+		}, server.URL)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(got.Decks) != 5 {
+			t.Fatalf("returned %d decks, want 5", len(got.Decks))
+		}
+		if got.Decks[0].Name != "deck-51" || got.Decks[4].Name != "deck-55" {
+			t.Errorf("wrong window: first=%q last=%q", got.Decks[0].Name, got.Decks[4].Name)
+		}
+		if len(requestedPages) != 1 {
+			t.Errorf("expected the exhausted upstream to stop after 1 request, got %d (%v)",
+				len(requestedPages), requestedPages)
+		}
+	})
+}
+
 func TestArchidektPageWindow(t *testing.T) {
 	tests := []struct {
 		name                                  string
@@ -164,6 +271,12 @@ func TestSearchArchidektDecksSendsOrderByAndBracket(t *testing.T) {
 	var gotQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
+		if ua := r.Header.Get("User-Agent"); ua != "MTG-Commander-MCP-Server/1.0" {
+			t.Errorf("User-Agent = %q, want MTG-Commander-MCP-Server/1.0", ua)
+		}
+		if accept := r.Header.Get("Accept"); accept != "application/json" {
+			t.Errorf("Accept = %q, want application/json", accept)
+		}
 		_ = json.NewEncoder(w).Encode(syntheticArchidektPage(1, 60))
 	}))
 	defer server.Close()
@@ -271,6 +384,45 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 		)
 		if !strings.Contains(got, "unknown") {
 			t.Errorf("unknown total must be stated\n%s", got)
+		}
+	})
+
+	t.Run("no next-page hint once the known total is exhausted", func(t *testing.T) {
+		full := &ArchidektSearchResult{
+			Decks: archidektPageSlice(20, 1).Results[10:20],
+			Page:  2, Limit: 10, Total: 20, TotalKnown: true,
+		}
+		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+			Commander: "Atraxa", Sort: "views", Page: 2, Limit: 10,
+		}, full)
+		if strings.Contains(got, "request page 3") {
+			t.Errorf("must not advertise a page beyond the known total\n%s", got)
+		}
+	})
+
+	t.Run("next-page hint when the known total is larger", func(t *testing.T) {
+		more := &ArchidektSearchResult{
+			Decks: archidektPageSlice(25, 1).Results[10:20],
+			Page:  2, Limit: 10, Total: 25, TotalKnown: true,
+		}
+		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+			Commander: "Atraxa", Sort: "views", Page: 2, Limit: 10,
+		}, more)
+		if !strings.Contains(got, "request page 3") {
+			t.Errorf("expected a next-page hint while decks remain\n%s", got)
+		}
+	})
+
+	t.Run("next-page hint when the total is unknown", func(t *testing.T) {
+		unknownTotal := &ArchidektSearchResult{
+			Decks: archidektPageSlice(10, 1).Results,
+			Page:  1, Limit: 10,
+		}
+		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+			Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10,
+		}, unknownTotal)
+		if !strings.Contains(got, "request page 2") {
+			t.Errorf("expected a next-page hint when the total is unknown\n%s", got)
 		}
 	})
 

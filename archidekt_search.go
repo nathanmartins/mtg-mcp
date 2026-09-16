@@ -100,26 +100,24 @@ func archidektOrderBy(sort string, ascending bool) (string, error) {
 }
 
 // archidektPageWindow maps a logical page request onto the fixed-size upstream pages
-// covering it. A logical window may straddle two upstream pages, never more, because
-// Limit is capped at the upstream page size.
-//
-//nolint:nonamedreturns // three bare ints are unreadable at the call site
-func archidektPageWindow(page, limit int) (firstAPIPage, offset, apiPages int) {
+// covering it, returning the first API page to request, the offset of the logical window
+// inside that page, and how many API pages to fetch. A logical window may straddle two
+// upstream pages, never more, because Limit is capped at the upstream page size.
+func archidektPageWindow(page, limit int) (int, int, int) {
 	absolute := (page - 1) * limit
-	firstAPIPage = absolute/archidektAPIPageSize + 1
-	offset = absolute % archidektAPIPageSize
-	apiPages = 1
+	firstAPIPage := absolute/archidektAPIPageSize + 1
+	offset := absolute % archidektAPIPageSize
+	apiPages := 1
 	if offset+limit > archidektAPIPageSize {
 		apiPages = 2
 	}
 	return firstAPIPage, offset, apiPages
 }
 
-// interpretArchidektCount decodes the three meanings of Archidekt's count field:
-// an exact total, the 1000 saturation cap, or -1 for "not computed".
-//
-//nolint:nonamedreturns // the (total, capped, known) triple needs naming to be readable
-func interpretArchidektCount(count int) (total int, capped bool, known bool) {
+// interpretArchidektCount decodes the three meanings of Archidekt's count field —
+// an exact total, the 1000 saturation cap, or -1 for "not computed" — returning the
+// total, whether it is the saturated cap, and whether Archidekt reported it at all.
+func interpretArchidektCount(count int) (int, bool, bool) {
 	switch {
 	case count == archidektCountUnknown:
 		return 0, false, false
@@ -260,7 +258,8 @@ func FormatArchidektSearchResultsForDisplay(params ArchidektSearchParams, result
 		_, _ = fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 	}
 
-	if len(result.Decks) == result.Limit {
+	// Only hint at a next page when the reported total does not already rule one out.
+	if len(result.Decks) == result.Limit && (!result.TotalKnown || result.Page*result.Limit < result.Total) {
 		_, _ = fmt.Fprintf(&output, "*More decks may be available — request page %d.*\n", result.Page+1)
 	}
 
