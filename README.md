@@ -85,9 +85,11 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Returns deck metadata with views, likes, and URLs
     - Moxfield's API cannot filter by commander, so results are verified per deck:
       candidates come from a card-name search and each one is fetched to confirm its
-      commander zone (max 20 checks per call)
-    - Output reports how many candidates were checked and flags incomplete verification
-      when Moxfield rate-limits the run
+      commander zone (max 20 checks per call, which is also the largest candidate page
+      requested, so paging never skips candidates verification could not reach)
+    - Output reports how many candidates were checked, how many could not be fetched,
+      and flags incomplete verification when a deck read fails, the 30 s verification
+      budget expires, or Moxfield rate-limits the run
 
 #### Archidekt Integration (3 tools)
 

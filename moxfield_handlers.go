@@ -155,7 +155,10 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		Msg("Searching Moxfield decks")
 
 	wanted := params.PageSize
-	params.PageSize = min(wanted*moxfieldCandidateFactor, maxPageSize)
+	// The over-fetch is capped by the verification budget as well as by the upstream page
+	// limit: candidates beyond moxfieldVerifyMaxChecks could never be checked, and paging
+	// would skip them, since page 2 starts after the whole requested page.
+	params.PageSize = min(wanted*moxfieldCandidateFactor, moxfieldVerifyMaxChecks, maxPageSize)
 
 	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldSearchURL)
 	if err != nil {
@@ -201,8 +204,8 @@ func formatMoxfieldCommanderSearch(
 	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.SortType, params.SortDirection)
 	_, _ = fmt.Fprintf(&output, "**Candidates containing the card:** %d (page %d of %d, %d total matches)\n",
 		outcome.Candidates, results.PageNumber, results.TotalPages, results.TotalResults)
-	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked\n\n",
-		len(outcome.Decks), outcome.Checked)
+	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked%s\n\n",
+		len(outcome.Decks), outcome.Checked, unfetchableSuffix(outcome.Failed))
 
 	if outcome.Incomplete {
 		_, _ = fmt.Fprintf(&output,
@@ -224,4 +227,15 @@ func formatMoxfieldCommanderSearch(
 	}
 
 	return output.String()
+}
+
+// unfetchableSuffix names the candidates whose deck could not be read. Without it the
+// checked count would read as a verdict on every candidate, when an unreadable deck is
+// neither a match nor a non-match.
+func unfetchableSuffix(failed int) string {
+	if failed == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf(", %d could not be fetched", failed)
 }

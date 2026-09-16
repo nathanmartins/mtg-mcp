@@ -23,12 +23,15 @@ const (
 
 // MoxfieldCommanderSearch is the outcome of a commander search. Moxfield's search API
 // ignores every commander parameter, so Decks holds only candidates whose commander
-// zone was actually fetched and matched. Incomplete marks a truncated verification —
-// the caller must not present the list as exhaustive.
+// zone was actually fetched and matched. Failed counts candidates whose deck could not
+// be read at all — those are neither matches nor non-matches, merely unknown.
+// Incomplete marks a truncated or partially blind verification, and is always paired
+// with a Reason; the caller must not present the list as exhaustive.
 type MoxfieldCommanderSearch struct {
 	Decks      []MoxfieldDeckSummary
 	Candidates int
 	Checked    int
+	Failed     int
 	Incomplete bool
 	Reason     string
 }
@@ -50,7 +53,9 @@ func deckHasCommander(deck *MoxfieldDeck, commander string) bool {
 
 // verifyMoxfieldCommanderDecks keeps the candidates whose commander is the requested
 // card, fetching each deck in sequence. It stops at limit matches, at maxChecks
-// fetches, when ctx expires, or at the first HTTP 429, reporting why.
+// fetches, when ctx expires, or at the first HTTP 429, reporting why. Candidates whose
+// deck read fails are counted in Failed and make the outcome incomplete, because a deck
+// that could not be read cannot be ruled out either.
 func verifyMoxfieldCommanderDecks(
 	ctx context.Context,
 	candidates []MoxfieldDeckSummary,
@@ -61,34 +66,29 @@ func verifyMoxfieldCommanderDecks(
 	delay time.Duration,
 ) MoxfieldCommanderSearch {
 	outcome := MoxfieldCommanderSearch{Candidates: len(candidates)}
+	stopReason := ""
 
 	for i, candidate := range candidates {
 		if len(outcome.Decks) >= limit {
 			break
 		}
 		if outcome.Checked >= maxChecks {
-			outcome.Incomplete = true
-			outcome.Reason = fmt.Sprintf("verification budget reached after %d decks", outcome.Checked)
+			stopReason = fmt.Sprintf("verification budget reached after %d decks", outcome.Checked)
 			break
 		}
-		if i > 0 && delay > 0 {
-			select {
-			case <-ctx.Done():
-				outcome.Incomplete = true
-				outcome.Reason = "verification stopped: " + ctx.Err().Error()
-				return outcome
-			case <-time.After(delay):
-			}
-		}
+		waitBeforeCheck(ctx, i, delay)
 
 		deck, err := getMoxfieldDeckWithURL(ctx, candidate.PublicID, deckBaseURL)
+		// An expired budget and a rate limit both end verification, and neither says
+		// anything about this candidate, so they are ruled out before the read is
+		// recorded as a check or blamed on the deck.
+		if stop := verificationStopReason(ctx, err); stop != "" {
+			stopReason = stop
+			break
+		}
 		outcome.Checked++
 		if err != nil {
-			if isMoxfieldRateLimited(err) {
-				outcome.Incomplete = true
-				outcome.Reason = "verification stopped: Moxfield rate limit (HTTP 429)"
-				break
-			}
+			outcome.Failed++
 			GetLogger().Warn().
 				Err(err).
 				Str("deck_id", candidate.PublicID).
@@ -101,5 +101,55 @@ func verifyMoxfieldCommanderDecks(
 		}
 	}
 
+	outcome.Reason = verificationReason(stopReason, outcome.Failed)
+	outcome.Incomplete = outcome.Reason != ""
+
 	return outcome
+}
+
+// waitBeforeCheck spaces verification requests, abandoning the pause as soon as the
+// context expires so a dead budget is not spent sleeping.
+func waitBeforeCheck(ctx context.Context, index int, delay time.Duration) {
+	if index == 0 || delay <= 0 {
+		return
+	}
+
+	select {
+	case <-ctx.Done():
+	case <-time.After(delay):
+	}
+}
+
+// verificationStopReason reports why the remaining candidates must be abandoned. A
+// cancelled context is checked first and on every iteration: an expired verification
+// budget surfaces as an ordinary fetch failure, and mistaking it for a deck-specific
+// problem would let a truncated run end quietly as if every candidate had been read.
+func verificationStopReason(ctx context.Context, err error) string {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return "verification stopped: " + ctxErr.Error()
+	}
+	if isMoxfieldRateLimited(err) {
+		return "verification stopped: Moxfield rate limit (HTTP 429)"
+	}
+
+	return ""
+}
+
+// verificationReason combines the reason the loop stopped early with the count of decks
+// that could not be read. Either makes the result non-exhaustive, so an empty reason is
+// the only signal that the deck list is the complete answer for this page.
+func verificationReason(stopReason string, failed int) string {
+	unfetchable := ""
+	if failed > 0 {
+		unfetchable = fmt.Sprintf("%d candidate deck(s) could not be fetched", failed)
+	}
+
+	switch {
+	case stopReason != "" && unfetchable != "":
+		return stopReason + "; " + unfetchable
+	case stopReason != "":
+		return stopReason
+	default:
+		return unfetchable
+	}
 }

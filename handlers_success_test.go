@@ -140,15 +140,15 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// pageSize is the over-fetch (limit × moxfieldCandidateFactor), not the limit itself:
-		// the search cannot filter by commander, so the handler asks for extra candidates and
-		// verification narrows the page back down.
+		// pageSize is the over-fetch (limit × moxfieldCandidateFactor) clamped to
+		// moxfieldVerifyMaxChecks: 5 × 5 = 25 candidates, but verification can only read 20,
+		// and asking for more would strand the surplus (page 2 resumes past them).
 		want := map[string]string{
 			"cardName":      "Atraxa",
 			"fmt":           "commander",
 			"sortType":      "views",
 			"sortDirection": "Ascending",
-			"pageSize":      "25",
+			"pageSize":      "20",
 			"pageNumber":    "3",
 		}
 		for key, value := range want {
@@ -158,6 +158,27 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}
 		if !strings.Contains(resultText(t, res), "Found Deck") {
 			t.Errorf("expected deck in output:\n%s", resultText(t, res))
+		}
+	})
+
+	t.Run("default limit never asks for more candidates than verification can read", func(t *testing.T) {
+		// The default limit of 10 would over-fetch 50 candidates, but only the first 20 can
+		// ever be verified and page 2 starts after candidate 50, so 21-50 would be lost.
+		var gotQuery url.Values
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.Query()
+			_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{PageNumber: 1, TotalPages: 0})
+		}))
+		t.Cleanup(ts.Close)
+
+		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
+		if _, err := s.handleSearchMoxfieldDecks(
+			context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}),
+		); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := gotQuery.Get("pageSize"); got != "20" {
+			t.Errorf("pageSize = %q, want %q (the verification budget)", got, "20")
 		}
 	})
 
@@ -234,6 +255,40 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 	if !strings.Contains(text, "Verified") {
 		t.Errorf("output must state how many candidates were verified\n%s", text)
 	}
+}
+
+func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T) {
+	params := MoxfieldSearchParams{Format: "commander", SortType: "views", SortDirection: sortDirectionDesc}
+	results := &MoxfieldSearchResponse{PageNumber: 1, TotalPages: 1, TotalResults: 3}
+
+	t.Run("unreadable decks are named", func(t *testing.T) {
+		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results, MoxfieldCommanderSearch{
+			Candidates: 3,
+			Checked:    3,
+			Failed:     2,
+			Incomplete: true,
+			Reason:     "2 candidate deck(s) could not be fetched",
+		})
+		if !strings.Contains(text, "**Verified as commander:** 0 of 3 checked, 2 could not be fetched") {
+			t.Errorf("checked count must disclose the unreadable decks\n%s", text)
+		}
+		if !strings.Contains(text, "Verification incomplete") {
+			t.Errorf("unreadable decks make the verification incomplete\n%s", text)
+		}
+	})
+
+	t.Run("a clean verification says nothing about fetch failures", func(t *testing.T) {
+		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results, MoxfieldCommanderSearch{
+			Candidates: 3,
+			Checked:    3,
+		})
+		if !strings.Contains(text, "**Verified as commander:** 0 of 3 checked\n") {
+			t.Errorf("clean verification must report the bare counts\n%s", text)
+		}
+		if strings.Contains(text, "could not be fetched") || strings.Contains(text, "incomplete") {
+			t.Errorf("nothing failed, so nothing may be flagged\n%s", text)
+		}
+	})
 }
 
 func sampleArchidektDeck() ArchidektDeck {

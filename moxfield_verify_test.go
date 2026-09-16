@@ -130,6 +130,69 @@ func TestVerifyMoxfieldCommanderDecksRespectsCheckBudget(t *testing.T) {
 	}
 }
 
+func TestVerifyMoxfieldCommanderDecksReportsUnreadableDecks(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
+		// "gone" stands for a deck made private between the search and its verification.
+		if id == "gone" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+	}))
+	defer server.Close()
+
+	candidates := []MoxfieldDeckSummary{{PublicID: "yes1"}, {PublicID: "gone"}}
+	got := verifyMoxfieldCommanderDecks(
+		context.Background(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
+	)
+
+	if len(got.Decks) != 1 || got.Decks[0].PublicID != "yes1" {
+		t.Fatalf("an unreadable deck must not be presented as a match: %+v", got.Decks)
+	}
+	if got.Failed != 1 {
+		t.Errorf("Failed = %d, want 1", got.Failed)
+	}
+	if !got.Incomplete {
+		t.Error("a candidate that could not be read leaves the verification incomplete")
+	}
+	if !strings.Contains(got.Reason, "could not be fetched") {
+		t.Errorf("Reason must name the unfetchable candidates, got %q", got.Reason)
+	}
+}
+
+func TestVerifyMoxfieldCommanderDecksStopsOnCancelledContext(t *testing.T) {
+	var requests int
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+	}))
+	defer server.Close()
+
+	// An expired verification budget arrives as a cancelled context, which must stop the
+	// loop with a reason instead of being mistaken for a run that checked everything.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	candidates := []MoxfieldDeckSummary{{PublicID: "a"}, {PublicID: "b"}}
+	got := verifyMoxfieldCommanderDecks(ctx, candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0)
+
+	if requests != 0 {
+		t.Errorf("made %d requests on a cancelled context, want 0", requests)
+	}
+	if got.Checked != 0 || got.Failed != 0 {
+		t.Errorf("Checked = %d, Failed = %d, want 0 and 0 — a dead budget read no deck and"+
+			" must not be blamed on one", got.Checked, got.Failed)
+	}
+	if !got.Incomplete {
+		t.Error("a cancelled verification must be reported as incomplete")
+	}
+	if !strings.Contains(got.Reason, context.Canceled.Error()) {
+		t.Errorf("Reason must name the cancellation, got %q", got.Reason)
+	}
+}
+
 func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
