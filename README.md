@@ -77,10 +77,11 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Format and public URL for each deck
 
 3. **search_moxfield_decks** – Search for decks on Moxfield by commander
-    - Search by commander name
-    - Filter by format (commander, standard, modern, etc.)
-    - Sort by updated, views, or likes
-    - Paginated results (up to 100 per page)
+    - Required `commander` parameter (card name)
+    - Optional `format` (default `commander`)
+    - Optional `sort` (`updated`, `created`, `views`, `likes`, `comments`, `relevance`;
+      default `updated`) and `sort_direction` (`asc`/`desc`; default `desc`)
+    - Pagination via `page` (1-based) and `limit` (default 10, max 100)
     - Returns deck metadata with views, likes, and URLs
 
 #### Archidekt Integration (3 tools)

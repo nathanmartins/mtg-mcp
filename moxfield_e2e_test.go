@@ -17,10 +17,12 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 
 	// First search for a valid deck
 	searchParams := MoxfieldSearchParams{
-		Query:      "Atraxa",
-		Format:     "commander",
-		PageSize:   1,
-		PageNumber: 1,
+		CardName:      "Atraxa, Praetors' Voice",
+		Format:        "commander",
+		SortType:      "updated",
+		SortDirection: "Descending",
+		PageSize:      1,
+		PageNumber:    1,
 	}
 
 	searchResp, err := SearchMoxfieldDecks(ctx, searchParams)
@@ -79,10 +81,12 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 	// Use a known public user with decks
 	// Note: This user might not exist, so we'll search for a deck owner first
 	searchParams := MoxfieldSearchParams{
-		Query:      "Atraxa",
-		Format:     "commander",
-		PageSize:   1,
-		PageNumber: 1,
+		CardName:      "Atraxa, Praetors' Voice",
+		Format:        "commander",
+		SortType:      "updated",
+		SortDirection: "Descending",
+		PageSize:      1,
+		PageNumber:    1,
 	}
 
 	searchResp, searchErr := SearchMoxfieldDecks(ctx, searchParams)
@@ -111,10 +115,12 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 
 	// Search for a popular commander
 	params := MoxfieldSearchParams{
-		Query:      "Atraxa",
-		Format:     "commander",
-		PageSize:   5,
-		PageNumber: 1,
+		CardName:      "Atraxa, Praetors' Voice",
+		Format:        "commander",
+		SortType:      "updated",
+		SortDirection: "Descending",
+		PageSize:      5,
+		PageNumber:    1,
 	}
 
 	response, err := SearchMoxfieldDecks(ctx, params)
@@ -146,7 +152,7 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 			t.Error("Expected deck to have a public ID")
 		}
 
-		t.Logf("✓ Successfully found %d decks matching query '%s'", len(response.Data), params.Query)
+		t.Logf("✓ Successfully found %d decks containing '%s'", len(response.Data), params.CardName)
 	}
 }
 
@@ -196,10 +202,12 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 
 	// First search for a valid deck
 	searchParams := MoxfieldSearchParams{
-		Query:      "Atraxa",
-		Format:     "commander",
-		PageSize:   1,
-		PageNumber: 1,
+		CardName:      "Atraxa, Praetors' Voice",
+		Format:        "commander",
+		SortType:      "updated",
+		SortDirection: "Descending",
+		PageSize:      1,
+		PageNumber:    1,
 	}
 
 	searchResp, err := SearchMoxfieldDecks(ctx, searchParams)

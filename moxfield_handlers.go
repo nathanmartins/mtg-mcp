@@ -89,6 +89,37 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
+// moxfieldSearchParamsFromRequest validates MCP arguments into Moxfield search parameters.
+func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (MoxfieldSearchParams, error) {
+	params := MoxfieldSearchParams{
+		CardName:   commander,
+		Format:     stringArg(args, "format", defaultFormat),
+		PageNumber: intArg(args, "page", 1),
+		PageSize:   intArg(args, "limit", moxfieldSearchDefaultLimit),
+	}
+
+	sortType, err := moxfieldSortType(stringArg(args, "sort", "updated"))
+	if err != nil {
+		return params, err
+	}
+	params.SortType = sortType
+
+	direction, err := moxfieldSortDirection(stringArg(args, "sort_direction", sortDirectionDesc))
+	if err != nil {
+		return params, err
+	}
+	params.SortDirection = direction
+
+	if params.PageNumber < 1 {
+		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.PageNumber)
+	}
+	if params.PageSize < 1 || params.PageSize > maxPageSize {
+		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.PageSize, maxPageSize)
+	}
+
+	return params, nil
+}
+
 func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
@@ -99,58 +130,21 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	args := request.GetArguments()
-
-	format := defaultFormat
-	if formatVal, hasFormat := args["format"]; hasFormat {
-		if formatStr, ok := formatVal.(string); ok {
-			format = formatStr
-		}
-	}
-
-	sortType := "updated"
-	if sortTypeVal, hasSortType := args["sort_type"]; hasSortType {
-		if sortTypeStr, ok := sortTypeVal.(string); ok {
-			sortType = sortTypeStr
-		}
-	}
-
-	sortDirection := defaultSortDirection
-	if sortDirVal, hasSortDir := args["sort_direction"]; hasSortDir {
-		if sortDirStr, ok := sortDirVal.(string); ok {
-			sortDirection = sortDirStr
-		}
-	}
-
-	const defaultPageSize = 20
-	pageSize := defaultPageSize
-	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
-		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
-			pageSize = int(pageSizeFloat)
-			if pageSize > maxPageSize {
-				pageSize = maxPageSize
-			}
-		}
+	params, err := moxfieldSearchParamsFromRequest(commander, request.GetArguments())
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	GetLogger().Info().
 		Str("tool", "search_moxfield_decks").
 		Str(paramCommander, commander).
-		Str("format", format).
-		Str("sort_type", sortType).
-		Int("page_size", pageSize).
+		Str("format", params.Format).
+		Str("sort_type", params.SortType).
+		Int("page", params.PageNumber).
+		Int("limit", params.PageSize).
 		Msg("Searching Moxfield decks")
 
-	params := MoxfieldSearchParams{
-		Query:         commander,
-		Format:        format,
-		SortType:      sortType,
-		SortDirection: sortDirection,
-		PageSize:      pageSize,
-		PageNumber:    1,
-	}
-
-	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldBaseURL)
+	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldSearchURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
@@ -160,30 +154,35 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
 
+	return mcp.NewToolResultText(formatMoxfieldSearchResults(commander, params, results)), nil
+}
+
+// formatMoxfieldSearchResults renders a page of Moxfield search results.
+func formatMoxfieldSearchResults(
+	commander string,
+	params MoxfieldSearchParams,
+	results *MoxfieldSearchResponse,
+) string {
 	var output strings.Builder
 	_, _ = fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
-	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", format)
+	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", params.Format)
+	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.SortType, params.SortDirection)
 	_, _ = fmt.Fprintf(&output, "**Total Results:** %d\n", results.TotalResults)
 	_, _ = fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
 		len(results.Data), results.PageNumber, results.TotalPages)
 
 	if len(results.Data) == 0 {
 		output.WriteString("No decks found for this commander.\n")
-	} else {
-		for i, deck := range results.Data {
-			_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
-			_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", deck.Format)
-			_, _ = fmt.Fprintf(&output, "- **Deck ID:** %s\n", deck.PublicID)
-			_, _ = fmt.Fprintf(&output, "- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount)
-			_, _ = fmt.Fprintf(&output, "- **URL:** %s\n\n", deck.PublicURL)
-		}
+		return output.String()
 	}
 
-	GetLogger().Info().
-		Str("tool", "search_moxfield_decks").
-		Str(paramCommander, commander).
-		Int("results_count", len(results.Data)).
-		Msg("Successfully searched Moxfield decks")
+	for i, deck := range results.Data {
+		_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
+		_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", deck.Format)
+		_, _ = fmt.Fprintf(&output, "- **Deck ID:** %s\n", deck.PublicID)
+		_, _ = fmt.Fprintf(&output, "- **Views:** %d | **Likes:** %d\n", deck.ViewCount, deck.LikeCount)
+		_, _ = fmt.Fprintf(&output, "- **URL:** %s\n\n", deck.PublicURL)
+	}
 
-	return mcp.NewToolResultText(output.String()), nil
+	return output.String()
 }

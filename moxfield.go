@@ -72,14 +72,47 @@ type MoxfieldSearchResponse struct {
 	Data         []MoxfieldDeckSummary `json:"data"`
 }
 
-// MoxfieldSearchParams represents search parameters.
+// MoxfieldSearchParams represents search parameters. Only fields the Moxfield API
+// actually honours are present: every commander-oriented parameter (query, q, board,
+// commanderName, commanders) is silently ignored upstream and must not be sent.
 type MoxfieldSearchParams struct {
-	Query         string
+	CardName      string // decks containing this card
 	Format        string
 	SortType      string
 	SortDirection string
 	PageSize      int
 	PageNumber    int
+}
+
+const (
+	// moxfieldSortValues lists the sortType values the Moxfield API accepts;
+	// anything else (e.g. "price") is answered with HTTP 400.
+	moxfieldSortValues = "comments, created, likes, relevance, updated, views"
+	// moxfieldSearchDefaultLimit is the default number of verified decks per page.
+	moxfieldSearchDefaultLimit = 10
+)
+
+// moxfieldSortType validates a sort key against the values Moxfield accepts.
+func moxfieldSortType(sort string) (string, error) {
+	switch sort {
+	case "updated", "created", "views", "likes", "comments", "relevance":
+		return sort, nil
+	default:
+		return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, moxfieldSortValues)
+	}
+}
+
+// moxfieldSortDirection maps our asc/desc surface onto Moxfield's capitalised values.
+func moxfieldSortDirection(direction string) (string, error) {
+	switch direction {
+	case sortDirectionAsc:
+		return "Ascending", nil
+	case sortDirectionDesc:
+		return "Descending", nil
+	default:
+		return "", fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
+			direction, sortDirectionAsc, sortDirectionDesc)
+	}
 }
 
 // GetMoxfieldDeck fetches a deck by its public ID.
@@ -169,7 +202,7 @@ func getUserDecksWithURL(
 
 // SearchMoxfieldDecks searches for decks on Moxfield.
 func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*MoxfieldSearchResponse, error) {
-	return searchMoxfieldDecksWithURL(ctx, params, "https://api2.moxfield.com/v2/decks/search")
+	return searchMoxfieldDecksWithURL(ctx, params, defaultMoxfieldSearchURL)
 }
 
 // searchMoxfieldDecksWithURL searches decks with a custom search URL.
@@ -187,13 +220,11 @@ func searchMoxfieldDecksWithURL(
 		params.PageNumber = 1
 	}
 
-	// Build query parameters
 	queryParams := url.Values{}
 	queryParams.Set("pageSize", strconv.Itoa(params.PageSize))
 	queryParams.Set("pageNumber", strconv.Itoa(params.PageNumber))
-	if params.Query != "" {
-		queryParams.Set("board", "commanders")
-		queryParams.Set("query", params.Query)
+	if params.CardName != "" {
+		queryParams.Set("cardName", params.CardName)
 	}
 	if params.Format != "" {
 		queryParams.Set("fmt", params.Format)

@@ -111,13 +111,14 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 				{PublicID: "s1", Name: "Found Deck", Format: "commander", PublicURL: "https://moxfield.com/s1"},
 			},
 		}
-		s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
 			"format":         "commander",
-			"sort_type":      "views",
-			"sort_direction": "Ascending",
-			"page_size":      float64(5),
+			"sort":           "views",
+			"sort_direction": sortDirectionAsc,
+			"limit":          float64(5),
+			"page":           float64(1),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -129,7 +130,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("no results", func(t *testing.T) {
 		resp := MoxfieldSearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
-		s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Nobody"}))
 		if !strings.Contains(resultText(t, res), "No decks found") {
 			t.Error("expected no-decks message")
@@ -137,10 +138,24 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusInternalServerError, nil)}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
+		}
+	})
+
+	t.Run("invalid sort is rejected", func(t *testing.T) {
+		// The stub answers 200 on any path, so only local validation can make this an error.
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, MoxfieldSearchResponse{})}
+		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "sort": "price",
+		}))
+		if !res.IsError {
+			t.Error("expected an error result for a sort Moxfield rejects")
+		}
+		if !strings.Contains(resultText(t, res), moxfieldSortValues) {
+			t.Errorf("error should list the accepted sorts:\n%s", resultText(t, res))
 		}
 	})
 }
