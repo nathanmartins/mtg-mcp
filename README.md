@@ -101,9 +101,11 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 3. **search_archidekt_decks** – Search public Commander decks by commander name
     - Required `commander` parameter (card name, e.g. `"Atraxa, Praetors' Voice"`)
-    - Optional `bracket` filter (1–4; omit searching all brackets)
-    - Optional `limit` (default: 10, max: 20)
-    - Results sorted by view count descending
+    - Optional `bracket` filter (1–4; omit to search all brackets)
+    - Optional `sort` (`views`, `updated`, `created`, `price`, `size`; default `views`)
+      and `sort_direction` (`asc`/`desc`; default `desc`)
+    - Pagination via `page` (1-based) and `limit` (default 10, max 60)
+    - Invalid sort or out-of-range values return an explicit error instead of a silent fallback
     - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 
 #### Comprehensive Rules (3 tools)

@@ -120,52 +120,84 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
+// archidektSearchParamsFromRequest validates MCP arguments into search parameters.
+// Invalid values are rejected instead of being clamped, because Archidekt accepts
+// bad orderBy values silently and would return a wrongly ordered page.
+func archidektSearchParamsFromRequest(commander string, args map[string]any) (ArchidektSearchParams, error) {
+	params := ArchidektSearchParams{
+		Commander: commander,
+		Bracket:   intArg(args, "bracket", 0),
+		Sort:      stringArg(args, "sort", archidektSortViews),
+		Page:      intArg(args, "page", 1),
+		Limit:     intArg(args, "limit", archidektSearchDefaultLimit),
+	}
+
+	switch direction := stringArg(args, "sort_direction", sortDirectionDesc); direction {
+	case sortDirectionDesc:
+		params.Ascending = false
+	case sortDirectionAsc:
+		params.Ascending = true
+	default:
+		return params, fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
+			direction, sortDirectionAsc, sortDirectionDesc)
+	}
+
+	if params.Bracket != 0 && (params.Bracket < archidektMinBracket || params.Bracket > archidektMaxBracket) {
+		return params, fmt.Errorf("invalid bracket %d (accepted: %d-%d, or omit for all brackets)",
+			params.Bracket, archidektMinBracket, archidektMaxBracket)
+	}
+	if params.Page < 1 {
+		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.Page)
+	}
+	if params.Limit < 1 || params.Limit > archidektSearchMaxLimit {
+		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.Limit, archidektSearchMaxLimit)
+	}
+	if _, err := archidektOrderBy(params.Sort, params.Ascending); err != nil {
+		return params, err
+	}
+
+	return params, nil
+}
+
 func (s *MTGCommanderServer) handleSearchArchidektDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	commander, err := request.RequireString("commander")
+	commander, err := request.RequireString(paramCommander)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	bracket := 0
-	limit := 10
-	args := request.GetArguments()
-	if bracketVal, hasBracket := args["bracket"]; hasBracket {
-		if bracketFloat, ok := bracketVal.(float64); ok {
-			bracket = int(bracketFloat)
-		}
-	}
-	if limitVal, hasLimit := args["limit"]; hasLimit {
-		if limitFloat, ok := limitVal.(float64); ok && limitFloat >= 1 {
-			limit = int(limitFloat)
-		}
+	params, err := archidektSearchParamsFromRequest(commander, request.GetArguments())
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	GetLogger().Info().
 		Str("tool", "search_archidekt_decks").
-		Str("commander", commander).
-		Int("bracket", bracket).
-		Int("limit", limit).
+		Str(paramCommander, params.Commander).
+		Int("bracket", params.Bracket).
+		Str("sort", params.Sort).
+		Bool("ascending", params.Ascending).
+		Int("page", params.Page).
+		Int("limit", params.Limit).
 		Msg("Searching Archidekt decks")
 
-	result, err := searchArchidektDecksWithURL(ctx, commander, bracket, limit, s.archidektBaseURL)
+	result, err := searchArchidektDecksWithURL(ctx, params, s.archidektBaseURL)
 	if err != nil {
 		GetLogger().Error().
 			Err(err).
 			Str("tool", "search_archidekt_decks").
-			Str("commander", commander).
+			Str(paramCommander, params.Commander).
 			Msg("Failed to search Archidekt decks")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Archidekt decks: %v", err)), nil
 	}
 
 	GetLogger().Info().
 		Str("tool", "search_archidekt_decks").
-		Str("commander", commander).
-		Int("result_count", len(result.Results)).
+		Str(paramCommander, params.Commander).
+		Int("results_count", len(result.Decks)).
 		Msg("Successfully searched Archidekt decks")
 
-	output := FormatArchidektSearchResultsForDisplay(commander, bracket, result)
-	return mcp.NewToolResultText(output), nil
+	return mcp.NewToolResultText(FormatArchidektSearchResultsForDisplay(params, result)), nil
 }

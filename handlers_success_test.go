@@ -262,6 +262,8 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 			"commander": "Atraxa, Praetors' Voice",
 			"bracket":   float64(4),
 			"limit":     float64(5),
+			"page":      float64(1),
+			"sort":      "updated",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -276,6 +278,16 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
+		}
+	})
+
+	t.Run("invalid sort is rejected", func(t *testing.T) {
+		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "sort": "trending",
+		}))
+		if !res.IsError {
+			t.Error("expected an error result for an unsupported sort")
 		}
 	})
 }
