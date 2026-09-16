@@ -83,6 +83,11 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
       default `updated`) and `sort_direction` (`asc`/`desc`; default `desc`)
     - Pagination via `page` (1-based) and `limit` (default 10, max 100)
     - Returns deck metadata with views, likes, and URLs
+    - Moxfield's API cannot filter by commander, so results are verified per deck:
+      candidates come from a card-name search and each one is fetched to confirm its
+      commander zone (max 20 checks per call)
+    - Output reports how many candidates were checked and flags incomplete verification
+      when Moxfield rate-limits the run
 
 #### Archidekt Integration (3 tools)
 
@@ -320,6 +325,8 @@ Once connected to Claude Desktop, you can ask questions like:
 4. **Moxfield:** Unofficial API (<https://api.moxfield.com>)
     - Deck data and user profiles
     - Metadata including views, likes, comments
+    - Search endpoint lives on a different host (`api2.moxfield.com`) than deck reads
+    - Rate limit observed at roughly 11 rapid requests; commander verification is spaced and capped
     - **Note:** No official public API; be respectful of rate limits
     - Contact <support@moxfield.com> for authorized access
 

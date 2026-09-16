@@ -3,12 +3,40 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// moxfieldHTTPTimeout bounds a single Moxfield request. Commander verification issues
+// one request per candidate deck, so an unbounded client would let a single hung
+// upstream request stall the whole tool call.
+const moxfieldHTTPTimeout = 15 * time.Second
+
+// moxfieldStatusError reports a non-200 response from the Moxfield API. The status is
+// preserved so callers can treat rate limiting (429) differently from hard failures.
+type moxfieldStatusError struct {
+	StatusCode int
+}
+
+func (e *moxfieldStatusError) Error() string {
+	return fmt.Sprintf("moxfield API returned status %d", e.StatusCode)
+}
+
+// isMoxfieldRateLimited reports whether err is a Moxfield HTTP 429.
+func isMoxfieldRateLimited(err error) bool {
+	var statusErr *moxfieldStatusError
+	return errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusTooManyRequests
+}
+
+// moxfieldHTTPClient returns a client with an explicit timeout.
+func moxfieldHTTPClient() *http.Client {
+	return &http.Client{Timeout: moxfieldHTTPTimeout}
+}
 
 // MoxfieldDeck represents a deck from Moxfield.
 type MoxfieldDeck struct {
@@ -133,7 +161,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := moxfieldHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -143,7 +171,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("moxfield API returned status %d", resp.StatusCode)
+		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
 	}
 
 	var deck MoxfieldDeck
@@ -179,7 +207,7 @@ func getUserDecksWithURL(
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := moxfieldHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -189,7 +217,7 @@ func getUserDecksWithURL(
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("moxfield API returned status %d", resp.StatusCode)
+		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
 	}
 
 	var decksResp MoxfieldUserDecksResponse
@@ -246,7 +274,7 @@ func searchMoxfieldDecksWithURL(
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := moxfieldHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -256,7 +284,7 @@ func searchMoxfieldDecksWithURL(
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("moxfield search API returned status %d", resp.StatusCode)
+		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
 	}
 
 	var searchResp MoxfieldSearchResponse

@@ -154,6 +154,9 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		Int("limit", params.PageSize).
 		Msg("Searching Moxfield decks")
 
+	wanted := params.PageSize
+	params.PageSize = min(wanted*moxfieldCandidateFactor, maxPageSize)
+
 	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldSearchURL)
 	if err != nil {
 		GetLogger().Error().
@@ -164,37 +167,55 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
 
+	verifyCtx, cancel := context.WithTimeout(ctx, moxfieldVerifyBudget)
+	defer cancel()
+	outcome := verifyMoxfieldCommanderDecks(
+		verifyCtx, results.Data, commander, s.moxfieldBaseURL,
+		wanted, moxfieldVerifyMaxChecks, moxfieldVerifyDelay,
+	)
+
 	GetLogger().Info().
 		Str("tool", "search_moxfield_decks").
 		Str(paramCommander, commander).
-		Int("results_count", len(results.Data)).
-		Int("page", params.PageNumber).
-		Int("limit", params.PageSize).
+		Int("candidates", outcome.Candidates).
+		Int("checked", outcome.Checked).
+		Int("verified", len(outcome.Decks)).
+		Bool("incomplete", outcome.Incomplete).
 		Msg("Successfully searched Moxfield decks")
 
-	return mcp.NewToolResultText(formatMoxfieldSearchResults(commander, params, results)), nil
+	return mcp.NewToolResultText(formatMoxfieldCommanderSearch(commander, params, results, outcome)), nil
 }
 
-// formatMoxfieldSearchResults renders a page of Moxfield search results.
-func formatMoxfieldSearchResults(
+// formatMoxfieldCommanderSearch renders verified commander decks. Moxfield's search API
+// cannot filter by commander, so the output states exactly how many candidates were
+// checked and whether verification was cut short.
+func formatMoxfieldCommanderSearch(
 	commander string,
 	params MoxfieldSearchParams,
 	results *MoxfieldSearchResponse,
+	outcome MoxfieldCommanderSearch,
 ) string {
 	var output strings.Builder
 	_, _ = fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
 	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", params.Format)
 	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.SortType, params.SortDirection)
-	_, _ = fmt.Fprintf(&output, "**Total Results:** %d\n", results.TotalResults)
-	_, _ = fmt.Fprintf(&output, "**Showing:** %d decks (Page %d of %d)\n\n",
-		len(results.Data), results.PageNumber, results.TotalPages)
+	_, _ = fmt.Fprintf(&output, "**Candidates containing the card:** %d (page %d of %d, %d total matches)\n",
+		outcome.Candidates, results.PageNumber, results.TotalPages, results.TotalResults)
+	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked\n\n",
+		len(outcome.Decks), outcome.Checked)
 
-	if len(results.Data) == 0 {
-		output.WriteString("No decks found for this commander.\n")
+	if outcome.Incomplete {
+		_, _ = fmt.Fprintf(&output,
+			"> ⚠️ Verification incomplete — %s. More matching decks may exist on this page.\n\n",
+			outcome.Reason)
+	}
+
+	if len(outcome.Decks) == 0 {
+		output.WriteString("No decks with this commander were found among the checked candidates.\n")
 		return output.String()
 	}
 
-	for i, deck := range results.Data {
+	for i, deck := range outcome.Decks {
 		_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
 		_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", deck.Format)
 		_, _ = fmt.Fprintf(&output, "- **Deck ID:** %s\n", deck.PublicID)

@@ -121,7 +121,14 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
+		// Verification fetches every candidate, so the deck read has to confirm the commander.
+		deckServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
+			_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa"))
+		}))
+		t.Cleanup(deckServer.Close)
+
+		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL, moxfieldBaseURL: deckServer.URL}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
 			"format":         "commander",
@@ -133,12 +140,15 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		// pageSize is the over-fetch (limit × moxfieldCandidateFactor), not the limit itself:
+		// the search cannot filter by commander, so the handler asks for extra candidates and
+		// verification narrows the page back down.
 		want := map[string]string{
 			"cardName":      "Atraxa",
 			"fmt":           "commander",
 			"sortType":      "views",
 			"sortDirection": "Ascending",
-			"pageSize":      "5",
+			"pageSize":      "25",
 			"pageNumber":    "3",
 		}
 		for key, value := range want {
@@ -155,7 +165,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		resp := MoxfieldSearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
 		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Nobody"}))
-		if !strings.Contains(resultText(t, res), "No decks found") {
+		if !strings.Contains(resultText(t, res), "No decks with this commander were found") {
 			t.Error("expected no-decks message")
 		}
 	})
@@ -181,6 +191,49 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 			t.Errorf("error should list the accepted sorts:\n%s", resultText(t, res))
 		}
 	})
+}
+
+func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
+	matching := MoxfieldDeckSummary{PublicID: "yes1", Name: "Atraxa Superfriends", Format: "commander"}
+	other := MoxfieldDeckSummary{PublicID: "no1", Name: "Winota Blink", Format: "commander"}
+
+	searchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{
+			PageNumber: 1, PageSize: 50, TotalResults: 2, TotalPages: 1,
+			Data: []MoxfieldDeckSummary{matching, other},
+		})
+	}))
+	defer searchServer.Close()
+
+	deckServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
+		commander := "Winota, Joiner of Forces"
+		if id == "yes1" {
+			commander = "Atraxa, Praetors' Voice"
+		}
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, commander))
+	}))
+	defer deckServer.Close()
+
+	s := &MTGCommanderServer{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
+	res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		"commander": "Atraxa, Praetors' Voice",
+		"limit":     float64(5),
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := resultText(t, res)
+	if !strings.Contains(text, "Atraxa Superfriends") {
+		t.Errorf("verified deck missing from output\n%s", text)
+	}
+	if strings.Contains(text, "Winota Blink") {
+		t.Errorf("deck with a different commander must be filtered out\n%s", text)
+	}
+	if !strings.Contains(text, "Verified") {
+		t.Errorf("output must state how many candidates were verified\n%s", text)
+	}
 }
 
 func sampleArchidektDeck() ArchidektDeck {
