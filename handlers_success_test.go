@@ -291,6 +291,16 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 				res.IsError, resultText(t, res))
 		}
 	})
+
+	t.Run("invalid colors are rejected", func(t *testing.T) {
+		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "colors": "WX",
+		}))
+		if !res.IsError {
+			t.Error("expected an error result for an invalid colors value")
+		}
+	})
 }
 
 func TestHandleGetEDHRECRecommendations(t *testing.T) {

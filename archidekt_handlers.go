@@ -130,6 +130,10 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 		Sort:      stringArg(args, "sort", archidektSortViews),
 		Page:      intArg(args, "page", 1),
 		Limit:     intArg(args, "limit", archidektSearchDefaultLimit),
+		Colors:    stringArg(args, "colors", ""),
+		DeckSize:  intArg(args, "deck_size", 0),
+		Author:    stringArg(args, "author", ""),
+		DeckName:  stringArg(args, paramName, ""),
 	}
 
 	switch direction := stringArg(args, "sort_direction", sortDirectionDesc); direction {
@@ -154,6 +158,13 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 	}
 	if _, err := archidektOrderBy(params.Sort, params.Ascending); err != nil {
 		return params, err
+	}
+	if _, err := normalizeArchidektColors(params.Colors); err != nil {
+		return params, err
+	}
+	if params.DeckSize < 0 || params.DeckSize > archidektMaxDeckSize {
+		return params, fmt.Errorf("invalid deck_size %d (accepted: 1-%d, or omit)",
+			params.DeckSize, archidektMaxDeckSize)
 	}
 
 	return params, nil

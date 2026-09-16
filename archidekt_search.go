@@ -28,6 +28,13 @@ const (
 	// archidektMinBracket and archidektMaxBracket bound the EDH bracket filter.
 	archidektMinBracket = 1
 	archidektMaxBracket = 4
+	// archidektMaxDeckSize bounds the deck-size filter (Commander decks are 100 cards;
+	// the cap only exists to reject nonsense input).
+	archidektMaxDeckSize = 1000
+	// archidektColorLetters lists the colour letters Archidekt's colors filter accepts.
+	archidektColorLetters = "WUBRG"
+	// archidektOptionalFilters is how many optional filters the formatter can list.
+	archidektOptionalFilters = 4
 
 	archidektSortViews   = "views"
 	archidektSortUpdated = "updated"
@@ -44,8 +51,12 @@ type ArchidektSearchParams struct {
 	Bracket   int    // 1-4 filters by EDH bracket; 0 means no filter
 	Sort      string // logical sort key; empty defaults to archidektSortViews
 	Ascending bool
-	Page      int // 1-based logical page
-	Limit     int // decks per logical page, 1..archidektSearchMaxLimit
+	Page      int    // 1-based logical page
+	Limit     int    // decks per logical page, 1..archidektSearchMaxLimit
+	Colors    string // e.g. "WU"; empty means no filter
+	DeckSize  int    // exact card count, e.g. 99; 0 means no filter
+	Author    string // Archidekt username; empty means no filter
+	DeckName  string // deck-name substring; empty means no filter
 }
 
 // ArchidektSearchResult is one logical page of deck search results. Total is only
@@ -99,6 +110,31 @@ func archidektOrderBy(sort string, ascending bool) (string, error) {
 	return "-" + field, nil
 }
 
+// normalizeArchidektColors converts a colour string such as "WU" into the
+// comma-separated form Archidekt expects ("W,U"). Duplicate or unknown letters are
+// rejected: Archidekt would accept them and return a silently different result set.
+func normalizeArchidektColors(colors string) (string, error) {
+	trimmed := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(colors), ",", ""))
+	if trimmed == "" {
+		return "", nil
+	}
+
+	seen := make(map[rune]bool, len(trimmed))
+	letters := make([]string, 0, len(trimmed))
+	for _, letter := range trimmed {
+		if !strings.ContainsRune(archidektColorLetters, letter) {
+			return "", fmt.Errorf("invalid color %q (accepted letters: %s)", string(letter), archidektColorLetters)
+		}
+		if seen[letter] {
+			return "", fmt.Errorf("duplicate color %q", string(letter))
+		}
+		seen[letter] = true
+		letters = append(letters, string(letter))
+	}
+
+	return strings.Join(letters, ","), nil
+}
+
 // archidektPageWindow maps a logical page request onto the fixed-size upstream pages
 // covering it, returning the first API page to request, the offset of the logical window
 // inside that page, and how many API pages to fetch. A logical window may straddle two
@@ -140,6 +176,12 @@ func searchArchidektDecksWithURL(
 	baseURL string,
 ) (*ArchidektSearchResult, error) {
 	params = params.normalized()
+
+	// Reject an invalid colour filter before the first request: Archidekt would accept
+	// it and quietly return an unfiltered page.
+	if _, err := normalizeArchidektColors(params.Colors); err != nil {
+		return nil, err
+	}
 
 	orderBy, err := archidektOrderBy(params.Sort, params.Ascending)
 	if err != nil {
@@ -184,6 +226,22 @@ func fetchArchidektSearchPage(
 	queryParams.Set("commanderName", params.Commander)
 	queryParams.Set("deckFormat", archidektCommanderFormat)
 	queryParams.Set("orderBy", orderBy)
+	colors, err := normalizeArchidektColors(params.Colors)
+	if err != nil {
+		return nil, err
+	}
+	if colors != "" {
+		queryParams.Set("colors", colors)
+	}
+	if params.DeckSize > 0 {
+		queryParams.Set("size", strconv.Itoa(params.DeckSize))
+	}
+	if params.Author != "" {
+		queryParams.Set("ownerUsername", params.Author)
+	}
+	if params.DeckName != "" {
+		queryParams.Set("name", params.DeckName)
+	}
 	if params.Bracket >= archidektMinBracket && params.Bracket <= archidektMaxBracket {
 		queryParams.Set("edhBracket", strconv.Itoa(params.Bracket))
 	}
@@ -236,6 +294,9 @@ func FormatArchidektSearchResultsForDisplay(params ArchidektSearchParams, result
 		direction = "ascending"
 	}
 	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.Sort, direction)
+	if filters := formatArchidektFilters(params); filters != "" {
+		_, _ = fmt.Fprintf(&output, "**Filters:** %s\n", filters)
+	}
 	_, _ = fmt.Fprintf(&output, "**Total Results:** %s\n", formatArchidektTotal(result))
 
 	if len(result.Decks) == 0 {
@@ -258,8 +319,7 @@ func FormatArchidektSearchResultsForDisplay(params ArchidektSearchParams, result
 		_, _ = fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
 	}
 
-	// Only hint at a next page when the reported total does not already rule one out.
-	if len(result.Decks) == result.Limit && (!result.TotalKnown || result.Page*result.Limit < result.Total) {
+	if archidektHasMorePages(result) {
 		_, _ = fmt.Fprintf(&output, "*More decks may be available — request page %d.*\n", result.Page+1)
 	}
 
@@ -276,4 +336,35 @@ func formatArchidektTotal(result *ArchidektSearchResult) string {
 	default:
 		return strconv.Itoa(result.Total)
 	}
+}
+
+// archidektHasMorePages reports whether another logical page may exist. A capped total
+// is a lower bound, so it can never prove the result set is exhausted.
+func archidektHasMorePages(result *ArchidektSearchResult) bool {
+	if len(result.Decks) < result.Limit {
+		return false
+	}
+	if !result.TotalKnown || result.TotalCapped {
+		return true
+	}
+	return result.Page*result.Limit < result.Total
+}
+
+// formatArchidektFilters lists the active optional filters so the caller can see
+// exactly which constraints produced the page.
+func formatArchidektFilters(params ArchidektSearchParams) string {
+	filters := make([]string, 0, archidektOptionalFilters)
+	if params.Colors != "" {
+		filters = append(filters, "colors "+strings.ToUpper(strings.ReplaceAll(params.Colors, ",", "")))
+	}
+	if params.DeckSize > 0 {
+		filters = append(filters, "size "+strconv.Itoa(params.DeckSize))
+	}
+	if params.Author != "" {
+		filters = append(filters, "author "+params.Author)
+	}
+	if params.DeckName != "" {
+		filters = append(filters, "name "+params.DeckName)
+	}
+	return strings.Join(filters, " · ")
 }

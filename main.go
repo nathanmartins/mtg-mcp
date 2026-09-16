@@ -434,6 +434,18 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 		mcp.WithNumber("limit",
 			mcp.Description("Decks per page (default: 10, max: 60)"),
 		),
+		mcp.WithString("colors",
+			mcp.Description("Filter by colour identity letters, e.g. 'WU' (accepted: W, U, B, R, G)"),
+		),
+		mcp.WithNumber("deck_size",
+			mcp.Description("Filter by exact deck card count, e.g. 99"),
+		),
+		mcp.WithString("author",
+			mcp.Description("Filter by Archidekt username"),
+		),
+		mcp.WithString(paramName,
+			mcp.Description("Filter by deck-name substring"),
+		),
 	)
 	mcpServer.AddTool(searchArchidektDecksTool, s.handleSearchArchidektDecks)
 }

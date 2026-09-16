@@ -104,6 +104,8 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Optional `bracket` filter (1–4; omit to search all brackets)
     - Optional `sort` (`views`, `updated`, `created`, `price`, `size`; default `views`)
       and `sort_direction` (`asc`/`desc`; default `desc`)
+    - Optional filters: `colors` (e.g. `WU`), `deck_size` (exact card count),
+      `author` (Archidekt username), `name` (deck-name substring)
     - Pagination via `page` (1-based) and `limit` (default 10, max 60)
     - Invalid sort or out-of-range values return an explicit error instead of a silent fallback
     - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL

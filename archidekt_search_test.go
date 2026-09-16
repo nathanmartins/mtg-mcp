@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strconv"
 	"strings"
 	"testing"
@@ -426,6 +427,35 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 		}
 	})
 
+	t.Run("next-page hint survives a capped total", func(t *testing.T) {
+		// A capped total is a lower bound, so page*limit reaching it proves nothing.
+		capped := &ArchidektSearchResult{
+			Decks:       archidektPageSlice(archidektCountCap, 1).Results[:10],
+			Page:        100,
+			Limit:       10,
+			Total:       archidektCountCap,
+			TotalCapped: true,
+			TotalKnown:  true,
+		}
+		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+			Commander: "Atraxa", Sort: "views", Page: 100, Limit: 10,
+		}, capped)
+		if !strings.Contains(got, "request page 101") {
+			t.Errorf("a capped total must keep the next-page hint\n%s", got)
+		}
+
+		// The same window with an exact total of the same size is genuinely exhausted.
+		exact := &ArchidektSearchResult{
+			Decks: capped.Decks, Page: 100, Limit: 10, Total: archidektCountCap, TotalKnown: true,
+		}
+		got = FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+			Commander: "Atraxa", Sort: "views", Page: 100, Limit: 10,
+		}, exact)
+		if strings.Contains(got, "request page 101") {
+			t.Errorf("an exhausted exact total must not advertise another page\n%s", got)
+		}
+	})
+
 	t.Run("empty page", func(t *testing.T) {
 		empty := &ArchidektSearchResult{Page: 9, Limit: 10, TotalKnown: true}
 		got := FormatArchidektSearchResultsForDisplay(
@@ -436,4 +466,104 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 			t.Errorf("expected empty-results message\n%s", got)
 		}
 	})
+}
+
+func TestNormalizeArchidektColors(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "single colour", input: "W", want: "W"},
+		{name: "two colours", input: "WU", want: "W,U"},
+		{name: "lowercase is accepted", input: "wu", want: "W,U"},
+		{name: "already separated", input: "W,U", want: "W,U"},
+		{name: "five colours", input: "WUBRG", want: "W,U,B,R,G"},
+		{name: "duplicates are rejected", input: "WW", wantErr: true},
+		{name: "unknown letter is rejected", input: "WX", wantErr: true},
+		{name: "colourless is rejected", input: "C", wantErr: true},
+		{name: "empty means no filter", input: "", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeArchidektColors(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("normalizeArchidektColors(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+			if !tt.wantErr && got != tt.want {
+				t.Errorf("normalizeArchidektColors(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSearchArchidektDecksSendsFilters(t *testing.T) {
+	var gotQuery url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).Encode(syntheticArchidektPage(1, 12))
+	}))
+	defer server.Close()
+
+	_, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5,
+		Colors: "WU", DeckSize: 99, Author: "NorwegianWhaler", DeckName: "budget",
+	}, server.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := map[string]string{
+		"colors":        "W,U",
+		"size":          "99",
+		"ownerUsername": "NorwegianWhaler",
+		"name":          "budget",
+	}
+	for key, value := range want {
+		if gotQuery.Get(key) != value {
+			t.Errorf("%s = %q, want %q", key, gotQuery.Get(key), value)
+		}
+	}
+	// Upstream ignores these, so sending them would be misleading noise.
+	for _, forbidden := range []string{"cardName", "tagName", "tags", "owner", "pageSize"} {
+		if gotQuery.Get(forbidden) != "" {
+			t.Errorf("must not send %s (ignored or broken upstream)", forbidden)
+		}
+	}
+}
+
+func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("upstream must not be called for invalid colors")
+	}))
+	defer server.Close()
+
+	_, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5, Colors: "WX",
+	}, server.URL)
+	if err == nil {
+		t.Fatal("expected an error for an invalid colors value")
+	}
+}
+
+func TestFormatArchidektSearchResultsShowsActiveFilters(t *testing.T) {
+	result := &ArchidektSearchResult{
+		Decks:      []ArchidektDeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: ArchidektOwner{Username: "player"}}},
+		Page:       1,
+		Limit:      10,
+		Total:      12,
+		TotalKnown: true,
+	}
+	got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 10,
+		Colors: "WU", DeckSize: 99, Author: "player", DeckName: "budget",
+	}, result)
+
+	for _, want := range []string{"**Filters:**", "colors WU", "size 99", "author player", "name budget"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q\n%s", want, got)
+		}
+	}
 }
