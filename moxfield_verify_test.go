@@ -105,6 +105,15 @@ func TestVerifyMoxfieldCommanderDecksStopsAtLimit(t *testing.T) {
 	if requests != 3 {
 		t.Errorf("made %d upstream requests, want 3 — verification must stop at the limit", requests)
 	}
+	// Stopping at the limit is a success, not a truncation — but the 27 candidates the
+	// loop never looked at are lost, because page 2 resumes after this candidate page.
+	if got.Unexamined != 27 {
+		t.Errorf("Unexamined = %d, want 27 (the candidates left after the limit was reached)", got.Unexamined)
+	}
+	if got.Incomplete || got.Reason != "" {
+		t.Errorf("reaching the limit is not an incomplete verification: Incomplete=%v Reason=%q",
+			got.Incomplete, got.Reason)
+	}
 }
 
 func TestVerifyMoxfieldCommanderDecksRespectsCheckBudget(t *testing.T) {

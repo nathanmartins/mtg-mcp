@@ -279,16 +279,19 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 			mcp.Description("MTG format to filter by (default: 'commander')"),
 		),
 		mcp.WithString("sort",
-			mcp.Description("Sort field: updated, created, views, likes, comments, relevance (default: updated)"),
+			mcp.Description("Sort field: updated, created, views, likes, comments, relevance (default: views)"),
 		),
 		mcp.WithString("sort_direction",
 			mcp.Description("Sort direction: asc or desc (default: desc)"),
 		),
 		mcp.WithNumber("page",
-			mcp.Description("1-based result page (default: 1)"),
+			mcp.Description(
+				"1-based page of candidate decks searched (default: 1). Moxfield cannot filter by "+
+					"commander, so a page may verify no decks while a later page verifies many.",
+			),
 		),
 		mcp.WithNumber("limit",
-			mcp.Description("Decks per page (default: 10, max: 100)"),
+			mcp.Description("Verified decks per page (default: 10, max: 20 — the per-call verification budget)"),
 		),
 	)
 	mcpServer.AddTool(searchMoxfieldDecksTool, s.handleSearchMoxfieldDecks)

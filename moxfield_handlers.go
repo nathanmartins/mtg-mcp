@@ -98,7 +98,7 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (Mox
 		PageSize:   intArg(args, "limit", moxfieldSearchDefaultLimit),
 	}
 
-	sortType, err := moxfieldSortType(stringArg(args, "sort", "updated"))
+	sortType, err := moxfieldSortType(stringArg(args, "sort", searchSortDefault))
 	if err != nil {
 		return params, err
 	}
@@ -113,8 +113,11 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (Mox
 	if params.PageNumber < 1 {
 		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.PageNumber)
 	}
-	if params.PageSize < 1 || params.PageSize > maxPageSize {
-		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.PageSize, maxPageSize)
+	// The limit is bounded by what verification can actually deliver, not by Moxfield's
+	// page size: at most moxfieldVerifyMaxChecks decks are ever fetched and confirmed,
+	// so a larger limit could never be honoured.
+	if params.PageSize < 1 || params.PageSize > moxfieldVerifyMaxChecks {
+		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.PageSize, moxfieldVerifyMaxChecks)
 	}
 
 	return params, nil
@@ -137,7 +140,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 			Err(err).
 			Str("tool", "search_moxfield_decks").
 			Str(paramCommander, commander).
-			Str("sort", stringArg(args, "sort", "updated")).
+			Str("sort", stringArg(args, "sort", searchSortDefault)).
 			Str("sort_direction", stringArg(args, "sort_direction", sortDirectionDesc)).
 			Int("page", params.PageNumber).
 			Int("limit", params.PageSize).
@@ -149,16 +152,18 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		Str("tool", "search_moxfield_decks").
 		Str(paramCommander, commander).
 		Str("format", params.Format).
-		Str("sort_type", params.SortType).
+		Str("sort", params.SortType).
 		Int("page", params.PageNumber).
 		Int("limit", params.PageSize).
 		Msg("Searching Moxfield decks")
 
 	wanted := params.PageSize
-	// The over-fetch is capped by the verification budget as well as by the upstream page
-	// limit: candidates beyond moxfieldVerifyMaxChecks could never be checked, and paging
-	// would skip them, since page 2 starts after the whole requested page.
-	params.PageSize = min(wanted*moxfieldCandidateFactor, moxfieldVerifyMaxChecks, maxPageSize)
+	// The over-fetch is capped by the verification budget: candidates beyond
+	// moxfieldVerifyMaxChecks could never be checked. Verification also stops as soon as
+	// it has `wanted` matches, so any candidate left over on this page is skipped for
+	// good — page 2 resumes after the whole requested page. The output discloses how
+	// many candidates were left unexamined.
+	params.PageSize = min(wanted*moxfieldCandidateFactor, moxfieldVerifyMaxChecks)
 
 	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldSearchURL)
 	if err != nil {
@@ -183,6 +188,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		Int("candidates", outcome.Candidates).
 		Int("checked", outcome.Checked).
 		Int("verified", len(outcome.Decks)).
+		Int("unexamined", outcome.Unexamined).
 		Bool("incomplete", outcome.Incomplete).
 		Msg("Successfully searched Moxfield decks")
 
@@ -191,7 +197,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 
 // formatMoxfieldCommanderSearch renders verified commander decks. Moxfield's search API
 // cannot filter by commander, so the output states exactly how many candidates were
-// checked and whether verification was cut short.
+// checked, how many were never looked at, and whether verification was cut short.
 func formatMoxfieldCommanderSearch(
 	commander string,
 	params MoxfieldSearchParams,
@@ -201,11 +207,20 @@ func formatMoxfieldCommanderSearch(
 	var output strings.Builder
 	_, _ = fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
 	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", params.Format)
-	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.SortType, params.SortDirection)
+	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n",
+		params.SortType, sortDirectionLabel(params.SortDirection == moxfieldDirectionAscending))
 	_, _ = fmt.Fprintf(&output, "**Candidates containing the card:** %d (page %d of %d, %d total matches)\n",
 		outcome.Candidates, results.PageNumber, results.TotalPages, results.TotalResults)
-	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked%s\n\n",
+	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked%s\n",
 		len(outcome.Decks), outcome.Checked, unfetchableSuffix(outcome.Failed))
+	if outcome.Unexamined > 0 {
+		// Page N+1 resumes after this whole candidate page, so these candidates are not
+		// merely deferred — nothing will ever look at them.
+		_, _ = fmt.Fprintf(&output,
+			"**Not examined on this page:** %d candidates (match limit reached; paging skips them)\n",
+			outcome.Unexamined)
+	}
+	output.WriteString("\n")
 
 	if outcome.Incomplete {
 		_, _ = fmt.Fprintf(&output,

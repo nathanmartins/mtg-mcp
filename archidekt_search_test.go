@@ -349,7 +349,7 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 			Commander: "Atraxa", Bracket: 4, Sort: "views", Page: 3, Limit: 10,
 		}, result)
 		for _, want := range []string{
-			"Atraxa", "Bracket 4", "**Sort:** views (descending)",
+			"Atraxa", "Bracket 4", "**Sort:** views (desc)",
 			"**Total Results:** 671", "showing decks 21–21", "## 21. Toxic Love",
 			"https://archidekt.com/decks/42",
 		} {

@@ -27,11 +27,16 @@ const (
 // be read at all — those are neither matches nor non-matches, merely unknown.
 // Incomplete marks a truncated or partially blind verification, and is always paired
 // with a Reason; the caller must not present the list as exhaustive.
+// Unexamined counts the candidates left untouched because the requested number of
+// matches was already found. That is an ordinary success rather than an incomplete
+// verification, but the next page resumes after the whole candidate page, so those
+// candidates are skipped for good and the count has to be reported.
 type MoxfieldCommanderSearch struct {
 	Decks      []MoxfieldDeckSummary
 	Candidates int
 	Checked    int
 	Failed     int
+	Unexamined int
 	Incomplete bool
 	Reason     string
 }
@@ -55,7 +60,9 @@ func deckHasCommander(deck *MoxfieldDeck, commander string) bool {
 // card, fetching each deck in sequence. It stops at limit matches, at maxChecks
 // fetches, when ctx expires, or at the first HTTP 429, reporting why. Candidates whose
 // deck read fails are counted in Failed and make the outcome incomplete, because a deck
-// that could not be read cannot be ruled out either.
+// that could not be read cannot be ruled out either. Candidates never reached because
+// limit matches were already found are counted in Unexamined instead: the run
+// succeeded, but those decks are unreachable by paging.
 func verifyMoxfieldCommanderDecks(
 	ctx context.Context,
 	candidates []MoxfieldDeckSummary,
@@ -70,6 +77,7 @@ func verifyMoxfieldCommanderDecks(
 
 	for i, candidate := range candidates {
 		if len(outcome.Decks) >= limit {
+			outcome.Unexamined = len(candidates) - i
 			break
 		}
 		if outcome.Checked >= maxChecks {

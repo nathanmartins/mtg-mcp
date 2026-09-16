@@ -118,6 +118,11 @@ const (
 	moxfieldSortValues = "comments, created, likes, relevance, updated, views"
 	// moxfieldSearchDefaultLimit is the default number of decks returned per page.
 	moxfieldSearchDefaultLimit = 10
+	// moxfieldDirectionAscending and moxfieldDirectionDescending are Moxfield's wire
+	// values for sortDirection. They are not the tool's vocabulary: the caller passes
+	// asc/desc and the output must be rendered back in those terms.
+	moxfieldDirectionAscending  = "Ascending"
+	moxfieldDirectionDescending = "Descending"
 )
 
 // moxfieldSortType validates a sort key against the values Moxfield accepts.
@@ -134,9 +139,9 @@ func moxfieldSortType(sort string) (string, error) {
 func moxfieldSortDirection(direction string) (string, error) {
 	switch direction {
 	case sortDirectionAsc:
-		return "Ascending", nil
+		return moxfieldDirectionAscending, nil
 	case sortDirectionDesc:
-		return "Descending", nil
+		return moxfieldDirectionDescending, nil
 	default:
 		return "", fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
 			direction, sortDirectionAsc, sortDirectionDesc)

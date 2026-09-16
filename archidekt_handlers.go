@@ -127,7 +127,7 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 	params := ArchidektSearchParams{
 		Commander: commander,
 		Bracket:   intArg(args, "bracket", 0),
-		Sort:      stringArg(args, "sort", archidektSortViews),
+		Sort:      stringArg(args, "sort", searchSortDefault),
 		Page:      intArg(args, "page", 1),
 		Limit:     intArg(args, "limit", archidektSearchDefaultLimit),
 		Colors:    stringArg(args, "colors", ""),

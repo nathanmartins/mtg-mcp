@@ -80,13 +80,19 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Required `commander` parameter (card name)
     - Optional `format` (default `commander`)
     - Optional `sort` (`updated`, `created`, `views`, `likes`, `comments`, `relevance`;
-      default `updated`) and `sort_direction` (`asc`/`desc`; default `desc`)
-    - Pagination via `page` (1-based) and `limit` (default 10, max 100)
+      default `views`) and `sort_direction` (`asc`/`desc`; default `desc`)
+    - Pagination via `limit` (verified decks per page; default 10, max 20 — the
+      per-call verification budget) and `page`, the 1-based page of *candidate* decks
+      searched: Moxfield cannot filter by commander, so a page may verify no decks
+      while a later page verifies many
     - Returns deck metadata with views, likes, and URLs
     - Moxfield's API cannot filter by commander, so results are verified per deck:
       candidates come from a card-name search and each one is fetched to confirm its
-      commander zone (max 20 checks per call, which is also the largest candidate page
-      requested, so paging never skips candidates verification could not reach)
+      commander zone (max 20 checks per call)
+    - Verification stops as soon as `limit` decks are confirmed, so the remaining
+      candidates on that page are never examined and paging skips them — the next page
+      resumes after the whole candidate page. The output states how many candidates
+      were left unexamined
     - Output reports how many candidates were checked, how many could not be fetched,
       and flags incomplete verification when a deck read fails, the 30 s verification
       budget expires, or Moxfield rate-limits the run

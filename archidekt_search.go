@@ -8,9 +8,15 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
+	// archidektSearchHTTPTimeout bounds a single Archidekt search request. A logical
+	// page that straddles two upstream pages issues two of them in sequence, and the
+	// MCP request context carries no deadline, so an unbounded client would let one
+	// hung upstream request stall the whole tool call.
+	archidektSearchHTTPTimeout = 15 * time.Second
 	// archidektAPIPageSize is the page size Archidekt hardcodes. The API has no
 	// page-size parameter: pageSize, limit and perPage are all ignored upstream.
 	archidektAPIPageSize = 60
@@ -258,7 +264,7 @@ func fetchArchidektSearchPage(
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: archidektSearchHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -289,11 +295,7 @@ func FormatArchidektSearchResultsForDisplay(params ArchidektSearchParams, result
 		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", params.Commander)
 	}
 
-	direction := "descending"
-	if params.Ascending {
-		direction = "ascending"
-	}
-	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.Sort, direction)
+	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.Sort, sortDirectionLabel(params.Ascending))
 	if filters := formatArchidektFilters(params); filters != "" {
 		_, _ = fmt.Fprintf(&output, "**Filters:** %s\n", filters)
 	}

@@ -4,7 +4,20 @@ const (
 	// sortDirectionAsc and sortDirectionDesc are the direction values every search tool accepts.
 	sortDirectionAsc  = "asc"
 	sortDirectionDesc = "desc"
+	// searchSortDefault is the sort key both deck-search tools default to, so the two
+	// tools share names, defaults and semantics across their common parameters.
+	searchSortDefault = "views"
 )
+
+// sortDirectionLabel renders a sort direction in the vocabulary the caller passed.
+// Upstream wire values (Moxfield's "Descending", Archidekt's "-" prefix) must never
+// reach the output, or a tool would echo a direction the caller cannot type back.
+func sortDirectionLabel(ascending bool) string {
+	if ascending {
+		return sortDirectionAsc
+	}
+	return sortDirectionDesc
+}
 
 // stringArg returns the string argument stored under key, or fallback when the
 // argument is absent, not a string, or empty. MCP delivers arguments as untyped JSON.

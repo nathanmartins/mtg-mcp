@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -180,6 +182,10 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		if got := gotQuery.Get("pageSize"); got != "20" {
 			t.Errorf("pageSize = %q, want %q (the verification budget)", got, "20")
 		}
+		if got := gotQuery.Get("sortType"); got != searchSortDefault {
+			t.Errorf("sortType = %q, want %q (the default shared with the Archidekt tool)",
+				got, searchSortDefault)
+		}
 	})
 
 	t.Run("no results", func(t *testing.T) {
@@ -212,6 +218,88 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 			t.Errorf("error should list the accepted sorts:\n%s", resultText(t, res))
 		}
 	})
+
+	t.Run("limit beyond the verification budget is rejected", func(t *testing.T) {
+		// Verification confirms at most moxfieldVerifyMaxChecks decks per call, so a
+		// larger limit could never be honoured and must not be silently truncated.
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, MoxfieldSearchResponse{})}
+		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "limit": float64(moxfieldVerifyMaxChecks + 1),
+		}))
+		if !res.IsError {
+			t.Fatal("expected an error result for a limit beyond the verification budget")
+		}
+		want := fmt.Sprintf("invalid limit %d (accepted: 1-%d)", moxfieldVerifyMaxChecks+1, moxfieldVerifyMaxChecks)
+		if !strings.Contains(resultText(t, res), want) {
+			t.Errorf("error should read %q:\n%s", want, resultText(t, res))
+		}
+	})
+
+	t.Run("limit at the verification budget is accepted", func(t *testing.T) {
+		var gotQuery url.Values
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.Query()
+			_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{PageNumber: 1, TotalPages: 1})
+		}))
+		t.Cleanup(ts.Close)
+
+		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
+		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "limit": float64(moxfieldVerifyMaxChecks),
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if res.IsError {
+			t.Fatalf("limit %d is the documented maximum and must be accepted:\n%s",
+				moxfieldVerifyMaxChecks, resultText(t, res))
+		}
+		if got := gotQuery.Get("pageSize"); got != strconv.Itoa(moxfieldVerifyMaxChecks) {
+			t.Errorf("pageSize = %q, want %q", got, strconv.Itoa(moxfieldVerifyMaxChecks))
+		}
+	})
+}
+
+func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
+	// limit 1 is satisfied by the first candidate, so the other two are never fetched.
+	// Page 2 resumes after this whole candidate page, so they are not merely deferred:
+	// nothing will ever look at them, and the output must admit it.
+	searchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{
+			PageNumber: 1, TotalResults: 3, TotalPages: 1,
+			Data: []MoxfieldDeckSummary{
+				{PublicID: "a", Name: "First Atraxa", Format: "commander"},
+				{PublicID: "b", Name: "Second Atraxa", Format: "commander"},
+				{PublicID: "c", Name: "Third Atraxa", Format: "commander"},
+			},
+		})
+	}))
+	defer searchServer.Close()
+
+	deckServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+	}))
+	defer deckServer.Close()
+
+	s := &MTGCommanderServer{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
+	res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		"commander": "Atraxa, Praetors' Voice",
+		"limit":     float64(1),
+	}))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	text := resultText(t, res)
+	if !strings.Contains(text, "**Not examined on this page:** 2 candidates") {
+		t.Errorf("output must report the candidates paging will skip\n%s", text)
+	}
+	// Getting every requested deck is a success; only a 429, an exhausted budget or an
+	// unreadable deck makes a run incomplete.
+	if strings.Contains(text, "Verification incomplete") {
+		t.Errorf("reaching the match limit must not be flagged as incomplete\n%s", text)
+	}
 }
 
 func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
@@ -258,7 +346,11 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 }
 
 func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T) {
-	params := MoxfieldSearchParams{Format: "commander", SortType: "views", SortDirection: sortDirectionDesc}
+	// SortDirection holds Moxfield's wire value, which the handler produces; the output
+	// must be rendered back in the asc/desc vocabulary the caller actually passed.
+	params := MoxfieldSearchParams{
+		Format: "commander", SortType: "views", SortDirection: moxfieldDirectionDescending,
+	}
 	results := &MoxfieldSearchResponse{PageNumber: 1, TotalPages: 1, TotalResults: 3}
 
 	t.Run("unreadable decks are named", func(t *testing.T) {
@@ -287,6 +379,22 @@ func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T)
 		}
 		if strings.Contains(text, "could not be fetched") || strings.Contains(text, "incomplete") {
 			t.Errorf("nothing failed, so nothing may be flagged\n%s", text)
+		}
+	})
+
+	t.Run("the sort direction is echoed in the caller's vocabulary", func(t *testing.T) {
+		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results,
+			MoxfieldCommanderSearch{Candidates: 3, Checked: 3})
+		if !strings.Contains(text, "**Sort:** views (desc)") {
+			t.Errorf("direction must read desc, not Moxfield's wire value\n%s", text)
+		}
+
+		ascending := params
+		ascending.SortDirection = moxfieldDirectionAscending
+		text = formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", ascending, results,
+			MoxfieldCommanderSearch{Candidates: 3, Checked: 3})
+		if !strings.Contains(text, "**Sort:** views (asc)") {
+			t.Errorf("an ascending search must read asc\n%s", text)
 		}
 	})
 }
