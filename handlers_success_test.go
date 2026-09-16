@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -104,24 +105,46 @@ func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
 func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	t.Run("with results and overrides", func(t *testing.T) {
 		resp := MoxfieldSearchResponse{
-			PageNumber:   1,
+			PageNumber:   3,
 			TotalResults: 1,
-			TotalPages:   1,
+			TotalPages:   3,
 			Data: []MoxfieldDeckSummary{
 				{PublicID: "s1", Name: "Found Deck", Format: "commander", PublicURL: "https://moxfield.com/s1"},
 			},
 		}
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
+		// Capture the outgoing request: the MCP argument names must map onto the
+		// Moxfield parameters, and every value below differs from the handler default.
+		var gotQuery url.Values
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.Query()
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		t.Cleanup(ts.Close)
+
+		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
 			"format":         "commander",
 			"sort":           "views",
 			"sort_direction": sortDirectionAsc,
 			"limit":          float64(5),
-			"page":           float64(1),
+			"page":           float64(3),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+		want := map[string]string{
+			"cardName":      "Atraxa",
+			"fmt":           "commander",
+			"sortType":      "views",
+			"sortDirection": "Ascending",
+			"pageSize":      "5",
+			"pageNumber":    "3",
+		}
+		for key, value := range want {
+			if gotQuery.Get(key) != value {
+				t.Errorf("%s = %q, want %q", key, gotQuery.Get(key), value)
+			}
 		}
 		if !strings.Contains(resultText(t, res), "Found Deck") {
 			t.Errorf("expected deck in output:\n%s", resultText(t, res))

@@ -88,7 +88,7 @@ const (
 	// moxfieldSortValues lists the sortType values the Moxfield API accepts;
 	// anything else (e.g. "price") is answered with HTTP 400.
 	moxfieldSortValues = "comments, created, likes, relevance, updated, views"
-	// moxfieldSearchDefaultLimit is the default number of verified decks per page.
+	// moxfieldSearchDefaultLimit is the default number of decks returned per page.
 	moxfieldSearchDefaultLimit = 10
 )
 

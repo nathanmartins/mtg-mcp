@@ -130,8 +130,18 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	params, err := moxfieldSearchParamsFromRequest(commander, request.GetArguments())
+	args := request.GetArguments()
+	params, err := moxfieldSearchParamsFromRequest(commander, args)
 	if err != nil {
+		GetLogger().Error().
+			Err(err).
+			Str("tool", "search_moxfield_decks").
+			Str(paramCommander, commander).
+			Str("sort", stringArg(args, "sort", "updated")).
+			Str("sort_direction", stringArg(args, "sort_direction", sortDirectionDesc)).
+			Int("page", params.PageNumber).
+			Int("limit", params.PageSize).
+			Msg("Rejected Moxfield search arguments")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -153,6 +163,14 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 			Msg("Failed to search Moxfield decks")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
+
+	GetLogger().Info().
+		Str("tool", "search_moxfield_decks").
+		Str(paramCommander, commander).
+		Int("results_count", len(results.Data)).
+		Int("page", params.PageNumber).
+		Int("limit", params.PageSize).
+		Msg("Successfully searched Moxfield decks")
 
 	return mcp.NewToolResultText(formatMoxfieldSearchResults(commander, params, results)), nil
 }

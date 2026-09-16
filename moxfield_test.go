@@ -475,6 +475,32 @@ func TestMoxfieldSortDirection(t *testing.T) {
 	}
 }
 
+// TestMoxfieldSearchURLWiring pins the fix for the production HTTP 404: deck reads and deck
+// search live on different Moxfield hosts, and the server must be built with the search URL.
+func TestMoxfieldSearchURLWiring(t *testing.T) {
+	if defaultMoxfieldSearchURL == defaultMoxfieldBaseURL {
+		t.Fatal("the search URL must differ from the deck-read base URL")
+	}
+	parsed, parseErr := url.Parse(defaultMoxfieldSearchURL)
+	if parseErr != nil {
+		t.Fatalf("unparseable search URL: %v", parseErr)
+	}
+	if parsed.Host != "api2.moxfield.com" {
+		t.Errorf("search host = %q, want api2.moxfield.com", parsed.Host)
+	}
+	if parsed.Path != "/v2/decks/search" {
+		t.Errorf("search path = %q, want /v2/decks/search", parsed.Path)
+	}
+
+	s, err := NewMTGCommanderServer()
+	if err != nil {
+		t.Fatalf("NewMTGCommanderServer() error = %v", err)
+	}
+	if s.moxfieldSearchURL != defaultMoxfieldSearchURL {
+		t.Errorf("moxfieldSearchURL = %q, want %q", s.moxfieldSearchURL, defaultMoxfieldSearchURL)
+	}
+}
+
 func TestFormatDeckForDisplay(t *testing.T) {
 	deck := &MoxfieldDeck{
 		Name:         "Test Deck",
