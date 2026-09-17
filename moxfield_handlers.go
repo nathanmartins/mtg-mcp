@@ -192,7 +192,6 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 			Msg("Failed to search Moxfield decks")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
-	params.PageSize = wanted
 
 	verifyCtx, cancel := context.WithTimeout(ctx, moxfieldVerifyBudget)
 	defer cancel()
@@ -228,8 +227,8 @@ func formatMoxfieldCommanderSearch(
 	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", params.Format)
 	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n",
 		params.SortType, sortDirectionLabel(params.SortDirection == moxfieldDirectionAscending))
-	_, _ = fmt.Fprintf(&output, "**Candidates containing the card:** %d (page %d of %d, %d total matches)\n",
-		outcome.Candidates, results.PageNumber, results.TotalPages, results.TotalResults)
+	_, _ = fmt.Fprintf(&output, "**Candidates containing the card:** %d (page %d, %s)\n",
+		outcome.Candidates, results.PageNumber, formatMoxfieldTotal(results))
 	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked%s\n",
 		len(outcome.Decks), outcome.Checked, unfetchableSuffix(outcome.Failed))
 	if outcome.Unexamined > 0 {
@@ -272,4 +271,16 @@ func unfetchableSuffix(failed int) string {
 	}
 
 	return fmt.Sprintf(", %d could not be fetched", failed)
+}
+
+// formatMoxfieldTotal renders Moxfield's search total without presenting a saturated
+// value as a real count. Moxfield answers moxfieldTotalCap for any broad card-name
+// search and derives totalPages from it, so both numbers would otherwise advertise a
+// result depth that does not exist.
+func formatMoxfieldTotal(results *MoxfieldSearchResponse) string {
+	if results.TotalResults >= moxfieldTotalCap {
+		return fmt.Sprintf("%d+ card-name matches — upstream cap, real total unknown", moxfieldTotalCap)
+	}
+
+	return fmt.Sprintf("%d card-name matches over %d page(s)", results.TotalResults, results.TotalPages)
 }

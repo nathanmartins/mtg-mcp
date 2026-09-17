@@ -610,6 +610,34 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 			t.Errorf("an empty sort must be rejected, got: %s", resultText(t, res))
 		}
 	})
+
+	t.Run("page beyond the reachable range is rejected", func(t *testing.T) {
+		// (page-1)*limit used to overflow int here, producing a negative window offset
+		// and panicking on collected[offset:end] after a perfectly successful fetch.
+		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, ArchidektUserDecksResponse{
+			Count:   5,
+			Results: []ArchidektDeckSummary{{ID: 1, Name: "Deck"}},
+		})}
+		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "page": float64(200000000000000000), "limit": float64(60),
+		}))
+		if err != nil {
+			t.Fatalf("handler returned a transport error: %v", err)
+		}
+		if !res.IsError || !strings.Contains(resultText(t, res), "invalid page") {
+			t.Errorf("an unreachable page must be rejected, got: %s", resultText(t, res))
+		}
+	})
+
+	t.Run("fractional limit is rejected", func(t *testing.T) {
+		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "limit": 7.9,
+		}))
+		if !res.IsError || !strings.Contains(resultText(t, res), "whole number") {
+			t.Errorf("a fractional limit must be rejected, got: %s", resultText(t, res))
+		}
+	})
 }
 
 func TestHandleGetEDHRECRecommendations(t *testing.T) {

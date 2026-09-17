@@ -96,6 +96,9 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Output reports how many candidates were checked, how many could not be fetched,
       and flags incomplete verification when a deck read fails, the 30 s verification
       budget expires, or Moxfield rate-limits the run
+    - Moxfield reports `totalResults` as a saturated `10000` for any broad card-name
+      search, so the output shows it as `10000+ card-name matches — upstream cap, real
+      total unknown` instead of echoing a fabricated count and page depth
 
 #### Archidekt Integration (3 tools)
 
@@ -120,7 +123,8 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
       and `sort_direction` (`asc`/`desc`; default `desc`)
     - Optional filters: `colors` (e.g. `WU`), `deck_size` (exact card count),
       `author` (Archidekt username), `name` (deck-name substring)
-    - Pagination via `page` (1-based) and `limit` (default 10, max 60)
+    - Pagination via `page` (1-based, max 1000 — Archidekt's count saturates at 1000, so
+      nothing is reachable beyond it) and `limit` (default 10, max 60)
     - Invalid sort or out-of-range values return an explicit error instead of a silent fallback
     - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 

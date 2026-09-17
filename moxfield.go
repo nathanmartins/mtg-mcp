@@ -116,6 +116,10 @@ type MoxfieldSearchParams struct {
 const (
 	// moxfieldSearchDefaultLimit is the default number of decks returned per page.
 	moxfieldSearchDefaultLimit = 10
+	// moxfieldTotalCap is the saturation value Moxfield reports in totalResults for any
+	// broad card-name search. It is not a count, and totalPages is derived from it, so
+	// neither number may be presented to the caller as a real total.
+	moxfieldTotalCap = 10000
 	// moxfieldDirectionAscending and moxfieldDirectionDescending are Moxfield's wire
 	// values for sortDirection. They are not the tool's vocabulary: the caller passes
 	// asc/desc and the output must be rendered back in those terms.

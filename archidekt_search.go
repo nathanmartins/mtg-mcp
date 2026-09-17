@@ -41,6 +41,10 @@ const (
 	archidektColorLetters = "WUBRG"
 	// archidektOptionalFilters is how many optional filters the formatter can list.
 	archidektOptionalFilters = 4
+	// archidektSearchMaxPage bounds logical pagination. Archidekt's count saturates at
+	// archidektCountCap, so nothing is reachable beyond that many results; the bound also
+	// keeps (page-1)*limit from overflowing int and producing a negative window offset.
+	archidektSearchMaxPage = archidektCountCap
 
 	archidektSortViews   = "views"
 	archidektSortUpdated = "updated"
@@ -53,7 +57,7 @@ const (
 type ArchidektSearchParams struct {
 	Commander string
 	Bracket   int    // 1-4 filters by EDH bracket; 0 means no filter
-	Sort      string // logical sort key; empty defaults to archidektSortViews
+	Sort      string // logical sort key; must be one of archidektSortFields
 	Ascending bool
 	Page      int    // 1-based logical page
 	Limit     int    // decks per logical page, 1..archidektSearchMaxLimit
@@ -79,6 +83,9 @@ type ArchidektSearchResult struct {
 func (p ArchidektSearchParams) normalized() ArchidektSearchParams {
 	if p.Page < 1 {
 		p.Page = 1
+	}
+	if p.Page > archidektSearchMaxPage {
+		p.Page = archidektSearchMaxPage
 	}
 	if p.Limit < 1 {
 		p.Limit = archidektSearchDefaultLimit
@@ -201,9 +208,11 @@ func searchArchidektDecksWithURL(
 ) (*ArchidektSearchResult, error) {
 	params = params.normalized()
 
-	// Normalise once, here: the value is sent on every upstream page and echoed in the
-	// output, and Archidekt would accept a malformed colour string and quietly return an
-	// unfiltered page.
+	// Normalise again here rather than trusting the caller: this is the library entry
+	// point as well as the handler's, the value is sent on every upstream page and echoed
+	// in the output, and Archidekt would accept a malformed colour string and quietly
+	// return an unfiltered page. Normalisation is idempotent, so the handler's own call
+	// costs nothing.
 	colors, err := normalizeArchidektColors(params.Colors)
 	if err != nil {
 		return nil, err
@@ -226,6 +235,15 @@ func searchArchidektDecksWithURL(
 		}
 		if i == 0 {
 			result.Total, result.TotalCapped, result.TotalKnown = interpretArchidektCount(page.Count)
+		}
+		// The logical window is arithmetic over fixed-size upstream pages, so a page that
+		// is not full while more pages exist means Archidekt changed its page size and
+		// every offset here is wrong. Fail loudly instead of serving a silently wrong
+		// slice of results.
+		if page.Next != "" && len(page.Results) != archidektAPIPageSize {
+			return nil, fmt.Errorf(
+				"archidekt page size changed: got %d results, expected %d",
+				len(page.Results), archidektAPIPageSize)
 		}
 		collected = append(collected, page.Results...)
 		if page.Next == "" {

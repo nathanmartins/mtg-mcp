@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"math"
+)
 
 const (
 	// sortDirectionAsc and sortDirectionDesc are the direction values every search tool accepts.
@@ -56,7 +59,9 @@ func enumArg(args map[string]any, key, fallback string) (string, error) {
 
 // intArg returns the integer argument stored under key, or fallback when the argument is
 // absent. JSON numbers decode into float64; any other type is a caller mistake and is
-// rejected rather than replaced by the default.
+// rejected rather than replaced by the default. A fractional or out-of-range number is
+// rejected too: truncating it would silently answer a different question, and a float
+// beyond int range converts to an implementation-defined value.
 func intArg(args map[string]any, key string, fallback int) (int, error) {
 	raw, ok := args[key]
 	if !ok {
@@ -65,6 +70,13 @@ func intArg(args map[string]any, key string, fallback int) (int, error) {
 	value, isFloat := raw.(float64)
 	if !isFloat {
 		return 0, fmt.Errorf("invalid %s: expected a number, got %T", key, raw)
+	}
+	if value != math.Trunc(value) {
+		return 0, fmt.Errorf("invalid %s: expected a whole number, got %v", key, value)
+	}
+	if value < math.MinInt32 || value > math.MaxInt32 {
+		return 0, fmt.Errorf("invalid %s: %v is out of range (accepted: %d to %d)",
+			key, value, math.MinInt32, math.MaxInt32)
 	}
 	return int(value), nil
 }

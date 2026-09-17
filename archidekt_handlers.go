@@ -179,8 +179,8 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 		return params, fmt.Errorf("invalid bracket %d (accepted: %d-%d, or omit for all brackets)",
 			params.Bracket, archidektMinBracket, archidektMaxBracket)
 	}
-	if params.Page < 1 {
-		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.Page)
+	if params.Page < 1 || params.Page > archidektSearchMaxPage {
+		return params, fmt.Errorf("invalid page %d (accepted: 1-%d)", params.Page, archidektSearchMaxPage)
 	}
 	if params.Limit < 1 || params.Limit > archidektSearchMaxLimit {
 		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.Limit, archidektSearchMaxLimit)
