@@ -133,7 +133,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL, moxfieldBaseURL: deckServer.URL}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
-			"format":         "commander",
+			"format":         "modern",
 			"sort":           "views",
 			"sort_direction": sortDirectionAsc,
 			"limit":          float64(5),
@@ -147,7 +147,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		// and asking for more would strand the surplus (page 2 resumes past them).
 		want := map[string]string{
 			"cardName":      "Atraxa",
-			"fmt":           "commander",
+			"fmt":           "modern",
 			"sortType":      "views",
 			"sortDirection": "Ascending",
 			"pageSize":      "20",
@@ -214,7 +214,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		if !res.IsError {
 			t.Error("expected an error result for a sort Moxfield rejects")
 		}
-		if !strings.Contains(resultText(t, res), moxfieldSortValues) {
+		if !strings.Contains(resultText(t, res), moxfieldSortValues()) {
 			t.Errorf("error should list the accepted sorts:\n%s", resultText(t, res))
 		}
 	})
@@ -258,6 +258,16 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 			t.Errorf("pageSize = %q, want %q", got, strconv.Itoa(moxfieldVerifyMaxChecks))
 		}
 	})
+
+	t.Run("wrong-typed page is rejected", func(t *testing.T) {
+		s := &MTGCommanderServer{moxfieldSearchURL: "http://127.0.0.1:1"}
+		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "page": true,
+		}))
+		if !res.IsError || !strings.Contains(resultText(t, res), "expected a number") {
+			t.Errorf("a boolean page must be rejected, got: %s", resultText(t, res))
+		}
+	})
 }
 
 func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
@@ -292,7 +302,7 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 	}
 
 	text := resultText(t, res)
-	if !strings.Contains(text, "**Not examined on this page:** 2 candidates") {
+	if !strings.Contains(text, "**Not examined on this page:** 2 candidate(s)") {
 		t.Errorf("output must report the candidates paging will skip\n%s", text)
 	}
 	// Getting every requested deck is a success; only a 429, an exhausted budget or an
@@ -527,6 +537,31 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		}
 	})
 
+	t.Run("colour filter is echoed as it was sent", func(t *testing.T) {
+		var gotQuery url.Values
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotQuery = r.URL.Query()
+			_ = json.NewEncoder(w).Encode(ArchidektUserDecksResponse{Count: 1, Results: []ArchidektDeckSummary{
+				{ID: 7, Name: "Budget Atraxa", Owner: ArchidektOwner{Username: "player"}},
+			}})
+		}))
+		t.Cleanup(ts.Close)
+
+		s := &MTGCommanderServer{archidektBaseURL: ts.URL}
+		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "colors": " wu",
+		}))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got := gotQuery.Get("colors"); got != "W,U" {
+			t.Errorf("colors = %q, want %q", got, "W,U")
+		}
+		if text := resultText(t, res); !strings.Contains(text, "colors WU") {
+			t.Errorf("output must echo the normalised filter:\n%s", text)
+		}
+	})
+
 	t.Run("failure", func(t *testing.T) {
 		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
@@ -553,6 +588,26 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		}))
 		if !res.IsError {
 			t.Error("expected an error result for an invalid colors value")
+		}
+	})
+
+	t.Run("wrong-typed limit is rejected", func(t *testing.T) {
+		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "limit": "5",
+		}))
+		if !res.IsError || !strings.Contains(resultText(t, res), "expected a number") {
+			t.Errorf("a string limit must be rejected, got: %s", resultText(t, res))
+		}
+	})
+
+	t.Run("empty sort is rejected", func(t *testing.T) {
+		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+			"commander": "Atraxa", "sort": "",
+		}))
+		if !res.IsError || !strings.Contains(resultText(t, res), "non-empty") {
+			t.Errorf("an empty sort must be rejected, got: %s", resultText(t, res))
 		}
 	})
 }

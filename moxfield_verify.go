@@ -87,15 +87,17 @@ func verifyMoxfieldCommanderDecks(
 		waitBeforeCheck(ctx, i, delay)
 
 		deck, err := getMoxfieldDeckWithURL(ctx, candidate.PublicID, deckBaseURL)
-		// An expired budget and a rate limit both end verification, and neither says
-		// anything about this candidate, so they are ruled out before the read is
-		// recorded as a check or blamed on the deck.
-		if stop := verificationStopReason(ctx, err); stop != "" {
-			stopReason = stop
-			break
-		}
-		outcome.Checked++
 		if err != nil {
+			// An expired budget and a rate limit both end verification, and neither says
+			// anything about this candidate, so they are ruled out before the failed read
+			// is recorded as a check or blamed on the deck.
+			// Untested: the window between a successful read and this guard cannot be
+			// forced through the http.Client seam without a flaky timing hack.
+			if stop := verificationStopReason(ctx, err); stop != "" {
+				stopReason = stop
+				break
+			}
+			outcome.Checked++
 			outcome.Failed++
 			GetLogger().Warn().
 				Err(err).
@@ -104,6 +106,7 @@ func verifyMoxfieldCommanderDecks(
 			continue
 		}
 
+		outcome.Checked++
 		if deckHasCommander(deck, commander) {
 			outcome.Decks = append(outcome.Decks, candidate)
 		}
@@ -128,10 +131,12 @@ func waitBeforeCheck(ctx context.Context, index int, delay time.Duration) {
 	}
 }
 
-// verificationStopReason reports why the remaining candidates must be abandoned. A
-// cancelled context is checked first and on every iteration: an expired verification
-// budget surfaces as an ordinary fetch failure, and mistaking it for a deck-specific
-// problem would let a truncated run end quietly as if every candidate had been read.
+// verificationStopReason reports why the remaining candidates must be abandoned. It is
+// consulted only for a failed read: an expired verification budget surfaces there as an
+// ordinary fetch error, so a deck that was fully fetched before the budget expired is
+// never blamed on a cancelled context. Cancellation itself still always stops the loop —
+// the next iteration's read fails immediately with the context error — and
+// waitBeforeCheck already abandons its pause on ctx.Done().
 func verificationStopReason(ctx context.Context, err error) string {
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return "verification stopped: " + ctxErr.Error()

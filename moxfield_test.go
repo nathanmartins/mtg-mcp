@@ -499,6 +499,10 @@ func TestMoxfieldSearchURLWiring(t *testing.T) {
 	if s.moxfieldSearchURL != defaultMoxfieldSearchURL {
 		t.Errorf("moxfieldSearchURL = %q, want %q", s.moxfieldSearchURL, defaultMoxfieldSearchURL)
 	}
+	if s.verifyDelay != moxfieldVerifyDelay {
+		t.Errorf("verifyDelay = %v, want %v — production must space verification requests",
+			s.verifyDelay, moxfieldVerifyDelay)
+	}
 }
 
 func TestFormatDeckForDisplay(t *testing.T) {

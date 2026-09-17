@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -56,7 +57,10 @@ type MTGCommanderServer struct {
 	moxfieldSearchURL string
 	archidektBaseURL  string
 	edhrecBaseURL     string
-	rules             *rulesCache
+	// verifyDelay spaces Moxfield commander-verification requests. Tests build servers
+	// directly and get the zero value, so the suite never sleeps.
+	verifyDelay time.Duration
+	rules       *rulesCache
 }
 
 // NewMTGCommanderServer creates a new MTG Commander MCP server.
@@ -72,6 +76,7 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 		moxfieldSearchURL: defaultMoxfieldSearchURL,
 		archidektBaseURL:  defaultArchidektBaseURL,
 		edhrecBaseURL:     defaultEDHRECBaseURL,
+		verifyDelay:       moxfieldVerifyDelay,
 		rules:             &rulesCache{},
 	}, nil
 }
@@ -279,7 +284,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 			mcp.Description("MTG format to filter by (default: 'commander')"),
 		),
 		mcp.WithString("sort",
-			mcp.Description("Sort field: updated, created, views, likes, comments, relevance (default: views)"),
+			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", moxfieldSortValues(), searchSortDefault)),
 		),
 		mcp.WithString("sort_direction",
 			mcp.Description("Sort direction: asc or desc (default: desc)"),
@@ -434,7 +439,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 			mcp.Description("Filter by EDH bracket (1–4). Omit to return all brackets."),
 		),
 		mcp.WithString("sort",
-			mcp.Description("Sort field: views, updated, created, price, size (default: views)"),
+			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", archidektSortValues(), searchSortDefault)),
 		),
 		mcp.WithString("sort_direction",
 			mcp.Description("Sort direction: asc or desc (default: desc)"),

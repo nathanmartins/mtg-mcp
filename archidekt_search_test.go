@@ -534,6 +534,31 @@ func TestSearchArchidektDecksSendsFilters(t *testing.T) {
 	}
 }
 
+func TestSearchArchidektDecksOmitsUnsetFilters(t *testing.T) {
+	var gotQuery url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).Encode(syntheticArchidektPage(1, 12))
+	}))
+	defer server.Close()
+
+	params := ArchidektSearchParams{Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5}
+	result, err := searchArchidektDecksWithURL(context.Background(), params, server.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// An empty filter must be absent, not empty: size=0 would filter for zero-card decks.
+	for _, key := range []string{"colors", "size", "ownerUsername", "name"} {
+		if _, present := gotQuery[key]; present {
+			t.Errorf("%s must be omitted when unset, got %q", key, gotQuery.Get(key))
+		}
+	}
+	if text := FormatArchidektSearchResultsForDisplay(params, result); strings.Contains(text, "**Filters:**") {
+		t.Errorf("no filters were set, so no filter line should be printed:\n%s", text)
+	}
+}
+
 func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Error("upstream must not be called for invalid colors")

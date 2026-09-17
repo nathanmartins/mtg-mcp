@@ -47,8 +47,6 @@ const (
 	archidektSortCreated = "created"
 	archidektSortPrice   = "price"
 	archidektSortSize    = "size"
-	// archidektSortValues lists accepted sort keys for error messages.
-	archidektSortValues = "created, price, size, updated, views"
 )
 
 // ArchidektSearchParams describes one logical page of an Archidekt deck search.
@@ -91,29 +89,49 @@ func (p ArchidektSearchParams) normalized() ArchidektSearchParams {
 	return p
 }
 
+// archidektSortField pairs a tool-level sort key with Archidekt's upstream orderBy field.
+type archidektSortField struct {
+	Key   string
+	Field string
+}
+
+// archidektSortFields lists the accepted sort keys and their upstream fields, in the
+// order the tool documents them. Single source for validation, the error message and the
+// tool description: Archidekt silently ignores an unknown orderBy instead of rejecting
+// it, so an undetected typo would return a wrongly ordered page.
+func archidektSortFields() []archidektSortField {
+	return []archidektSortField{
+		{archidektSortViews, "viewCount"},
+		{archidektSortUpdated, "updatedAt"},
+		{archidektSortCreated, "createdAt"},
+		{archidektSortPrice, "price"},
+		{archidektSortSize, "size"},
+	}
+}
+
+// archidektSortValues renders the accepted sort keys for error messages and tool docs.
+func archidektSortValues() string {
+	fields := archidektSortFields()
+	keys := make([]string, 0, len(fields))
+	for _, field := range fields {
+		keys = append(keys, field.Key)
+	}
+	return strings.Join(keys, ", ")
+}
+
 // archidektOrderBy renders the upstream orderBy value for a sort key. Archidekt accepts
 // unknown orderBy values and silently ignores them, so validation must happen here.
 func archidektOrderBy(sort string, ascending bool) (string, error) {
-	var field string
-	switch sort {
-	case archidektSortViews:
-		field = "viewCount"
-	case archidektSortUpdated:
-		field = "updatedAt"
-	case archidektSortCreated:
-		field = "createdAt"
-	case archidektSortPrice:
-		field = "price"
-	case archidektSortSize:
-		field = "size"
-	default:
-		return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, archidektSortValues)
+	for _, field := range archidektSortFields() {
+		if field.Key != sort {
+			continue
+		}
+		if ascending {
+			return field.Field, nil
+		}
+		return "-" + field.Field, nil
 	}
-
-	if ascending {
-		return field, nil
-	}
-	return "-" + field, nil
+	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, archidektSortValues())
 }
 
 // normalizeArchidektColors converts a colour string such as "WU" into the
@@ -183,11 +201,14 @@ func searchArchidektDecksWithURL(
 ) (*ArchidektSearchResult, error) {
 	params = params.normalized()
 
-	// Reject an invalid colour filter before the first request: Archidekt would accept
-	// it and quietly return an unfiltered page.
-	if _, err := normalizeArchidektColors(params.Colors); err != nil {
+	// Normalise once, here: the value is sent on every upstream page and echoed in the
+	// output, and Archidekt would accept a malformed colour string and quietly return an
+	// unfiltered page.
+	colors, err := normalizeArchidektColors(params.Colors)
+	if err != nil {
 		return nil, err
 	}
+	params.Colors = colors
 
 	orderBy, err := archidektOrderBy(params.Sort, params.Ascending)
 	if err != nil {
@@ -221,6 +242,7 @@ func searchArchidektDecksWithURL(
 }
 
 // fetchArchidektSearchPage requests a single fixed-size upstream page of results.
+// params.Colors must already be normalised by searchArchidektDecksWithURL.
 func fetchArchidektSearchPage(
 	ctx context.Context,
 	params ArchidektSearchParams,
@@ -232,12 +254,8 @@ func fetchArchidektSearchPage(
 	queryParams.Set("commanderName", params.Commander)
 	queryParams.Set("deckFormat", archidektCommanderFormat)
 	queryParams.Set("orderBy", orderBy)
-	colors, err := normalizeArchidektColors(params.Colors)
-	if err != nil {
-		return nil, err
-	}
-	if colors != "" {
-		queryParams.Set("colors", colors)
+	if params.Colors != "" {
+		queryParams.Set("colors", params.Colors)
 	}
 	if params.DeckSize > 0 {
 		queryParams.Set("size", strconv.Itoa(params.DeckSize))
@@ -357,7 +375,7 @@ func archidektHasMorePages(result *ArchidektSearchResult) bool {
 func formatArchidektFilters(params ArchidektSearchParams) string {
 	filters := make([]string, 0, archidektOptionalFilters)
 	if params.Colors != "" {
-		filters = append(filters, "colors "+strings.ToUpper(strings.ReplaceAll(params.Colors, ",", "")))
+		filters = append(filters, "colors "+strings.ReplaceAll(params.Colors, ",", ""))
 	}
 	if params.DeckSize > 0 {
 		filters = append(filters, "size "+strconv.Itoa(params.DeckSize))

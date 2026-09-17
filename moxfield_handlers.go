@@ -92,19 +92,37 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 // moxfieldSearchParamsFromRequest validates MCP arguments into Moxfield search parameters.
 func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (MoxfieldSearchParams, error) {
 	params := MoxfieldSearchParams{
-		CardName:   commander,
-		Format:     stringArg(args, "format", defaultFormat),
-		PageNumber: intArg(args, "page", 1),
-		PageSize:   intArg(args, "limit", moxfieldSearchDefaultLimit),
+		CardName: commander,
+		Format:   stringArg(args, "format", defaultFormat),
 	}
 
-	sortType, err := moxfieldSortType(stringArg(args, "sort", searchSortDefault))
+	page, err := intArg(args, "page", 1)
+	if err != nil {
+		return params, err
+	}
+	params.PageNumber = page
+
+	limit, err := intArg(args, "limit", moxfieldSearchDefaultLimit)
+	if err != nil {
+		return params, err
+	}
+	params.PageSize = limit
+
+	sortKey, err := enumArg(args, "sort", searchSortDefault)
+	if err != nil {
+		return params, err
+	}
+	sortType, err := moxfieldSortType(sortKey)
 	if err != nil {
 		return params, err
 	}
 	params.SortType = sortType
 
-	direction, err := moxfieldSortDirection(stringArg(args, "sort_direction", sortDirectionDesc))
+	directionKey, err := enumArg(args, "sort_direction", sortDirectionDesc)
+	if err != nil {
+		return params, err
+	}
+	direction, err := moxfieldSortDirection(directionKey)
 	if err != nil {
 		return params, err
 	}
@@ -174,12 +192,13 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 			Msg("Failed to search Moxfield decks")
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
+	params.PageSize = wanted
 
 	verifyCtx, cancel := context.WithTimeout(ctx, moxfieldVerifyBudget)
 	defer cancel()
 	outcome := verifyMoxfieldCommanderDecks(
 		verifyCtx, results.Data, commander, s.moxfieldBaseURL,
-		wanted, moxfieldVerifyMaxChecks, moxfieldVerifyDelay,
+		wanted, moxfieldVerifyMaxChecks, s.verifyDelay,
 	)
 
 	GetLogger().Info().
@@ -217,7 +236,7 @@ func formatMoxfieldCommanderSearch(
 		// Page N+1 resumes after this whole candidate page, so these candidates are not
 		// merely deferred — nothing will ever look at them.
 		_, _ = fmt.Fprintf(&output,
-			"**Not examined on this page:** %d candidates (match limit reached; paging skips them)\n",
+			"**Not examined on this page:** %d candidate(s) (match limit reached; paging skips them)\n",
 			outcome.Unexamined)
 	}
 	output.WriteString("\n")

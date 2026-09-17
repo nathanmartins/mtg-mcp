@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -113,9 +114,6 @@ type MoxfieldSearchParams struct {
 }
 
 const (
-	// moxfieldSortValues lists the sortType values the Moxfield API accepts;
-	// anything else (e.g. "price") is answered with HTTP 400.
-	moxfieldSortValues = "comments, created, likes, relevance, updated, views"
 	// moxfieldSearchDefaultLimit is the default number of decks returned per page.
 	moxfieldSearchDefaultLimit = 10
 	// moxfieldDirectionAscending and moxfieldDirectionDescending are Moxfield's wire
@@ -125,14 +123,24 @@ const (
 	moxfieldDirectionDescending = "Descending"
 )
 
+// moxfieldSortKeys lists the sortType values the Moxfield API accepts, in the order the
+// tool documents them. Anything else (e.g. "price") is answered with HTTP 400 upstream.
+// This is the single source for validation, the error message and the tool description.
+func moxfieldSortKeys() []string {
+	return []string{"updated", "created", "views", "likes", "comments", "relevance"}
+}
+
+// moxfieldSortValues renders the accepted sort keys for error messages and tool docs.
+func moxfieldSortValues() string {
+	return strings.Join(moxfieldSortKeys(), ", ")
+}
+
 // moxfieldSortType validates a sort key against the values Moxfield accepts.
 func moxfieldSortType(sort string) (string, error) {
-	switch sort {
-	case "updated", "created", "views", "likes", "comments", "relevance":
+	if slices.Contains(moxfieldSortKeys(), sort) {
 		return sort, nil
-	default:
-		return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, moxfieldSortValues)
 	}
+	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, moxfieldSortValues())
 }
 
 // moxfieldSortDirection maps our asc/desc surface onto Moxfield's capitalised values.

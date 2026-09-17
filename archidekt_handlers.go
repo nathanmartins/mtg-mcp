@@ -126,17 +126,46 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 func archidektSearchParamsFromRequest(commander string, args map[string]any) (ArchidektSearchParams, error) {
 	params := ArchidektSearchParams{
 		Commander: commander,
-		Bracket:   intArg(args, "bracket", 0),
-		Sort:      stringArg(args, "sort", searchSortDefault),
-		Page:      intArg(args, "page", 1),
-		Limit:     intArg(args, "limit", archidektSearchDefaultLimit),
 		Colors:    stringArg(args, "colors", ""),
-		DeckSize:  intArg(args, "deck_size", 0),
 		Author:    stringArg(args, "author", ""),
 		DeckName:  stringArg(args, paramName, ""),
 	}
 
-	switch direction := stringArg(args, "sort_direction", sortDirectionDesc); direction {
+	bracket, err := intArg(args, "bracket", 0)
+	if err != nil {
+		return params, err
+	}
+	params.Bracket = bracket
+
+	page, err := intArg(args, "page", 1)
+	if err != nil {
+		return params, err
+	}
+	params.Page = page
+
+	limit, err := intArg(args, "limit", archidektSearchDefaultLimit)
+	if err != nil {
+		return params, err
+	}
+	params.Limit = limit
+
+	deckSize, err := intArg(args, "deck_size", 0)
+	if err != nil {
+		return params, err
+	}
+	params.DeckSize = deckSize
+
+	sortKey, err := enumArg(args, "sort", searchSortDefault)
+	if err != nil {
+		return params, err
+	}
+	params.Sort = sortKey
+
+	direction, err := enumArg(args, "sort_direction", sortDirectionDesc)
+	if err != nil {
+		return params, err
+	}
+	switch direction {
 	case sortDirectionDesc:
 		params.Ascending = false
 	case sortDirectionAsc:
@@ -156,12 +185,14 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 	if params.Limit < 1 || params.Limit > archidektSearchMaxLimit {
 		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.Limit, archidektSearchMaxLimit)
 	}
-	if _, err := archidektOrderBy(params.Sort, params.Ascending); err != nil {
+	if _, err = archidektOrderBy(params.Sort, params.Ascending); err != nil {
 		return params, err
 	}
-	if _, err := normalizeArchidektColors(params.Colors); err != nil {
+	colors, err := normalizeArchidektColors(params.Colors)
+	if err != nil {
 		return params, err
 	}
+	params.Colors = colors
 	if params.DeckSize < 0 || params.DeckSize > archidektMaxDeckSize {
 		return params, fmt.Errorf("invalid deck_size %d (accepted: 1-%d, or omit)",
 			params.DeckSize, archidektMaxDeckSize)

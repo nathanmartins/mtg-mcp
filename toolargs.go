@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 const (
 	// sortDirectionAsc and sortDirectionDesc are the direction values every search tool accepts.
 	sortDirectionAsc  = "asc"
@@ -33,16 +35,36 @@ func stringArg(args map[string]any, key, fallback string) string {
 	return value
 }
 
-// intArg returns the integer argument stored under key, or fallback when the
-// argument is absent or not a number. JSON numbers decode into float64.
-func intArg(args map[string]any, key string, fallback int) int {
+// enumArg returns the enum argument stored under key, or fallback when the argument is
+// absent. A present argument must be a non-empty string: an empty or wrong-typed enum is
+// a caller mistake, and substituting the default would silently answer a different
+// question than the one asked.
+func enumArg(args map[string]any, key, fallback string) (string, error) {
 	raw, ok := args[key]
 	if !ok {
-		return fallback
+		return fallback, nil
+	}
+	value, isString := raw.(string)
+	if !isString {
+		return "", fmt.Errorf("invalid %s: expected a string, got %T", key, raw)
+	}
+	if value == "" {
+		return "", fmt.Errorf("invalid %s: expected a non-empty value", key)
+	}
+	return value, nil
+}
+
+// intArg returns the integer argument stored under key, or fallback when the argument is
+// absent. JSON numbers decode into float64; any other type is a caller mistake and is
+// rejected rather than replaced by the default.
+func intArg(args map[string]any, key string, fallback int) (int, error) {
+	raw, ok := args[key]
+	if !ok {
+		return fallback, nil
 	}
 	value, isFloat := raw.(float64)
 	if !isFloat {
-		return fallback
+		return 0, fmt.Errorf("invalid %s: expected a number, got %T", key, raw)
 	}
-	return int(value)
+	return int(value), nil
 }
