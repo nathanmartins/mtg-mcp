@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -264,7 +265,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 		{
 			name: "search by commander",
 			params: MoxfieldSearchParams{
-				Query:         "Atraxa",
+				CardName:      "Atraxa",
 				Format:        "commander",
 				SortType:      "updated",
 				SortDirection: "Descending",
@@ -279,7 +280,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 		{
 			name: "with different sort",
 			params: MoxfieldSearchParams{
-				Query:         "Atraxa",
+				CardName:      "Atraxa",
 				Format:        "commander",
 				SortType:      "views",
 				SortDirection: "Descending",
@@ -293,7 +294,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 		{
 			name: "server error",
 			params: MoxfieldSearchParams{
-				Query:      "Test",
+				CardName:   "Test",
 				PageSize:   20,
 				PageNumber: 1,
 			},
@@ -307,11 +308,8 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.checkQuery {
 					query := r.URL.Query()
-					if query.Get("board") != "commanders" {
-						t.Error("SearchMoxfieldDecks() should include board=commanders parameter")
-					}
-					if query.Get("query") != tt.params.Query {
-						t.Errorf("query parameter = %v, want %v", query.Get("query"), tt.params.Query)
+					if query.Get("cardName") != tt.params.CardName {
+						t.Errorf("cardName parameter = %v, want %v", query.Get("cardName"), tt.params.CardName)
 					}
 				}
 
@@ -350,41 +348,35 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 	tests := []struct {
 		name           string
 		inputPageSize  int
-		expectPageSize int
+		expectPageSize string
 	}{
 		{
 			name:           "page size too large",
 			inputPageSize:  150,
-			expectPageSize: 100,
+			expectPageSize: "20",
 		},
 		{
 			name:           "page size zero",
 			inputPageSize:  0,
-			expectPageSize: 20,
+			expectPageSize: "20",
 		},
 		{
 			name:           "page size negative",
 			inputPageSize:  -10,
-			expectPageSize: 20,
+			expectPageSize: "20",
 		},
 		{
 			name:           "valid page size",
 			inputPageSize:  50,
-			expectPageSize: 50,
+			expectPageSize: "50",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var gotPageSize string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				pageSize := r.URL.Query().Get("pageSize")
-				if pageSize != "" {
-					// Check that the page size was adjusted
-					if pageSize != "20" && pageSize != "100" && pageSize != "50" {
-						t.Logf("PageSize in request: %s", pageSize)
-					}
-				}
-
+				gotPageSize = r.URL.Query().Get("pageSize")
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(MoxfieldSearchResponse{
 					Data: []MoxfieldDeckSummary{},
@@ -393,7 +385,7 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 			defer server.Close()
 
 			params := MoxfieldSearchParams{
-				Query:      "test",
+				CardName:   "test",
 				PageSize:   tt.inputPageSize,
 				PageNumber: 1,
 			}
@@ -403,7 +395,113 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 			if err != nil {
 				t.Errorf("SearchMoxfieldDecks() unexpected error = %v", err)
 			}
+			if gotPageSize != tt.expectPageSize {
+				t.Errorf("pageSize parameter = %q, want %q", gotPageSize, tt.expectPageSize)
+			}
 		})
+	}
+}
+
+func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
+	var gotQuery url.Values
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		gotQuery = r.URL.Query()
+		_ = json.NewEncoder(w).
+			Encode(MoxfieldSearchResponse{PageNumber: 2, PageSize: 50, TotalResults: 120, TotalPages: 3})
+	}))
+	defer server.Close()
+
+	_, err := searchMoxfieldDecksWithURL(context.Background(), MoxfieldSearchParams{
+		CardName:      "Atraxa, Praetors' Voice",
+		Format:        "commander",
+		SortType:      "views",
+		SortDirection: "Descending",
+		PageSize:      50,
+		PageNumber:    2,
+	}, server.URL+"/v2/decks/search")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotPath != "/v2/decks/search" {
+		t.Errorf("path = %q, want /v2/decks/search", gotPath)
+	}
+	want := map[string]string{
+		"cardName":      "Atraxa, Praetors' Voice",
+		"fmt":           "commander",
+		"sortType":      "views",
+		"sortDirection": "Descending",
+		"pageSize":      "50",
+		"pageNumber":    "2",
+	}
+	for key, value := range want {
+		if gotQuery.Get(key) != value {
+			t.Errorf("%s = %q, want %q", key, gotQuery.Get(key), value)
+		}
+	}
+	// Moxfield ignores these entirely; sending them pretends we filter when we do not.
+	for _, forbidden := range []string{"query", "q", "board", "commanderName", "commanders"} {
+		if gotQuery.Get(forbidden) != "" {
+			t.Errorf("must not send %s (ignored upstream)", forbidden)
+		}
+	}
+}
+
+func TestMoxfieldSortType(t *testing.T) {
+	for _, valid := range []string{"updated", "created", "views", "likes", "comments", "relevance"} {
+		if got, err := moxfieldSortType(valid); err != nil || got != valid {
+			t.Errorf("moxfieldSortType(%q) = (%q, %v), want (%q, nil)", valid, got, err, valid)
+		}
+	}
+	// price is rejected by the Moxfield API with HTTP 400, so reject it locally.
+	for _, invalid := range []string{"price", "", "trending"} {
+		if _, err := moxfieldSortType(invalid); err == nil {
+			t.Errorf("moxfieldSortType(%q) should fail", invalid)
+		}
+	}
+}
+
+func TestMoxfieldSortDirection(t *testing.T) {
+	if got, err := moxfieldSortDirection(sortDirectionDesc); err != nil || got != "Descending" {
+		t.Errorf("desc = (%q, %v), want (Descending, nil)", got, err)
+	}
+	if got, err := moxfieldSortDirection(sortDirectionAsc); err != nil || got != "Ascending" {
+		t.Errorf("asc = (%q, %v), want (Ascending, nil)", got, err)
+	}
+	if _, err := moxfieldSortDirection("sideways"); err == nil {
+		t.Error("expected an error for an invalid direction")
+	}
+}
+
+// TestMoxfieldSearchURLWiring pins the fix for the production HTTP 404: deck reads and deck
+// search live on different Moxfield hosts, and the server must be built with the search URL.
+func TestMoxfieldSearchURLWiring(t *testing.T) {
+	if defaultMoxfieldSearchURL == defaultMoxfieldBaseURL {
+		t.Fatal("the search URL must differ from the deck-read base URL")
+	}
+	parsed, parseErr := url.Parse(defaultMoxfieldSearchURL)
+	if parseErr != nil {
+		t.Fatalf("unparseable search URL: %v", parseErr)
+	}
+	if parsed.Host != "api2.moxfield.com" {
+		t.Errorf("search host = %q, want api2.moxfield.com", parsed.Host)
+	}
+	if parsed.Path != "/v2/decks/search" {
+		t.Errorf("search path = %q, want /v2/decks/search", parsed.Path)
+	}
+
+	s, err := NewMTGCommanderServer()
+	if err != nil {
+		t.Fatalf("NewMTGCommanderServer() error = %v", err)
+	}
+	if s.moxfieldSearchURL != defaultMoxfieldSearchURL {
+		t.Errorf("moxfieldSearchURL = %q, want %q", s.moxfieldSearchURL, defaultMoxfieldSearchURL)
+	}
+	if s.verifyDelay != moxfieldVerifyDelay {
+		t.Errorf("verifyDelay = %v, want %v — production must space verification requests",
+			s.verifyDelay, moxfieldVerifyDelay)
 	}
 }
 

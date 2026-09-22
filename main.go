@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -26,7 +27,6 @@ const (
 	deckValidationCommanderCount = 100
 	cardSortOrderName            = "name"
 	defaultFormat                = "commander"
-	defaultSortDirection         = "Descending"
 	paramCommander               = "commander"
 	paramName                    = "name"
 	paramLanguage                = "language"
@@ -40,7 +40,11 @@ const (
 	defaultCardImageSize         = imageSizeNormal
 	mimeTypeTextPlain            = "text/plain"
 
-	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
+	defaultMoxfieldBaseURL = "https://api.moxfield.com/v2"
+	// defaultMoxfieldSearchURL is a different host from defaultMoxfieldBaseURL:
+	// deck reads live on api.moxfield.com, deck search only exists on api2.
+	defaultMoxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
+
 	defaultArchidektBaseURL = "https://archidekt.com/api"
 	defaultEDHRECBaseURL    = "https://json.edhrec.com/pages"
 )
@@ -48,11 +52,15 @@ const (
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
 // The base URL fields default to the live APIs but can be overridden in tests.
 type MTGCommanderServer struct {
-	scryfallClient   *scryfall.Client
-	moxfieldBaseURL  string
-	archidektBaseURL string
-	edhrecBaseURL    string
-	rules            *rulesCache
+	scryfallClient    *scryfall.Client
+	moxfieldBaseURL   string
+	moxfieldSearchURL string
+	archidektBaseURL  string
+	edhrecBaseURL     string
+	// verifyDelay spaces Moxfield commander-verification requests. Tests build servers
+	// directly and get the zero value, so the suite never sleeps.
+	verifyDelay time.Duration
+	rules       *rulesCache
 }
 
 // NewMTGCommanderServer creates a new MTG Commander MCP server.
@@ -63,11 +71,13 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 	}
 
 	return &MTGCommanderServer{
-		scryfallClient:   client,
-		moxfieldBaseURL:  defaultMoxfieldBaseURL,
-		archidektBaseURL: defaultArchidektBaseURL,
-		edhrecBaseURL:    defaultEDHRECBaseURL,
-		rules:            &rulesCache{},
+		scryfallClient:    client,
+		moxfieldBaseURL:   defaultMoxfieldBaseURL,
+		moxfieldSearchURL: defaultMoxfieldSearchURL,
+		archidektBaseURL:  defaultArchidektBaseURL,
+		edhrecBaseURL:     defaultEDHRECBaseURL,
+		verifyDelay:       moxfieldVerifyDelay,
+		rules:             &rulesCache{},
 	}, nil
 }
 
@@ -264,23 +274,29 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 	searchMoxfieldDecksTool := mcp.NewTool(
 		"search_moxfield_decks",
 		mcp.WithDescription(
-			"Search for decks on Moxfield by commander name or other criteria, returns popular decks sorted by views/likes",
+			"Search Moxfield for decks built around a commander, with pagination and sorting",
 		),
 		mcp.WithString(paramCommander,
 			mcp.Required(),
-			mcp.Description("Commander card name to search for (e.g., 'Atraxa, Praetors Voice')"),
+			mcp.Description("Commander card name (e.g., 'Atraxa, Praetors' Voice')"),
 		),
 		mcp.WithString("format",
 			mcp.Description("MTG format to filter by (default: 'commander')"),
 		),
-		mcp.WithString("sort_type",
-			mcp.Description("Sort type: 'updated', 'views', 'likes' (default: 'updated')"),
+		mcp.WithString("sort",
+			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", moxfieldSortValues(), searchSortDefault)),
 		),
 		mcp.WithString("sort_direction",
-			mcp.Description("Sort direction: 'Ascending' or 'Descending' (default: 'Descending')"),
+			mcp.Description("Sort direction: asc or desc (default: desc)"),
 		),
-		mcp.WithNumber("page_size",
-			mcp.Description("Number of decks to return (default: 20, max: 100)"),
+		mcp.WithNumber("page",
+			mcp.Description(
+				"1-based page of candidate decks searched (default: 1). Moxfield cannot filter by "+
+					"commander, so a page may verify no decks while a later page verifies many.",
+			),
+		),
+		mcp.WithNumber("limit",
+			mcp.Description("Verified decks per page (default: 10, max: 20 — the per-call verification budget)"),
 		),
 	)
 	mcpServer.AddTool(searchMoxfieldDecksTool, s.handleSearchMoxfieldDecks)
@@ -413,17 +429,38 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 	searchArchidektDecksTool := mcp.NewTool(
 		"search_archidekt_decks",
 		mcp.WithDescription(
-			"Search for public Commander decks on Archidekt by commander name, sorted by view count descending",
+			"Search public Commander decks on Archidekt by commander name, with pagination and sorting",
 		),
-		mcp.WithString("commander",
+		mcp.WithString(paramCommander,
 			mcp.Required(),
-			mcp.Description("Commander card name to search for (e.g. 'Atraxa, Praetors\\' Voice')"),
+			mcp.Description("Commander card name (e.g., 'Atraxa, Praetors' Voice')"),
 		),
 		mcp.WithNumber("bracket",
 			mcp.Description("Filter by EDH bracket (1–4). Omit to return all brackets."),
 		),
+		mcp.WithString("sort",
+			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", archidektSortValues(), searchSortDefault)),
+		),
+		mcp.WithString("sort_direction",
+			mcp.Description("Sort direction: asc or desc (default: desc)"),
+		),
+		mcp.WithNumber("page",
+			mcp.Description("1-based result page (default: 1)"),
+		),
 		mcp.WithNumber("limit",
-			mcp.Description("Number of decks to return (default: 10, max: 20)"),
+			mcp.Description("Decks per page (default: 10, max: 60)"),
+		),
+		mcp.WithString("colors",
+			mcp.Description("Filter by colour identity letters, e.g. 'WU' (accepted: W, U, B, R, G)"),
+		),
+		mcp.WithNumber("deck_size",
+			mcp.Description("Filter by exact deck card count, e.g. 99"),
+		),
+		mcp.WithString("author",
+			mcp.Description("Filter by Archidekt username"),
+		),
+		mcp.WithString(paramName,
+			mcp.Description("Filter by deck-name substring"),
 		),
 	)
 	mcpServer.AddTool(searchArchidektDecksTool, s.handleSearchArchidektDecks)

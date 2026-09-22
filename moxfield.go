@@ -3,12 +3,41 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// moxfieldHTTPTimeout bounds a single Moxfield request. Commander verification issues
+// one request per candidate deck, so an unbounded client would let a single hung
+// upstream request stall the whole tool call.
+const moxfieldHTTPTimeout = 15 * time.Second
+
+// moxfieldStatusError reports a non-200 response from the Moxfield API. The status is
+// preserved so callers can treat rate limiting (429) differently from hard failures.
+type moxfieldStatusError struct {
+	StatusCode int
+}
+
+func (e *moxfieldStatusError) Error() string {
+	return fmt.Sprintf("moxfield API returned status %d", e.StatusCode)
+}
+
+// isMoxfieldRateLimited reports whether err is a Moxfield HTTP 429.
+func isMoxfieldRateLimited(err error) bool {
+	var statusErr *moxfieldStatusError
+	return errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusTooManyRequests
+}
+
+// moxfieldHTTPClient returns a client with an explicit timeout.
+func moxfieldHTTPClient() *http.Client {
+	return &http.Client{Timeout: moxfieldHTTPTimeout}
+}
 
 // MoxfieldDeck represents a deck from Moxfield.
 type MoxfieldDeck struct {
@@ -72,14 +101,63 @@ type MoxfieldSearchResponse struct {
 	Data         []MoxfieldDeckSummary `json:"data"`
 }
 
-// MoxfieldSearchParams represents search parameters.
+// MoxfieldSearchParams represents search parameters. Only fields the Moxfield API
+// actually honours are present: every commander-oriented parameter (query, q, board,
+// commanderName, commanders) is silently ignored upstream and must not be sent.
 type MoxfieldSearchParams struct {
-	Query         string
+	CardName      string // decks containing this card
 	Format        string
 	SortType      string
 	SortDirection string
 	PageSize      int
 	PageNumber    int
+}
+
+const (
+	// moxfieldSearchDefaultLimit is the default number of decks returned per page.
+	moxfieldSearchDefaultLimit = 10
+	// moxfieldTotalCap is the saturation value Moxfield reports in totalResults for any
+	// broad card-name search. It is not a count, and totalPages is derived from it, so
+	// neither number may be presented to the caller as a real total.
+	moxfieldTotalCap = 10000
+	// moxfieldDirectionAscending and moxfieldDirectionDescending are Moxfield's wire
+	// values for sortDirection. They are not the tool's vocabulary: the caller passes
+	// asc/desc and the output must be rendered back in those terms.
+	moxfieldDirectionAscending  = "Ascending"
+	moxfieldDirectionDescending = "Descending"
+)
+
+// moxfieldSortKeys lists the sortType values the Moxfield API accepts, in the order the
+// tool documents them. Anything else (e.g. "price") is answered with HTTP 400 upstream.
+// This is the single source for validation, the error message and the tool description.
+func moxfieldSortKeys() []string {
+	return []string{"updated", "created", "views", "likes", "comments", "relevance"}
+}
+
+// moxfieldSortValues renders the accepted sort keys for error messages and tool docs.
+func moxfieldSortValues() string {
+	return strings.Join(moxfieldSortKeys(), ", ")
+}
+
+// moxfieldSortType validates a sort key against the values Moxfield accepts.
+func moxfieldSortType(sort string) (string, error) {
+	if slices.Contains(moxfieldSortKeys(), sort) {
+		return sort, nil
+	}
+	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, moxfieldSortValues())
+}
+
+// moxfieldSortDirection maps our asc/desc surface onto Moxfield's capitalised values.
+func moxfieldSortDirection(direction string) (string, error) {
+	switch direction {
+	case sortDirectionAsc:
+		return moxfieldDirectionAscending, nil
+	case sortDirectionDesc:
+		return moxfieldDirectionDescending, nil
+	default:
+		return "", fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
+			direction, sortDirectionAsc, sortDirectionDesc)
+	}
 }
 
 // GetMoxfieldDeck fetches a deck by its public ID.
@@ -100,7 +178,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := moxfieldHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -110,7 +188,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("moxfield API returned status %d", resp.StatusCode)
+		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
 	}
 
 	var deck MoxfieldDeck
@@ -146,7 +224,7 @@ func getUserDecksWithURL(
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := moxfieldHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -156,7 +234,7 @@ func getUserDecksWithURL(
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("moxfield API returned status %d", resp.StatusCode)
+		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
 	}
 
 	var decksResp MoxfieldUserDecksResponse
@@ -169,7 +247,7 @@ func getUserDecksWithURL(
 
 // SearchMoxfieldDecks searches for decks on Moxfield.
 func SearchMoxfieldDecks(ctx context.Context, params MoxfieldSearchParams) (*MoxfieldSearchResponse, error) {
-	return searchMoxfieldDecksWithURL(ctx, params, "https://api2.moxfield.com/v2/decks/search")
+	return searchMoxfieldDecksWithURL(ctx, params, defaultMoxfieldSearchURL)
 }
 
 // searchMoxfieldDecksWithURL searches decks with a custom search URL.
@@ -187,13 +265,11 @@ func searchMoxfieldDecksWithURL(
 		params.PageNumber = 1
 	}
 
-	// Build query parameters
 	queryParams := url.Values{}
 	queryParams.Set("pageSize", strconv.Itoa(params.PageSize))
 	queryParams.Set("pageNumber", strconv.Itoa(params.PageNumber))
-	if params.Query != "" {
-		queryParams.Set("board", "commanders")
-		queryParams.Set("query", params.Query)
+	if params.CardName != "" {
+		queryParams.Set("cardName", params.CardName)
 	}
 	if params.Format != "" {
 		queryParams.Set("fmt", params.Format)
@@ -215,7 +291,7 @@ func searchMoxfieldDecksWithURL(
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{}
+	client := moxfieldHTTPClient()
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -225,7 +301,7 @@ func searchMoxfieldDecksWithURL(
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("moxfield search API returned status %d", resp.StatusCode)
+		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
 	}
 
 	var searchResp MoxfieldSearchResponse

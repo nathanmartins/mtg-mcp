@@ -77,11 +77,28 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Format and public URL for each deck
 
 3. **search_moxfield_decks** – Search for decks on Moxfield by commander
-    - Search by commander name
-    - Filter by format (commander, standard, modern, etc.)
-    - Sort by updated, views, or likes
-    - Paginated results (up to 100 per page)
+    - Required `commander` parameter (card name)
+    - Optional `format` (default `commander`)
+    - Optional `sort` (`updated`, `created`, `views`, `likes`, `comments`, `relevance`;
+      default `views`) and `sort_direction` (`asc`/`desc`; default `desc`)
+    - Pagination via `limit` (verified decks per page; default 10, max 20 — the
+      per-call verification budget) and `page`, the 1-based page of *candidate* decks
+      searched: Moxfield cannot filter by commander, so a page may verify no decks
+      while a later page verifies many
     - Returns deck metadata with views, likes, and URLs
+    - Moxfield's API cannot filter by commander, so results are verified per deck:
+      candidates come from a card-name search and each one is fetched to confirm its
+      commander zone (max 20 checks per call)
+    - Verification stops as soon as `limit` decks are confirmed, so the remaining
+      candidates on that page are never examined and paging skips them — the next page
+      resumes after the whole candidate page. The output states how many candidates
+      were left unexamined
+    - Output reports how many candidates were checked, how many could not be fetched,
+      and flags incomplete verification when a deck read fails, the 30 s verification
+      budget expires, or Moxfield rate-limits the run
+    - Moxfield reports `totalResults` as a saturated `10000` for any broad card-name
+      search, so the output shows it as `10000+ card-name matches — upstream cap, real
+      total unknown` instead of echoing a fabricated count and page depth
 
 #### Archidekt Integration (3 tools)
 
@@ -101,9 +118,14 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 3. **search_archidekt_decks** – Search public Commander decks by commander name
     - Required `commander` parameter (card name, e.g. `"Atraxa, Praetors' Voice"`)
-    - Optional `bracket` filter (1–4; omit searching all brackets)
-    - Optional `limit` (default: 10, max: 20)
-    - Results sorted by view count descending
+    - Optional `bracket` filter (1–4; omit to search all brackets)
+    - Optional `sort` (`views`, `updated`, `created`, `price`, `size`; default `views`)
+      and `sort_direction` (`asc`/`desc`; default `desc`)
+    - Optional filters: `colors` (e.g. `WU`), `deck_size` (exact card count),
+      `author` (Archidekt username), `name` (deck-name substring)
+    - Pagination via `page` (1-based, max 1000 — Archidekt's count saturates at 1000, so
+      nothing is reachable beyond it) and `limit` (default 10, max 60)
+    - Invalid sort or out-of-range values return an explicit error instead of a silent fallback
     - Each result includes deck name, author, view count, EDH bracket, last updated, and direct URL
 
 #### Comprehensive Rules (3 tools)
@@ -359,6 +381,8 @@ Once connected to Claude Desktop, you can ask questions like:
 4. **Moxfield:** Unofficial API (<https://api.moxfield.com>)
     - Deck data and user profiles
     - Metadata including views, likes, comments
+    - Search endpoint lives on a different host (`api2.moxfield.com`) than deck reads
+    - Rate limit observed at roughly 11 rapid requests; commander verification is spaced and capped
     - **Note:** No official public API; be respectful of rate limits
     - Contact <support@moxfield.com> for authorized access
 
