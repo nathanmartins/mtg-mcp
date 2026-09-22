@@ -281,6 +281,25 @@ Or via the CLI:
 claude mcp add --transport stdio mtg-commander -- docker run -i --rm mtg-mcp:latest
 ```
 
+**Native Streamable HTTP transport.** The binary keeps stdio as its default and
+can serve MCP over HTTP directly when `MTG_MCP_TRANSPORT=streamable-http` (or
+`http`) is set:
+
+```bash
+MTG_MCP_TRANSPORT=streamable-http \
+MTG_MCP_HOST=127.0.0.1 \
+MTG_MCP_PORT=8080 \
+MTG_MCP_HTTP_PATH=/mcp \
+MTG_MCP_BEARER=replace-with-a-token \
+./mtg-mcp
+```
+
+The endpoint is then `http://127.0.0.1:8080/mcp` and the unauthenticated health
+check is available at `/healthz`; `MTG_MCP_BEARER` is optional, but when set
+every MCP request must carry the matching `Authorization: Bearer` header. The
+native HTTP mode uses the MCP SDK's Streamable HTTP transport and shuts down
+active sessions cleanly on `SIGTERM`/`SIGINT`.
+
 **Remote connector over HTTP.** To expose the server as a Streamable HTTP
 endpoint (e.g. for the claude.ai remote connector), run the `mcp-proxy` service
 with Compose:

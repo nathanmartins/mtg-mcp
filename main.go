@@ -1,8 +1,17 @@
 package main
 
 import (
+	"context"
+	"crypto/subtle"
+	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
 
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -43,6 +52,11 @@ const (
 	defaultMoxfieldBaseURL  = "https://api.moxfield.com/v2"
 	defaultArchidektBaseURL = "https://archidekt.com/api"
 	defaultEDHRECBaseURL    = "https://json.edhrec.com/pages"
+
+	defaultMCPTransport = "stdio"
+	defaultMCPHost      = "127.0.0.1"
+	defaultMCPPort      = "8080"
+	defaultMCPHTTPPath  = "/mcp"
 )
 
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
@@ -101,41 +115,164 @@ func main() {
 		log.Debug().Msg("Debug logging enabled")
 	}
 
-	// Create MTG Commander server instance
-	log.Info().Msg("Creating MTG Commander server instance")
+	// Create and configure the MCP server.
+	log.Info().Msg("Creating MCP server")
+	mcpServer, err := buildMCPServer()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to create MCP server")
+	}
+	log.Info().Msg("MCP server instance created successfully")
+
+	transport, err := configuredMCPTransport()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Invalid MCP transport configuration")
+	}
+
+	var serveErr error
+	switch transport {
+	case defaultMCPTransport:
+		log.Info().
+			Str("transport", defaultMCPTransport).
+			Str("log_file", logFilePath).
+			Msg("Starting MTG Commander MCP Server")
+		serveErr = server.ServeStdio(mcpServer)
+	case "streamable-http":
+		log.Info().
+			Str("transport", "streamable-http").
+			Str("host", envOrDefault("MTG_MCP_HOST", defaultMCPHost)).
+			Str("port", envOrDefault("MTG_MCP_PORT", defaultMCPPort)).
+			Str("path", normalizeMCPHTTPPath(envOrDefault("MTG_MCP_HTTP_PATH", defaultMCPHTTPPath))).
+			Msg("Starting MTG Commander MCP Server")
+		serveErr = serveStreamableHTTP(mcpServer)
+	}
+
+	if serveErr != nil {
+		log.Fatal().Err(serveErr).Msg("Server error")
+	}
+}
+
+func buildMCPServer() (*server.MCPServer, error) {
 	mtgServer, err := NewMTGCommanderServer()
 	if err != nil {
-		log.Fatal().Err(err).Msg("Failed to create MTG Commander server")
+		return nil, err
 	}
-	log.Info().Msg("MTG Commander server instance created successfully")
 
-	// Create MCP server
-	log.Info().Msg("Creating MCP server")
 	mcpServer := server.NewMCPServer(
 		"MTG Commander Assistant",
 		"1.0.0",
-		server.WithRecovery(), // Add panic recovery middleware
+		server.WithRecovery(),
+	)
+	mtgServer.registerTools(mcpServer)
+	mtgServer.registerResources(mcpServer)
+
+	return mcpServer, nil
+}
+
+func configuredMCPTransport() (string, error) {
+	transport := strings.ToLower(strings.TrimSpace(os.Getenv("MTG_MCP_TRANSPORT")))
+	if transport == "" || transport == defaultMCPTransport {
+		return defaultMCPTransport, nil
+	}
+	if transport == "http" || transport == "streamable-http" {
+		return "streamable-http", nil
+	}
+	return "", fmt.Errorf("unsupported MTG_MCP_TRANSPORT %q; use stdio or streamable-http", transport)
+}
+
+func envOrDefault(name, fallback string) string {
+	if value := strings.TrimSpace(os.Getenv(name)); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func normalizeMCPHTTPPath(path string) string {
+	normalized := "/" + strings.Trim(path, "/")
+	if normalized == "/" {
+		return defaultMCPHTTPPath
+	}
+	return normalized
+}
+
+func serveStreamableHTTP(mcpServer *server.MCPServer) error {
+	host := envOrDefault("MTG_MCP_HOST", defaultMCPHost)
+	port := envOrDefault("MTG_MCP_PORT", defaultMCPPort)
+	endpointPath := normalizeMCPHTTPPath(envOrDefault("MTG_MCP_HTTP_PATH", defaultMCPHTTPPath))
+	address := net.JoinHostPort(host, port)
+
+	httpServer := &http.Server{
+		Addr:              address,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
+	streamable := server.NewStreamableHTTPServer(
+		mcpServer,
+		server.WithEndpointPath(endpointPath),
+		server.WithStreamableHTTPServer(httpServer),
 	)
 
-	// Register all tools
-	log.Info().Msg("Registering MCP tools")
-	mtgServer.registerTools(mcpServer)
-	log.Info().Msg("All tools registered successfully")
-
-	// Register resources
-	log.Info().Msg("Registering MCP resources")
-	mtgServer.registerResources(mcpServer)
-	log.Info().Msg("All resources registered successfully")
-
-	// Start server with stdio transport
-	log.Info().
-		Str("transport", "stdio").
-		Str("log_file", logFilePath).
-		Msg("Starting MTG Commander MCP Server")
-
-	if serveErr := server.ServeStdio(mcpServer); serveErr != nil {
-		log.Fatal().Err(serveErr).Msg("Server error")
+	mux := http.NewServeMux()
+	mux.Handle(endpointPath, staticBearerMiddleware(streamable, os.Getenv("MTG_MCP_BEARER")))
+	if endpointPath != "/healthz" {
+		mux.HandleFunc("/healthz", healthzHandler)
 	}
+	httpServer.Handler = mux
+
+	serveErr := make(chan error, 1)
+	go func() {
+		serveErr <- streamable.Start(address)
+	}()
+
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
+
+	select {
+	case err := <-serveErr:
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	case sig := <-signals:
+		GetLogger().Info().Str("signal", sig.String()).Msg("Shutting down HTTP server")
+		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if err := streamable.Shutdown(shutdownContext); err != nil {
+			return err
+		}
+		err := <-serveErr
+		if errors.Is(err, http.ErrServerClosed) {
+			return nil
+		}
+		return err
+	}
+}
+
+func healthzHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("ok\n"))
+}
+
+func staticBearerMiddleware(next http.Handler, expectedToken string) http.Handler {
+	expectedToken = strings.TrimSpace(expectedToken)
+	if expectedToken == "" {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		scheme, token, ok := strings.Cut(strings.TrimSpace(r.Header.Get("Authorization")), " ")
+		if !ok || !strings.EqualFold(scheme, "Bearer") ||
+			subtle.ConstantTimeCompare([]byte(strings.TrimSpace(token)), []byte(expectedToken)) != 1 {
+			w.Header().Set("WWW-Authenticate", "Bearer")
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // registerTools registers all MCP tools.
