@@ -4,7 +4,7 @@ go 1.27.1
 
 require (
 	github.com/BlueMonday/go-scryfall v0.10.0
-	github.com/mark3labs/mcp-go v1.0.0
+	github.com/mark3labs/mcp-go v1.1.1
 	github.com/rs/zerolog v1.35.1
 )
 
