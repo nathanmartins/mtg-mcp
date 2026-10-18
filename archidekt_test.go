@@ -246,9 +246,13 @@ func TestGetArchidektUserDecks(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				// Verify exact owner param
-				if r.URL.Query().Get("exactowner") != "true" {
-					t.Error("expected exactowner=true")
+				// Verify the owner filter Archidekt honors; "owner" is ignored upstream
+				q := r.URL.Query()
+				if q.Get("ownerUsername") != tt.username {
+					t.Errorf("ownerUsername = %q, want %q", q.Get("ownerUsername"), tt.username)
+				}
+				if q.Has("owner") || q.Has("exactowner") {
+					t.Error("owner/exactowner are ignored by Archidekt and must not be sent")
 				}
 
 				w.WriteHeader(tt.mockStatus)

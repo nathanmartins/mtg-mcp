@@ -168,9 +168,10 @@ func getArchidektUserDecksWithURL(
 		page = 1
 	}
 
+	// ownerUsername is the filter the v3 endpoint honors (search_archidekt_decks uses it
+	// too); "owner"/"exactowner" are silently ignored and return everyone's recent decks.
 	queryParams := url.Values{}
-	queryParams.Set("owner", username)
-	queryParams.Set("exactowner", "true")
+	queryParams.Set("ownerUsername", username)
 	queryParams.Set("page", strconv.Itoa(page))
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
