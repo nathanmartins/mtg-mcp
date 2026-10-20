@@ -53,6 +53,7 @@ RUN apk add --no-cache ca-certificates \
 COPY --from=builder /out/mtg-mcp /usr/local/bin/mtg-mcp
 USER node
 WORKDIR /data
+ENV MTG_MCP_LOG_FILE=/data/mtg-commander-server.log
 EXPOSE 8080
 # DEFAULT (stateful) mode — never pass --stateless: it breaks the MCP Apps
 # tool-call -> resources/read round-trip. Internal port fixed at 8080; remap on
@@ -64,11 +65,13 @@ FROM gcr.io/distroless/static-debian12:nonroot AS runtime
 LABEL org.opencontainers.image.source="https://github.com/nathanmartins/mtg-mcp"
 LABEL org.opencontainers.image.description="MTG Commander MCP server (stdio)"
 COPY --from=builder /out/mtg-mcp /usr/local/bin/mtg-mcp
-# Writable, nonroot-owned CWD for the mandatory mtg-commander-server.log (the app
-# os.Exit(1)s if it can't open it). distroless has no shell to chown at build
-# time, so the dir is created + chowned in the builder stage and copied here.
+# Writable, nonroot-owned /data for mtg-commander-server.log, pointed at via
+# MTG_MCP_LOG_FILE so a mounted volume keeps it (without a writable path the app
+# logs to stderr only). distroless has no shell to chown at build time, so the
+# dir is created + chowned in the builder stage and copied here.
 COPY --from=builder --chown=65532:65532 /out/data /data
 WORKDIR /data
+ENV MTG_MCP_LOG_FILE=/data/mtg-commander-server.log
 # `docker run -i --rm <image>` is then a valid MCP stdio command. Do not add -t:
 # a TTY corrupts JSON-RPC framing. distroless static already ships CA certs.
 ENTRYPOINT ["/usr/local/bin/mtg-mcp"]
