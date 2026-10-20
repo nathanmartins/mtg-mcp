@@ -1,4 +1,4 @@
-package main
+package rules
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/mark3labs/mcp-go/mcp"
 )
 
 const sampleRulesTxt = `Magic: The Gathering Comprehensive Rules
@@ -36,7 +34,7 @@ A keyword ability that causes damage dealt by an object to be lethal. See rule 7
 `
 
 func TestParseComprehensiveRules(t *testing.T) {
-	cr := parseComprehensiveRules(sampleRulesTxt)
+	cr := Parse(sampleRulesTxt)
 
 	for _, num := range []string{"100.1", "702.19", "702.19a", "702.19b"} {
 		if _, ok := cr.rules[num]; !ok {
@@ -61,7 +59,7 @@ func TestParseComprehensiveRules(t *testing.T) {
 }
 
 func TestComprehensiveRulesLookups(t *testing.T) {
-	cr := parseComprehensiveRules(sampleRulesTxt)
+	cr := Parse(sampleRulesTxt)
 
 	// Rule with subrules
 	got, ok := cr.Rule("702.19")
@@ -115,9 +113,9 @@ func TestGetComprehensiveRulesWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cr, err := getComprehensiveRulesWithURL(context.Background(), server.URL)
+	cr, err := getWithURL(context.Background(), server.URL)
 	if err != nil {
-		t.Fatalf("getComprehensiveRulesWithURL: %v", err)
+		t.Fatalf("getWithURL: %v", err)
 	}
 	if _, ok := cr.Rule("702.19"); !ok {
 		t.Error("expected parsed rule 702.19 from fetched text")
@@ -133,7 +131,7 @@ func TestGetComprehensiveRulesWithURL_NoLink(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := getComprehensiveRulesWithURL(context.Background(), server.URL); err == nil {
+	if _, err := getWithURL(context.Background(), server.URL); err == nil {
 		t.Error("expected an error when the rules link is missing")
 	}
 }
@@ -151,7 +149,7 @@ func TestComprehensiveRulesCache(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cache := &rulesCache{}
+	cache := &Cache{}
 
 	r1, err := cache.getFromURL(context.Background(), server.URL)
 	if err != nil {
@@ -170,8 +168,8 @@ func TestComprehensiveRulesCache(t *testing.T) {
 }
 
 func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
-	cache := &rulesCache{
-		rules:     parseComprehensiveRules(sampleRulesTxt),
+	cache := &Cache{
+		rules:     Parse(sampleRulesTxt),
 		fetchedAt: time.Now().Add(-2 * rulesCacheTTL), // expired
 	}
 
@@ -190,17 +188,17 @@ func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
 }
 
 func TestRulesFormatters(t *testing.T) {
-	r := FormatRuleForDisplay("702.19", "702.19. Trample")
+	r := FormatRule("702.19", "702.19. Trample")
 	if !strings.Contains(r, "# Rule 702.19") || !strings.Contains(r, "Trample") {
-		t.Errorf("FormatRuleForDisplay wrong:\n%s", r)
+		t.Errorf("FormatRule wrong:\n%s", r)
 	}
 
-	empty := FormatRuleSearchForDisplay("xyzzy", nil)
+	empty := FormatRuleSearch("xyzzy", nil)
 	if !strings.Contains(empty, "No matching rules") {
 		t.Errorf("empty search should say so:\n%s", empty)
 	}
 
-	s := FormatRuleSearchForDisplay("trample", []RuleMatch{{Number: "702.19", Text: "702.19. Trample\nmore"}})
+	s := FormatRuleSearch("trample", []Match{{Number: "702.19", Text: "702.19. Trample\nmore"}})
 	if !strings.Contains(s, "- 702.19") || !strings.Contains(s, "trample") {
 		t.Errorf("search format wrong:\n%s", s)
 	}
@@ -208,72 +206,10 @@ func TestRulesFormatters(t *testing.T) {
 		t.Error("search listing should show only the first line of each match")
 	}
 
-	g := FormatGlossaryTermForDisplay("Trample", "A keyword ability.")
+	g := FormatGlossaryTerm("Trample", "A keyword ability.")
 	if !strings.Contains(g, "# Trample") || !strings.Contains(g, "keyword ability") {
 		t.Errorf("glossary format wrong:\n%s", g)
 	}
-}
-
-func TestRulesCountsAndHandlers(t *testing.T) {
-	if totalToolCount != 20 {
-		t.Errorf("totalToolCount = %d, want 20", totalToolCount)
-	}
-	if totalResourceCount != 3 {
-		t.Errorf("totalResourceCount = %d, want 3", totalResourceCount)
-	}
-
-	// Pre-populate the cache so handlers do no network.
-	srv := &MTGCommanderServer{rules: &rulesCache{
-		rules:     parseComprehensiveRules(sampleRulesTxt),
-		fetchedAt: time.Now(),
-	}}
-
-	req := mcp.CallToolRequest{}
-	req.Params.Arguments = map[string]any{"rule": "702.19"}
-	res, err := srv.handleGetRule(context.Background(), req)
-	if err != nil {
-		t.Fatalf("handleGetRule: %v", err)
-	}
-	if !strings.Contains(toolResultText(t, res), "Trample") {
-		t.Error("handleGetRule should return rule 702.19 text")
-	}
-
-	greq := mcp.CallToolRequest{}
-	greq.Params.Arguments = map[string]any{"term": "Trample"}
-	gres, err := srv.handleGetGlossaryTerm(context.Background(), greq)
-	if err != nil {
-		t.Fatalf("handleGetGlossaryTerm: %v", err)
-	}
-	if !strings.Contains(toolResultText(t, gres), "keyword ability") {
-		t.Error("handleGetGlossaryTerm should return the definition")
-	}
-
-	sreq := mcp.CallToolRequest{}
-	sreq.Params.Arguments = map[string]any{"keyword": "trample", "limit": float64(1)}
-	sres, err := srv.handleSearchRules(context.Background(), sreq)
-	if err != nil {
-		t.Fatalf("handleSearchRules: %v", err)
-	}
-	stext := toolResultText(t, sres)
-	if !strings.Contains(stext, "Rules matching") || !strings.Contains(stext, "702.19") {
-		t.Errorf("handleSearchRules should list matching rule 702.19; got:\n%s", stext)
-	}
-	// limit=1 must cap the listing to a single "- " result line
-	if n := strings.Count(stext, "\n- "); n != 1 {
-		t.Errorf("expected exactly 1 result line with limit=1, got %d:\n%s", n, stext)
-	}
-}
-
-// toolResultText extracts the text payload from a tool result.
-func toolResultText(t *testing.T, res *mcp.CallToolResult) string {
-	t.Helper()
-	var b strings.Builder
-	for _, c := range res.Content {
-		if tc, ok := c.(mcp.TextContent); ok {
-			b.WriteString(tc.Text)
-		}
-	}
-	return b.String()
 }
 
 func TestRulesHTTPGetRejectsOversizedBody(t *testing.T) {
@@ -295,7 +231,7 @@ func TestGetComprehensiveRulesWithURLRejectsForeignHost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := getComprehensiveRulesWithURL(context.Background(), server.URL)
+	_, err := getWithURL(context.Background(), server.URL)
 	if err == nil {
 		t.Fatal("expected an error for a rules link on an untrusted host")
 	}
@@ -316,7 +252,7 @@ func TestGetComprehensiveRulesWithURLRejectsEmptyParse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := getComprehensiveRulesWithURL(context.Background(), server.URL); err == nil {
+	if _, err := getWithURL(context.Background(), server.URL); err == nil {
 		t.Error("expected an error when the fetched text contains no parseable rules")
 	}
 }

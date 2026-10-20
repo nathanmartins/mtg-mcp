@@ -1,4 +1,5 @@
-package main
+// Package rules fetches, parses and caches the official Magic: The Gathering Comprehensive Rules.
+package rules
 
 import (
 	"context"
@@ -15,12 +16,12 @@ import (
 )
 
 const (
-	rulesPageURL            = "https://magic.wizards.com/en/rules"
-	rulesCacheTTL           = 24 * time.Hour
-	rulesSearchDefaultLimit = 10
-	rulesSearchMaxLimit     = 20
-	rulesHTTPTimeout        = 30 * time.Second
-	rulesMaxBodyBytes       = 8 << 20 // 8 MiB cap on fetched bodies (the rules .txt is ~1 MiB)
+	rulesPageURL       = "https://magic.wizards.com/en/rules"
+	rulesCacheTTL      = 24 * time.Hour
+	SearchDefaultLimit = 10
+	SearchMaxLimit     = 20
+	rulesHTTPTimeout   = 30 * time.Second
+	rulesMaxBodyBytes  = 8 << 20 // 8 MiB cap on fetched bodies (the rules .txt is ~1 MiB)
 )
 
 // rulesTxtLinkPattern discovers the comprehensive rules .txt URL embedded in the WotC rules page.
@@ -34,8 +35,8 @@ var ruleNumberPattern = regexp.MustCompile(
 	`^(\d+\.\d+[a-z]*)\.?\s`,
 )
 
-// ComprehensiveRules holds the parsed Magic: The Gathering comprehensive rules.
-type ComprehensiveRules struct {
+// Rules holds the parsed Magic: The Gathering comprehensive rules.
+type Rules struct {
 	SourceURL string            // the .txt URL the rules were fetched from
 	Raw       string            // full original text (served by the rules://comprehensive resource)
 	ruleNums  []string          // rule numbers in document order
@@ -43,10 +44,10 @@ type ComprehensiveRules struct {
 	glossary  map[string]string // lowercased term -> definition
 }
 
-// parseComprehensiveRules parses the raw rules .txt into numbered rules and a glossary.
-func parseComprehensiveRules(raw string) *ComprehensiveRules {
+// Parse parses the raw rules .txt into numbered rules and a glossary.
+func Parse(raw string) *Rules {
 	raw = strings.ReplaceAll(raw, "\r\n", "\n")
-	cr := &ComprehensiveRules{
+	cr := &Rules{
 		Raw:      raw,
 		rules:    map[string]string{},
 		glossary: map[string]string{},
@@ -69,7 +70,7 @@ func parseComprehensiveRules(raw string) *ComprehensiveRules {
 }
 
 // parseNumberedRules groups lines into entries keyed by rule number.
-func parseNumberedRules(cr *ComprehensiveRules, lines []string) {
+func parseNumberedRules(cr *Rules, lines []string) {
 	var curNum string
 	var buf []string
 	flush := func() {
@@ -92,7 +93,7 @@ func parseNumberedRules(cr *ComprehensiveRules, lines []string) {
 }
 
 // parseGlossary parses "term\n definition\n\n" blocks into the glossary map.
-func parseGlossary(cr *ComprehensiveRules, lines []string) {
+func parseGlossary(cr *Rules, lines []string) {
 	var term string
 	var buf []string
 	flush := func() {
@@ -117,15 +118,15 @@ func parseGlossary(cr *ComprehensiveRules, lines []string) {
 	flush()
 }
 
-// RuleMatch is a single result from Search.
-type RuleMatch struct {
+// Match is a single result from Search.
+type Match struct {
 	Number string
 	Text   string
 }
 
 // Rule returns a rule's text. A parent number (e.g. "702.19") includes its subrules;
 // a subrule number (e.g. "702.19a") returns just that subrule.
-func (cr *ComprehensiveRules) Rule(number string) (string, bool) {
+func (cr *Rules) Rule(number string) (string, bool) {
 	number = strings.TrimSpace(number)
 	text, ok := cr.rules[number]
 	if !ok {
@@ -143,15 +144,15 @@ func (cr *ComprehensiveRules) Rule(number string) (string, bool) {
 }
 
 // Search returns up to limit rules whose text contains keyword (case-insensitive), in document order.
-func (cr *ComprehensiveRules) Search(keyword string, limit int) []RuleMatch {
+func (cr *Rules) Search(keyword string, limit int) []Match {
 	if limit <= 0 {
-		limit = rulesSearchDefaultLimit
+		limit = SearchDefaultLimit
 	}
 	kw := strings.ToLower(strings.TrimSpace(keyword))
-	var matches []RuleMatch
+	var matches []Match
 	for _, n := range cr.ruleNums {
 		if strings.Contains(strings.ToLower(cr.rules[n]), kw) {
-			matches = append(matches, RuleMatch{Number: n, Text: cr.rules[n]})
+			matches = append(matches, Match{Number: n, Text: cr.rules[n]})
 			if len(matches) >= limit {
 				break
 			}
@@ -161,7 +162,7 @@ func (cr *ComprehensiveRules) Search(keyword string, limit int) []RuleMatch {
 }
 
 // GlossaryTerm returns a glossary definition by term (case-insensitive).
-func (cr *ComprehensiveRules) GlossaryTerm(term string) (string, bool) {
+func (cr *Rules) GlossaryTerm(term string) (string, bool) {
 	def, ok := cr.glossary[strings.ToLower(strings.TrimSpace(term))]
 	return def, ok
 }
@@ -179,13 +180,13 @@ func isAllLetters(s string) bool {
 	return true
 }
 
-// GetComprehensiveRules fetches and parses the current official comprehensive rules.
-func GetComprehensiveRules(ctx context.Context) (*ComprehensiveRules, error) {
-	return getComprehensiveRulesWithURL(ctx, rulesPageURL)
+// Get fetches and parses the current official comprehensive rules.
+func Get(ctx context.Context) (*Rules, error) {
+	return getWithURL(ctx, rulesPageURL)
 }
 
-// getComprehensiveRulesWithURL fetches the rules using a custom page URL (used for testing).
-func getComprehensiveRulesWithURL(ctx context.Context, pageURL string) (*ComprehensiveRules, error) {
+// getWithURL fetches the rules using a custom page URL (used for testing).
+func getWithURL(ctx context.Context, pageURL string) (*Rules, error) {
 	page, err := rulesHTTPGet(ctx, pageURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch rules page: %w", err)
@@ -208,7 +209,7 @@ func getComprehensiveRulesWithURL(ctx context.Context, pageURL string) (*Compreh
 		return nil, fmt.Errorf("failed to fetch rules text: %w", err)
 	}
 
-	cr := parseComprehensiveRules(txt)
+	cr := Parse(txt)
 	if len(cr.rules) == 0 {
 		return nil, fmt.Errorf("fetched rules text contained no parseable rules (%d bytes)", len(txt))
 	}
@@ -281,21 +282,27 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	return string(body), nil
 }
 
-// rulesCache holds the parsed comprehensive rules with a fetch timestamp.
-type rulesCache struct {
+// Cache holds the parsed comprehensive rules with a fetch timestamp.
+type Cache struct {
 	mu        sync.Mutex
-	rules     *ComprehensiveRules
+	rules     *Rules
 	fetchedAt time.Time
 }
 
-// get returns the cached rules, fetching from the official site when needed.
-func (c *rulesCache) get(ctx context.Context) (*ComprehensiveRules, error) {
+// NewSeededCache returns a cache already holding cr, fresh as of now, so lookups are
+// served without a fetch until the TTL expires.
+func NewSeededCache(cr *Rules) *Cache {
+	return &Cache{rules: cr, fetchedAt: time.Now()}
+}
+
+// Get returns the cached rules, fetching from the official site when needed.
+func (c *Cache) Get(ctx context.Context) (*Rules, error) {
 	return c.getFromURL(ctx, rulesPageURL)
 }
 
 // getFromURL serves the cache (refetching past the TTL); on fetch failure it serves the stale
 // cache if present, otherwise returns the error.
-func (c *rulesCache) getFromURL(ctx context.Context, pageURL string) (*ComprehensiveRules, error) {
+func (c *Cache) getFromURL(ctx context.Context, pageURL string) (*Rules, error) {
 	// Serve a fresh cache under the lock, but never hold the lock across the network fetch —
 	// a slow upstream must not block other callers (or wedge the feature indefinitely).
 	c.mu.Lock()
@@ -306,7 +313,7 @@ func (c *rulesCache) getFromURL(ctx context.Context, pageURL string) (*Comprehen
 	}
 	c.mu.Unlock()
 
-	fetched, err := getComprehensiveRulesWithURL(ctx, pageURL)
+	fetched, err := getWithURL(ctx, pageURL)
 	if err != nil {
 		c.mu.Lock()
 		stale := c.rules
@@ -325,15 +332,15 @@ func (c *rulesCache) getFromURL(ctx context.Context, pageURL string) (*Comprehen
 	return fetched, nil
 }
 
-// FormatRuleForDisplay renders a single rule (with any subrules) as text.
-func FormatRuleForDisplay(number, text string) string {
+// FormatRule renders a single rule (with any subrules) as text.
+func FormatRule(number, text string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Rule %s\n\n%s\n", number, text)
 	return b.String()
 }
 
-// FormatRuleSearchForDisplay renders search results as a one-line-per-rule list.
-func FormatRuleSearchForDisplay(keyword string, matches []RuleMatch) string {
+// FormatRuleSearch renders search results as a one-line-per-rule list.
+func FormatRuleSearch(keyword string, matches []Match) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Rules matching %q (%d)\n\n", keyword, len(matches))
 	if len(matches) == 0 {
@@ -350,8 +357,8 @@ func FormatRuleSearchForDisplay(keyword string, matches []RuleMatch) string {
 	return b.String()
 }
 
-// FormatGlossaryTermForDisplay renders a glossary definition as text.
-func FormatGlossaryTermForDisplay(term, def string) string {
+// FormatGlossaryTerm renders a glossary definition as text.
+func FormatGlossaryTerm(term, def string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n%s\n", term, def)
 	return b.String()

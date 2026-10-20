@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/rules"
 )
 
 func (s *MTGCommanderServer) handleComprehensiveRulesResource(
 	ctx context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
-	rules, err := s.rules.get(ctx)
+	cr, err := s.rules.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load comprehensive rules: %w", err)
 	}
@@ -19,7 +20,7 @@ func (s *MTGCommanderServer) handleComprehensiveRulesResource(
 		&mcp.TextResourceContents{
 			URI:      request.Params.URI,
 			MIMEType: mimeTypeTextPlain,
-			Text:     rules.Raw,
+			Text:     cr.Raw,
 		},
 	}, nil
 }
@@ -32,15 +33,15 @@ func (s *MTGCommanderServer) handleGetRule(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	rules, err := s.rules.get(ctx)
+	cr, err := s.rules.Get(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
 	}
-	text, ok := rules.Rule(number)
+	text, ok := cr.Rule(number)
 	if !ok {
 		return mcp.NewToolResultText(fmt.Sprintf("Rule %s not found.", number)), nil
 	}
-	return mcp.NewToolResultText(FormatRuleForDisplay(number, text)), nil
+	return mcp.NewToolResultText(rules.FormatRule(number, text)), nil
 }
 
 func (s *MTGCommanderServer) handleSearchRules(
@@ -51,20 +52,20 @@ func (s *MTGCommanderServer) handleSearchRules(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	limit := rulesSearchDefaultLimit
+	limit := rules.SearchDefaultLimit
 	if limitVal, ok := request.GetArguments()["limit"]; ok {
 		if limitFloat, isNum := limitVal.(float64); isNum && limitFloat >= 1 {
 			limit = int(limitFloat)
 		}
 	}
-	if limit > rulesSearchMaxLimit {
-		limit = rulesSearchMaxLimit
+	if limit > rules.SearchMaxLimit {
+		limit = rules.SearchMaxLimit
 	}
-	rules, err := s.rules.get(ctx)
+	cr, err := s.rules.Get(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
 	}
-	return mcp.NewToolResultText(FormatRuleSearchForDisplay(keyword, rules.Search(keyword, limit))), nil
+	return mcp.NewToolResultText(rules.FormatRuleSearch(keyword, cr.Search(keyword, limit))), nil
 }
 
 func (s *MTGCommanderServer) handleGetGlossaryTerm(
@@ -75,13 +76,13 @@ func (s *MTGCommanderServer) handleGetGlossaryTerm(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	rules, err := s.rules.get(ctx)
+	cr, err := s.rules.Get(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
 	}
-	def, ok := rules.GlossaryTerm(term)
+	def, ok := cr.GlossaryTerm(term)
 	if !ok {
 		return mcp.NewToolResultText(fmt.Sprintf("Glossary term %q not found.", term)), nil
 	}
-	return mcp.NewToolResultText(FormatGlossaryTermForDisplay(term, def)), nil
+	return mcp.NewToolResultText(rules.FormatGlossaryTerm(term, def)), nil
 }

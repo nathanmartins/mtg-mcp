@@ -12,6 +12,7 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/edhrec"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
+	"github.com/nathanmartins/mtg-mcp/internal/rules"
 )
 
 // Build-time variables injected via -ldflags.
@@ -58,7 +59,7 @@ type MTGCommanderServer struct {
 	// verifyDelay spaces Moxfield commander-verification requests. Tests build servers
 	// directly and get the zero value, so the suite never sleeps.
 	verifyDelay time.Duration
-	rules       *rulesCache
+	rules       *rules.Cache
 }
 
 // NewMTGCommanderServer creates a new MTG Commander MCP server.
@@ -75,7 +76,7 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 		archidektBaseURL:  archidekt.DefaultBaseURL,
 		edhrecBaseURL:     edhrec.DefaultBaseURL,
 		verifyDelay:       moxfield.VerifyDelay,
-		rules:             &rulesCache{},
+		rules:             &rules.Cache{},
 	}, nil
 }
 

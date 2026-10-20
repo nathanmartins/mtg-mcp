@@ -1,4 +1,4 @@
-package main
+package rules
 
 import (
 	"context"
@@ -11,7 +11,7 @@ func TestComprehensiveRulesE2E(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	rules, err := GetComprehensiveRules(context.Background())
+	rules, err := Get(context.Background())
 	if err != nil {
 		t.Fatalf("failed to fetch comprehensive rules: %v", err)
 	}
