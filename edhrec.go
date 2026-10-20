@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
@@ -144,32 +142,7 @@ func SanitizeCardName(name string) string {
 // undocumented reverse-engineered API: unknown slugs answer 403 with an XML body, so any
 // non-200 status is reported as an error without attempting to decode.
 func fetchEDHRECPage(ctx context.Context, reqURL, pageKind string, target any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return err
-	}
-
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("EDHREC %s returned status %d", pageKind, resp.StatusCode)
-	}
-
-	if decodeErr := json.NewDecoder(resp.Body).Decode(target); decodeErr != nil {
-		return fmt.Errorf("failed to decode EDHREC %s response: %w", pageKind, decodeErr)
-	}
-
-	return nil
+	return getJSON(ctx, apiHTTPClient(), reqURL, "EDHREC "+pageKind, target)
 }
 
 // getCommanderPageWithURL fetches a commander page from baseURL, optionally narrowed by filter.
