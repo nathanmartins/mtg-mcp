@@ -16,8 +16,6 @@ import (
 )
 
 const (
-	totalToolCount               = 20
-	totalResourceCount           = 3
 	maxSearchLimit               = 50
 	defaultSplitLimit            = 2
 	maxPageSize                  = 100

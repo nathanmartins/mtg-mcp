@@ -585,7 +585,7 @@ golangci-lint run --fix
    func (s *Server) handleToolName(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
    ```
 
-4. Register it with `mcpServer.AddTool()` and bump `totalToolCount`.
+4. Register it with `mcpServer.AddTool()` and add its name to the expected list in `server_test.go`.
 5. Write unit tests next to the code: client tests in the client package, handler tests in `internal/mtgserver`.
 
 ### Adding New Resources

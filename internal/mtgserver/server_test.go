@@ -1,6 +1,8 @@
 package mtgserver
 
 import (
+	"maps"
+	"slices"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/server"
@@ -33,8 +35,8 @@ func TestNewMTGCommanderServerMoxfieldWiring(t *testing.T) {
 	}
 }
 
-// TestRegisterToolsAndResources exercises the registration wiring. It must not
-// panic and should register every tool and resource without error.
+// TestRegisterToolsAndResources pins the exact tool and resource surface Register exposes,
+// so adding, renaming or dropping one is a deliberate change to this list.
 func TestRegisterToolsAndResources(t *testing.T) {
 	s, err := New()
 	if err != nil {
@@ -42,8 +44,27 @@ func TestRegisterToolsAndResources(t *testing.T) {
 	}
 
 	mcpServer := server.NewMCPServer("test", "0.0.0", server.WithRecovery())
+	s.Register(mcpServer)
 
-	// registerTools also calls registerArchidektTools internally.
-	s.registerTools(mcpServer)
-	s.registerResources(mcpServer)
+	wantTools := []string{
+		"check_commander_legality", "get_archidekt_deck", "get_archidekt_user_decks", "get_banned_list",
+		"get_card_details", "get_card_image", "get_card_price", "get_card_rulings", "get_edhrec_combos",
+		"get_edhrec_recommendations", "get_edhrec_set_cards", "get_glossary_term", "get_moxfield_deck",
+		"get_moxfield_user_decks", "get_rule", "search_archidekt_decks", "search_cards", "search_moxfield_decks",
+		"search_rules", "validate_deck",
+	}
+	if got := slices.Sorted(maps.Keys(mcpServer.ListTools())); !slices.Equal(got, wantTools) {
+		t.Errorf("registered tools = %v\nwant %v", got, wantTools)
+	}
+
+	wantResources := []string{
+		"commander://banned-list",
+		"commander://rules",
+		cardImageWidgetURI,
+		"rules://comprehensive",
+	}
+	slices.Sort(wantResources)
+	if got := slices.Sorted(maps.Keys(mcpServer.ListResources())); !slices.Equal(got, wantResources) {
+		t.Errorf("registered resources = %v\nwant %v", got, wantResources)
+	}
 }

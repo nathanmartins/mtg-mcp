@@ -33,13 +33,6 @@ A keyword ability that causes damage dealt by an object to be lethal. See rule 7
 `
 
 func TestRulesCountsAndHandlers(t *testing.T) {
-	if totalToolCount != 20 {
-		t.Errorf("totalToolCount = %d, want 20", totalToolCount)
-	}
-	if totalResourceCount != 3 {
-		t.Errorf("totalResourceCount = %d, want 3", totalResourceCount)
-	}
-
 	// Pre-populate the cache so handlers do no network.
 	srv := &Server{rules: rules.NewSeededCache(rules.Parse(sampleRulesTxt))}
 
