@@ -94,9 +94,29 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 		return
 	}
 
-	// Moxfield API doesn't expose username in deck search results
-	// so we can't test GetUserDecks without a known username
-	t.Skip("Moxfield API doesn't expose username in deck search results")
+	// Search results carry no usernames, but a deck read does: take the deck's author and
+	// list their decks, which must include the deck we started from.
+	deck, err := NewClient().GetDeck(ctx, searchResp.Data[0].PublicID)
+	if err != nil {
+		t.Fatalf("GetDeck() failed: %v", err)
+	}
+	authors := authorNames(deck.Authors)
+	if len(authors) == 0 {
+		t.Fatalf("deck %s lists no author usernames: %v", deck.PublicID, deck.Authors)
+	}
+
+	decks, err := NewClient().GetUserDecks(ctx, authors[0], 100)
+	if err != nil {
+		t.Fatalf("GetUserDecks(%q) failed: %v", authors[0], err)
+	}
+	found := false
+	for _, d := range decks.Data {
+		found = found || d.PublicID == deck.PublicID
+	}
+	if !found {
+		t.Errorf("GetUserDecks(%q) returned %d decks without %s", authors[0], len(decks.Data), deck.PublicID)
+	}
+	t.Logf("✓ %s has %d public decks", authors[0], decks.TotalResults)
 }
 
 // TestMoxfieldSearchDecksE2E tests searching for decks on Moxfield.

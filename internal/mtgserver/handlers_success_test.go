@@ -82,7 +82,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 			},
 		},
 	}
-	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
+	s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, resp)}}
 
 	res, err := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{
 		"username":  "tester",
@@ -100,7 +100,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
-	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
+	s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")

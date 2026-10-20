@@ -176,7 +176,9 @@ func (c *Client) GetDeck(ctx context.Context, publicID string) (*Deck, error) {
 	return &deck, nil
 }
 
-// GetUserDecks fetches a user's public decks, up to pageSize of them (capped at 100).
+// GetUserDecks fetches a user's public decks, up to pageSize of them (capped at 100). It uses
+// deck search filtered by author: the /users/{name}/decks endpoint answers 404 for every user
+// (checked against the live API), while search honours authorUserNames.
 func (c *Client) GetUserDecks(ctx context.Context, username string, pageSize int) (*UserDecksResponse, error) {
 	const maxPageSize = 100
 	if pageSize <= 0 || pageSize > maxPageSize {
@@ -184,8 +186,10 @@ func (c *Client) GetUserDecks(ctx context.Context, username string, pageSize int
 	}
 
 	queryParams := url.Values{}
+	queryParams.Set("authorUserNames", username)
 	queryParams.Set("pageSize", strconv.Itoa(pageSize))
-	reqURL := fmt.Sprintf("%s/users/%s/decks?%s", c.BaseURL, url.PathEscape(username), queryParams.Encode())
+	queryParams.Set("pageNumber", "1")
+	reqURL := fmt.Sprintf("%s?%s", c.SearchURL, queryParams.Encode())
 
 	var decksResp UserDecksResponse
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &decksResp); err != nil {

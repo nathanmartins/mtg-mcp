@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -202,7 +203,13 @@ func TestGetUserDecks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if got := r.URL.Query().Get("authorUserNames"); got != tt.username {
+					t.Errorf("authorUserNames = %q, want %q", got, tt.username)
+				}
+				if got := r.URL.Query().Get("pageSize"); got != strconv.Itoa(tt.pageSize) {
+					t.Errorf("pageSize = %q, want %d", got, tt.pageSize)
+				}
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
 					_ = json.NewEncoder(w).Encode(tt.mockResponse)
@@ -211,7 +218,7 @@ func TestGetUserDecks(t *testing.T) {
 			defer server.Close()
 
 			ctx := t.Context()
-			got, err := (&Client{BaseURL: server.URL}).GetUserDecks(ctx, tt.username, tt.pageSize)
+			got, err := (&Client{SearchURL: server.URL}).GetUserDecks(ctx, tt.username, tt.pageSize)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)
