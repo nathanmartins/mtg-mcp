@@ -59,7 +59,7 @@ func TestHTTPGet(t *testing.T) {
 			defer server.Close()
 
 			// Test the function using the internal client-aware variant
-			ctx := context.Background()
+			ctx := t.Context()
 			resp, err := GetWithClient(ctx, server.URL, server.Client())
 
 			if (err != nil) != tt.wantErr {
@@ -89,7 +89,7 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 	defer server.Close()
 
 	// Create context that cancels immediately
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // Cancel immediately
 
 	_, err := GetWithClient(ctx, server.URL, server.Client())
@@ -111,7 +111,7 @@ func TestHTTPGet_Timeout(t *testing.T) {
 	defer server.Close()
 
 	// Use a short timeout to make test run fast (50ms)
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
 	_, err := GetWithClient(ctx, server.URL, server.Client())
@@ -123,7 +123,7 @@ func TestHTTPGet_Timeout(t *testing.T) {
 }
 
 func TestHTTPGet_InvalidURL(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	_, err := Get(ctx, "://invalid-url")
 	if err == nil {
 		t.Error("Get() expected error with invalid URL, got nil")

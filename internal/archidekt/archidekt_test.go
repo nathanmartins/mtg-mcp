@@ -1,7 +1,6 @@
 package archidekt
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -171,7 +170,7 @@ func TestGetArchidektDeck(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := GetDeckWithURL(context.Background(), tt.deckID, server.URL)
+			got, err := GetDeckWithURL(t.Context(), tt.deckID, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetDeck() error = %v, wantErr %v", err, tt.wantErr)
@@ -262,7 +261,7 @@ func TestGetArchidektUserDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := GetUserDecksWithURL(context.Background(), tt.username, tt.page, server.URL)
+			got, err := GetUserDecksWithURL(t.Context(), tt.username, tt.page, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)

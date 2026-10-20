@@ -1,7 +1,6 @@
 package mtgserver
 
 import (
-	"context"
 	"strings"
 	"testing"
 
@@ -46,7 +45,7 @@ func TestRulesCountsAndHandlers(t *testing.T) {
 
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"rule": "702.19"}
-	res, err := srv.handleGetRule(context.Background(), req)
+	res, err := srv.handleGetRule(t.Context(), req)
 	if err != nil {
 		t.Fatalf("handleGetRule: %v", err)
 	}
@@ -56,7 +55,7 @@ func TestRulesCountsAndHandlers(t *testing.T) {
 
 	greq := mcp.CallToolRequest{}
 	greq.Params.Arguments = map[string]any{"term": "Trample"}
-	gres, err := srv.handleGetGlossaryTerm(context.Background(), greq)
+	gres, err := srv.handleGetGlossaryTerm(t.Context(), greq)
 	if err != nil {
 		t.Fatalf("handleGetGlossaryTerm: %v", err)
 	}
@@ -66,7 +65,7 @@ func TestRulesCountsAndHandlers(t *testing.T) {
 
 	sreq := mcp.CallToolRequest{}
 	sreq.Params.Arguments = map[string]any{"keyword": "trample", "limit": float64(1)}
-	sres, err := srv.handleSearchRules(context.Background(), sreq)
+	sres, err := srv.handleSearchRules(t.Context(), sreq)
 	if err != nil {
 		t.Fatalf("handleSearchRules: %v", err)
 	}

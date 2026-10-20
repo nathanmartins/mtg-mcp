@@ -1,7 +1,6 @@
 package mtgserver
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -46,7 +45,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 	}
 	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusOK, deck)}
 
-	res, err := s.handleGetMoxfieldDeck(context.Background(), toolRequest(map[string]any{"deck_id": "abc123"}))
+	res, err := s.handleGetMoxfieldDeck(t.Context(), toolRequest(map[string]any{"deck_id": "abc123"}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +59,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 
 func TestHandleGetMoxfieldDeckFailure(t *testing.T) {
 	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
-	res, _ := s.handleGetMoxfieldDeck(context.Background(), toolRequest(map[string]any{"deck_id": "abc123"}))
+	res, _ := s.handleGetMoxfieldDeck(t.Context(), toolRequest(map[string]any{"deck_id": "abc123"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
 	}
@@ -85,7 +84,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 	}
 	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
 
-	res, err := s.handleGetMoxfieldUserDecks(context.Background(), toolRequest(map[string]any{
+	res, err := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{
 		"username":  "tester",
 		"page_size": float64(200), // exercises the max clamp
 	}))
@@ -102,7 +101,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 
 func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
 	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
-	res, _ := s.handleGetMoxfieldUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
+	res, _ := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
 	}
@@ -135,7 +134,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		t.Cleanup(deckServer.Close)
 
 		s := &Server{moxfieldSearchURL: ts.URL, moxfieldBaseURL: deckServer.URL}
-		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
 			"format":         "modern",
 			"sort":           "views",
@@ -179,7 +178,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 		s := &Server{moxfieldSearchURL: ts.URL}
 		if _, err := s.handleSearchMoxfieldDecks(
-			context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}),
+			t.Context(), toolRequest(map[string]any{"commander": "Atraxa"}),
 		); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -195,7 +194,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	t.Run("no results", func(t *testing.T) {
 		resp := moxfield.SearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
 		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
-		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Nobody"}))
+		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{"commander": "Nobody"}))
 		if !strings.Contains(resultText(t, res), "No decks with this commander were found") {
 			t.Error("expected no-decks message")
 		}
@@ -203,7 +202,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusInternalServerError, nil)}
-		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
+		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -212,7 +211,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	t.Run("invalid sort is rejected", func(t *testing.T) {
 		// The stub answers 200 on any path, so only local validation can make this an error.
 		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
-		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "price",
 		}))
 		if !res.IsError {
@@ -227,7 +226,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		// Verification confirms at most moxfield.VerifyMaxChecks decks per call, so a
 		// larger limit could never be honoured and must not be silently truncated.
 		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
-		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks + 1),
 		}))
 		if !res.IsError {
@@ -248,7 +247,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		t.Cleanup(ts.Close)
 
 		s := &Server{moxfieldSearchURL: ts.URL}
-		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks),
 		}))
 		if err != nil {
@@ -265,7 +264,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("wrong-typed page is rejected", func(t *testing.T) {
 		s := &Server{moxfieldSearchURL: "http://127.0.0.1:1"}
-		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "page": true,
 		}))
 		if !res.IsError || !strings.Contains(resultText(t, res), "expected a number") {
@@ -297,7 +296,7 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 	defer deckServer.Close()
 
 	s := &Server{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
-	res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+	res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 		"commander": "Atraxa, Praetors' Voice",
 		"limit":     float64(1),
 	}))
@@ -339,7 +338,7 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 	defer deckServer.Close()
 
 	s := &Server{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
-	res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
+	res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 		"commander": "Atraxa, Praetors' Voice",
 		"limit":     float64(5),
 	}))
@@ -442,7 +441,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 
 	t.Run("full deck", func(t *testing.T) {
 		s := &Server{archidektBaseURL: url}
-		res, err := s.handleGetArchidektDeck(context.Background(), toolRequest(map[string]any{"deck_id": "123"}))
+		res, err := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{"deck_id": "123"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -453,7 +452,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 
 	t.Run("lands only", func(t *testing.T) {
 		s := &Server{archidektBaseURL: url}
-		res, err := s.handleGetArchidektDeck(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{
 			"deck_id":    "123",
 			"lands_only": true,
 		}))
@@ -468,7 +467,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 
 func TestHandleGetArchidektDeckFailure(t *testing.T) {
 	s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
-	res, _ := s.handleGetArchidektDeck(context.Background(), toolRequest(map[string]any{"deck_id": "123"}))
+	res, _ := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{"deck_id": "123"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
 	}
@@ -484,7 +483,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 			},
 		}
 		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
-		res, err := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{
 			"username": "tester",
 			"page":     float64(1),
 		}))
@@ -502,7 +501,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 	t.Run("no results", func(t *testing.T) {
 		resp := archidekt.UserDecksResponse{Count: 0, Next: "", Results: nil}
 		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
-		res, _ := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
+		res, _ := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 		if !strings.Contains(resultText(t, res), "No public decks found") {
 			t.Error("expected no-decks message")
 		}
@@ -510,7 +509,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
-		res, _ := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
+		res, _ := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -526,7 +525,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 			},
 		}
 		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
-		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"bracket":   float64(4),
 			"limit":     float64(5),
@@ -552,7 +551,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		t.Cleanup(ts.Close)
 
 		s := &Server{archidektBaseURL: ts.URL}
-		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "colors": " wu",
 		}))
 		if err != nil {
@@ -568,7 +567,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
-		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
+		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -576,7 +575,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
 		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
-		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "trending",
 		}))
 		if !res.IsError || !strings.Contains(resultText(t, res), "unsupported sort") {
@@ -587,7 +586,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 	t.Run("invalid colors are rejected", func(t *testing.T) {
 		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
-		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "colors": "WX",
 		}))
 		if !res.IsError {
@@ -597,7 +596,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 	t.Run("wrong-typed limit is rejected", func(t *testing.T) {
 		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
-		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": "5",
 		}))
 		if !res.IsError || !strings.Contains(resultText(t, res), "expected a number") {
@@ -607,7 +606,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 	t.Run("empty sort is rejected", func(t *testing.T) {
 		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
-		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "",
 		}))
 		if !res.IsError || !strings.Contains(resultText(t, res), "non-empty") {
@@ -622,7 +621,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 			Count:   5,
 			Results: []archidekt.DeckSummary{{ID: 1, Name: "Deck"}},
 		})}
-		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "page": float64(200000000000000000), "limit": float64(60),
 		}))
 		if err != nil {
@@ -635,7 +634,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 	t.Run("fractional limit is rejected", func(t *testing.T) {
 		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
-		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": 7.9,
 		}))
 		if !res.IsError || !strings.Contains(resultText(t, res), "whole number") {
@@ -662,7 +661,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 			},
 		}
 		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
-		res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"limit":     float64(5),
 		}))
@@ -677,7 +676,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 	t.Run("failure", func(t *testing.T) {
 		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
 		res, _ := s.handleGetEDHRECRecommendations(
-			context.Background(),
+			t.Context(),
 			toolRequest(map[string]any{"commander": "Nobody"}),
 		)
 		if !res.IsError {
@@ -702,7 +701,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 			},
 		}
 		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
-		res, err := s.handleGetEDHRECCombos(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetEDHRECCombos(t.Context(), toolRequest(map[string]any{
 			"colors": "colorless",
 			"limit":  float64(5),
 		}))
@@ -716,7 +715,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
-		res, _ := s.handleGetEDHRECCombos(context.Background(), toolRequest(map[string]any{"colors": "zz"}))
+		res, _ := s.handleGetEDHRECCombos(t.Context(), toolRequest(map[string]any{"colors": "zz"}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -739,7 +738,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 			},
 		}
 		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
-		res, err := s.handleGetEDHRECSetCards(context.Background(), toolRequest(map[string]any{"set": "rna"}))
+		res, err := s.handleGetEDHRECSetCards(t.Context(), toolRequest(map[string]any{"set": "rna"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -750,7 +749,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 
 	t.Run("failure", func(t *testing.T) {
 		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusForbidden, nil)}
-		res, _ := s.handleGetEDHRECSetCards(context.Background(), toolRequest(map[string]any{"set": "notaset"}))
+		res, _ := s.handleGetEDHRECSetCards(t.Context(), toolRequest(map[string]any{"set": "notaset"}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -778,7 +777,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 		defer ts.Close()
 
 		s := &Server{edhrecBaseURL: ts.URL}
-		res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"theme":     "infekt",
 		}))
@@ -801,7 +800,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 		defer ts.Close()
 
 		s := &Server{edhrecBaseURL: ts.URL}
-		res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"theme":     "infect",
 		}))
@@ -825,7 +824,7 @@ func TestHandleGetEDHRECRecommendationsBadPriceTier(t *testing.T) {
 	defer ts.Close()
 
 	s := &Server{edhrecBaseURL: ts.URL}
-	res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
+	res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 		"commander":  "Atraxa, Praetors' Voice",
 		"price_tier": "middle",
 	}))

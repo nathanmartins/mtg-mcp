@@ -1,7 +1,6 @@
 package mtgserver
 
 import (
-	"context"
 	"testing"
 )
 
@@ -10,7 +9,7 @@ import (
 
 func TestMoxfieldHandlerValidation(t *testing.T) {
 	s := &Server{}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("get deck missing id", func(t *testing.T) {
 		res, _ := s.handleGetMoxfieldDeck(ctx, toolRequest(nil))
@@ -36,7 +35,7 @@ func TestMoxfieldHandlerValidation(t *testing.T) {
 
 func TestArchidektHandlerValidation(t *testing.T) {
 	s := &Server{}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("get deck missing id", func(t *testing.T) {
 		res, _ := s.handleGetArchidektDeck(ctx, toolRequest(nil))
@@ -69,7 +68,7 @@ func TestArchidektHandlerValidation(t *testing.T) {
 
 func TestEDHRECHandlerValidation(t *testing.T) {
 	s := &Server{}
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("recommendations missing commander", func(t *testing.T) {
 		res, _ := s.handleGetEDHRECRecommendations(ctx, toolRequest(nil))

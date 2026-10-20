@@ -1,7 +1,6 @@
 package edhrec
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -178,7 +177,7 @@ func TestGetCommanderRecommendations(t *testing.T) {
 			}))
 			defer server.Close()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			got, err := GetCommanderPageWithURL(ctx, tt.commanderName, tt.filter, server.URL)
 
 			if (err != nil) != tt.wantErr {
@@ -244,7 +243,7 @@ func TestGetSetCardsWithURL(t *testing.T) {
 			}))
 			defer server.Close()
 
-			_, err := GetSetCardsWithURL(context.Background(), tt.setCode, server.URL)
+			_, err := GetSetCardsWithURL(t.Context(), tt.setCode, server.URL)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetSetCardsWithURL() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -303,7 +302,7 @@ func TestGetCombosForColors(t *testing.T) {
 			}))
 			defer server.Close()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			got, err := GetCombosForColorsWithURL(ctx, tt.colors, server.URL)
 
 			if (err != nil) != tt.wantErr {
@@ -722,7 +721,7 @@ func TestGetTopCardsForCategory(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := getTopCardsForCategoryWithURL(context.Background(), tt.category, tt.page, server.URL)
+			got, err := getTopCardsForCategoryWithURL(t.Context(), tt.category, tt.page, server.URL)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("getTopCardsForCategoryWithURL() error = %v, wantErr %v", err, tt.wantErr)
 			}

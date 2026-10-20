@@ -1,7 +1,6 @@
 package moxfield
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -122,7 +121,7 @@ func TestGetMoxfieldDeck(t *testing.T) {
 			}))
 			defer server.Close()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			got, err := GetDeckWithURL(ctx, tt.publicID, server.URL)
 
 			if (err != nil) != tt.wantErr {
@@ -211,7 +210,7 @@ func TestGetUserDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			got, err := GetUserDecksWithURL(ctx, tt.username, tt.pageSize, server.URL)
 
 			if (err != nil) != tt.wantErr {
@@ -320,7 +319,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			ctx := context.Background()
+			ctx := t.Context()
 			got, err := SearchDecksWithURL(ctx, tt.params, server.URL)
 
 			if (err != nil) != tt.wantErr {
@@ -390,7 +389,7 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 				PageNumber: 1,
 			}
 
-			ctx := context.Background()
+			ctx := t.Context()
 			_, err := SearchDecksWithURL(ctx, params, server.URL)
 			if err != nil {
 				t.Errorf("SearchDecks() unexpected error = %v", err)
@@ -413,7 +412,7 @@ func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := SearchDecksWithURL(context.Background(), SearchParams{
+	_, err := SearchDecksWithURL(t.Context(), SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "views",

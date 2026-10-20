@@ -13,7 +13,7 @@ func TestSearchArchidektDecksE2E(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	result, err := SearchDecks(ctx, SearchParams{
@@ -51,7 +51,7 @@ func TestSearchArchidektDecksByBracketE2E(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	result, err := SearchDecks(ctx, SearchParams{
@@ -76,7 +76,7 @@ func TestGetArchidektUserDecksE2E(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	result, err := GetUserDecks(ctx, "nathanmartins", 1)
@@ -97,7 +97,7 @@ func TestGetArchidektDeckE2E(t *testing.T) {
 		t.Skip("Skipping E2E test in short mode")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	// Deathstar Hearthhull — nathanmartins' deck

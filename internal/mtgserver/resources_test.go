@@ -1,7 +1,6 @@
 package mtgserver
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -36,7 +35,7 @@ func resourceText(t *testing.T, contents []mcp.ResourceContents) string {
 func TestHandleCommanderRules(t *testing.T) {
 	s := &Server{}
 
-	contents, err := s.handleCommanderRules(context.Background(), readResourceRequest("commander://rules"))
+	contents, err := s.handleCommanderRules(t.Context(), readResourceRequest("commander://rules"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -66,7 +65,7 @@ func TestHandleBannedListResource(t *testing.T) {
 		})
 
 		contents, err := s.handleBannedListResource(
-			context.Background(),
+			t.Context(),
 			readResourceRequest("commander://banned-list"),
 		)
 		if err != nil {
@@ -102,7 +101,7 @@ func TestHandleBannedListResource(t *testing.T) {
 		})
 
 		_, err := s.handleBannedListResource(
-			context.Background(),
+			t.Context(),
 			readResourceRequest("commander://banned-list"),
 		)
 		if err == nil {

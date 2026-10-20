@@ -136,7 +136,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when name is missing")
 		})
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(nil))
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(nil))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -149,7 +149,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when size is invalid")
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring",
 			"size": "gigantic",
 		}))
@@ -162,7 +162,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{"name": "nope"}))
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{"name": "nope"}))
 		if !res.IsError {
 			t.Error("expected error result for missing card")
 		}
@@ -178,7 +178,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{"name": "Sol Ring"}))
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{"name": "Sol Ring"}))
 		if !res.IsError {
 			t.Error("expected error result when the image download fails")
 		}
@@ -196,7 +196,7 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			jsonResponse(w, solRingImageJSON)
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{"name": "Sol Ring"}))
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{"name": "Sol Ring"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -236,7 +236,7 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring",
 			"size": "png",
 		}))
@@ -259,7 +259,7 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 			jsonResponse(w, delverImageJSON)
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{"name": "Delver of Secrets"}))
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{"name": "Delver of Secrets"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -289,7 +289,7 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 			}
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name":     "Sol Ring",
 			"language": "it",
 		}))
@@ -316,7 +316,7 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 			jsonResponse(w, solRingImageJSON)
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name":     "Sol Ring",
 			"language": "it",
 		}))
@@ -342,7 +342,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 			t.Errorf("unexpected request %s?%s", r.URL.Path, r.URL.RawQuery)
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "set": "c21",
 		}))
 		if err != nil || res.IsError {
@@ -367,7 +367,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 			t.Errorf("unexpected request %s", r.URL.Path)
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "set": "c21", "collector_number": "263",
 		}))
 		if err != nil || res.IsError {
@@ -399,7 +399,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 			}
 		})
 
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "set": "xyz", "collector_number": "999",
 		}))
 		data := structuredCardData(t, res)
@@ -412,7 +412,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when collector_number lacks set")
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "collector_number": "263",
 		}))
 		if !res.IsError {
@@ -430,7 +430,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 			jsonResponse(w, solRingImageJSON)
 		})
 
-		res, err := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, err := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "set": "zzz",
 		}))
 		if err != nil || res.IsError {
@@ -458,7 +458,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 
 	t.Run("face=back returns only the back face", func(t *testing.T) {
 		stubImageFetcher(t)
-		res, _ := dfc(t).handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := dfc(t).handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Delver of Secrets", "face": "back",
 		}))
 		data := structuredCardData(t, res)
@@ -470,7 +470,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 
 	t.Run("face=front returns only the front face", func(t *testing.T) {
 		stubImageFetcher(t)
-		res, _ := dfc(t).handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := dfc(t).handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Delver of Secrets", "face": "front",
 		}))
 		data := structuredCardData(t, res)
@@ -486,7 +486,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 		})
 		// Front has no "normal" image; asking for the front at normal must NOT return
 		// the back — it should report no image for the requested face.
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Delver of Secrets", "face": "front",
 		}))
 		if !res.IsError {
@@ -500,7 +500,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverFrontlessJSON)
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Delver of Secrets", "face": "back",
 		}))
 		data := structuredCardData(t, res)
@@ -514,7 +514,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "face": "back",
 		}))
 		if !res.IsError {
@@ -526,7 +526,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called for an invalid face")
 		})
-		res, _ := s.handleGetCardImage(context.Background(), toolRequest(map[string]any{
+		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Sol Ring", "face": "sideways",
 		}))
 		if !res.IsError {
@@ -541,7 +541,7 @@ func TestHandleCardImageUIResource(t *testing.T) {
 	// widget script reads structuredContent.images and runs the MCP Apps handshake.
 	s := &Server{}
 
-	contents, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(cardImageWidgetURI))
+	contents, err := s.handleCardImageUIResource(t.Context(), readResourceRequest(cardImageWidgetURI))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -603,7 +603,7 @@ func TestGetImageBytes(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		data, err := getImageBytes(context.Background(), ts.URL, get)
+		data, err := getImageBytes(t.Context(), ts.URL, get)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -618,7 +618,7 @@ func TestGetImageBytes(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		if _, err := getImageBytes(context.Background(), ts.URL, get); err == nil {
+		if _, err := getImageBytes(t.Context(), ts.URL, get); err == nil {
 			t.Error("expected error for non-200 status")
 		}
 	})
@@ -627,7 +627,7 @@ func TestGetImageBytes(t *testing.T) {
 		getErr := func(context.Context, string) (*http.Response, error) {
 			return nil, http.ErrHandlerTimeout
 		}
-		if _, err := getImageBytes(context.Background(), "x", getErr); err == nil {
+		if _, err := getImageBytes(t.Context(), "x", getErr); err == nil {
 			t.Error("expected getter error to propagate")
 		}
 	})

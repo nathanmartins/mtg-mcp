@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -113,7 +112,7 @@ func TestGetComprehensiveRulesWithURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	cr, err := getWithURL(context.Background(), server.URL)
+	cr, err := getWithURL(t.Context(), server.URL)
 	if err != nil {
 		t.Fatalf("getWithURL: %v", err)
 	}
@@ -131,7 +130,7 @@ func TestGetComprehensiveRulesWithURL_NoLink(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := getWithURL(context.Background(), server.URL); err == nil {
+	if _, err := getWithURL(t.Context(), server.URL); err == nil {
 		t.Error("expected an error when the rules link is missing")
 	}
 }
@@ -151,11 +150,11 @@ func TestComprehensiveRulesCache(t *testing.T) {
 
 	cache := &Cache{}
 
-	r1, err := cache.getFromURL(context.Background(), server.URL)
+	r1, err := cache.getFromURL(t.Context(), server.URL)
 	if err != nil {
 		t.Fatalf("first fetch: %v", err)
 	}
-	r2, err := cache.getFromURL(context.Background(), server.URL)
+	r2, err := cache.getFromURL(t.Context(), server.URL)
 	if err != nil {
 		t.Fatalf("second fetch: %v", err)
 	}
@@ -178,7 +177,7 @@ func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
 	}))
 	defer dead.Close()
 
-	cr, err := cache.getFromURL(context.Background(), dead.URL)
+	cr, err := cache.getFromURL(t.Context(), dead.URL)
 	if err != nil {
 		t.Fatalf("should serve stale cache, got error: %v", err)
 	}
@@ -219,7 +218,7 @@ func TestRulesHTTPGetRejectsOversizedBody(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := rulesHTTPGet(context.Background(), server.URL); err == nil {
+	if _, err := rulesHTTPGet(t.Context(), server.URL); err == nil {
 		t.Errorf("expected an error when the response exceeds %d bytes", rulesMaxBodyBytes)
 	}
 }
@@ -231,7 +230,7 @@ func TestGetComprehensiveRulesWithURLRejectsForeignHost(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := getWithURL(context.Background(), server.URL)
+	_, err := getWithURL(t.Context(), server.URL)
 	if err == nil {
 		t.Fatal("expected an error for a rules link on an untrusted host")
 	}
@@ -252,7 +251,7 @@ func TestGetComprehensiveRulesWithURLRejectsEmptyParse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := getWithURL(context.Background(), server.URL); err == nil {
+	if _, err := getWithURL(t.Context(), server.URL); err == nil {
 		t.Error("expected an error when the fetched text contains no parseable rules")
 	}
 }
