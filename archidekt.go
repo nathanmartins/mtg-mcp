@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -12,6 +11,8 @@ import (
 
 const (
 	archidektCommanderCategory = "Commander"
+	// archidektSource names Archidekt in upstream status and decode errors.
+	archidektSource = "archidekt API"
 )
 
 // ArchidektDeck represents a deck from Archidekt.
@@ -113,48 +114,26 @@ type ArchidektUserDecksResponse struct {
 
 // GetArchidektDeck fetches a deck by its numeric ID.
 func GetArchidektDeck(ctx context.Context, deckID int) (*ArchidektDeck, error) {
-	return getArchidektDeckWithURL(ctx, deckID, "https://archidekt.com/api")
+	return getArchidektDeckWithURL(ctx, deckID, defaultArchidektBaseURL)
 }
 
 // getArchidektDeckWithURL fetches a deck with a custom base URL (used for testing).
 func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*ArchidektDeck, error) {
 	reqURL := fmt.Sprintf("%s/decks/%d/", baseURL, deckID)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
-	}
-
 	var deck ArchidektDeck
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&deck); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	if err := getJSON(ctx, apiHTTPClient(), reqURL, archidektSource, &deck); err != nil {
+		if hasStatus(err, http.StatusNotFound) {
+			return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
+		}
+		return nil, err
 	}
-
 	return &deck, nil
 }
 
 // GetArchidektUserDecks fetches a page of public decks for the given username.
 func GetArchidektUserDecks(ctx context.Context, username string, page int) (*ArchidektUserDecksResponse, error) {
-	return getArchidektUserDecksWithURL(ctx, username, page, "https://archidekt.com/api")
+	return getArchidektUserDecksWithURL(ctx, username, page, defaultArchidektBaseURL)
 }
 
 // getArchidektUserDecksWithURL fetches user decks with a custom base URL (used for testing).
@@ -175,32 +154,10 @@ func getArchidektUserDecksWithURL(
 	queryParams.Set("page", strconv.Itoa(page))
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
-	}
-
 	var result ArchidektUserDecksResponse
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	if err := getJSON(ctx, apiHTTPClient(), reqURL, archidektSource, &result); err != nil {
+		return nil, err
 	}
-
 	return &result, nil
 }
 

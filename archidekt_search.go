@@ -2,21 +2,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
-	// archidektSearchHTTPTimeout bounds a single Archidekt search request. A logical
-	// page that straddles two upstream pages issues two of them in sequence, and the
-	// MCP request context carries no deadline, so an unbounded client would let one
-	// hung upstream request stall the whole tool call.
-	archidektSearchHTTPTimeout = 15 * time.Second
 	// archidektAPIPageSize is the page size Archidekt hardcodes. The API has no
 	// page-size parameter: pageSize, limit and perPage are all ignored upstream.
 	archidektAPIPageSize = 60
@@ -293,31 +285,10 @@ func fetchArchidektSearchPage(
 
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := &http.Client{Timeout: archidektSearchHTTPTimeout}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("archidekt API returned status %d", resp.StatusCode)
-	}
-
 	var result ArchidektUserDecksResponse
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	if err := getJSON(ctx, apiHTTPClient(), reqURL, archidektSource, &result); err != nil {
+		return nil, err
 	}
-
 	return &result, nil
 }
 
