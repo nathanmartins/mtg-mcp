@@ -3,7 +3,9 @@
 package logging
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -34,14 +36,26 @@ func newLoggerInstance() *loggerInstance {
 
 var loggerHolder = newLoggerInstance() //nolint:gochecknoglobals // logger needs to be accessible throughout the application
 
-// Init initializes the global logger with both console and file output.
-func Init(logFilePath string) error {
-	// Create log file
-	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
-	if err != nil {
-		return err
-	}
+// FileName is the log file's name inside the default log directory.
+const FileName = "mtg-commander-server.log"
 
+// DefaultFilePath returns where the log file goes when none is configured: an mtg-mcp folder
+// in the user's cache directory. MCP clients may launch the server from any working directory,
+// including read-only ones such as "/", so the working directory is never used. It falls back
+// to the temp directory when the platform reports no cache directory.
+func DefaultFilePath() string {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		dir = os.TempDir()
+	}
+	return filepath.Join(dir, "mtg-mcp", FileName)
+}
+
+// Init installs the global logger, writing to stderr and to logFilePath, creating the file's
+// directory if needed. The log file is a convenience, not a requirement: when it cannot be
+// opened, Init still installs a stderr-only logger and returns the error, so the caller can
+// warn and keep serving.
+func Init(logFilePath string) error {
 	// Console writer with colors. MUST be stderr: the MCP stdio transport owns
 	// stdout, so any diagnostics on stdout corrupt the JSON-RPC stream.
 	consoleWriter := zerolog.ConsoleWriter{
@@ -49,21 +63,32 @@ func Init(logFilePath string) error {
 		TimeFormat: time.RFC3339,
 		NoColor:    false,
 	}
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 
-	// Multi-writer: write to both console and file
-	multi := zerolog.MultiLevelWriter(consoleWriter, logFile)
+	logFile, err := openLogFile(logFilePath)
+	if err != nil {
+		loggerHolder.logger = zerolog.New(consoleWriter).With().Timestamp().Caller().Logger()
+		return err
+	}
 
-	// Create logger
-	loggerHolder.logger = zerolog.New(multi).
+	loggerHolder.logger = zerolog.New(zerolog.MultiLevelWriter(consoleWriter, logFile)).
 		With().
 		Timestamp().
 		Caller().
 		Logger()
-
-	// Set global log level
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-
 	return nil
+}
+
+// openLogFile opens path for appending, creating it and its directory as needed.
+func openLogFile(path string) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, fmt.Errorf("create log directory: %w", err)
+	}
+	logFile, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("open log file: %w", err)
+	}
+	return logFile, nil
 }
 
 // SetLevel sets the global log level.

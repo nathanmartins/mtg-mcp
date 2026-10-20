@@ -56,11 +56,38 @@ func TestInitLogger(t *testing.T) {
 }
 
 func TestInitLogger_InvalidPath(t *testing.T) {
-	// Try to create a log file in a non-existent directory without creating it
-	invalidPath := "/nonexistent/directory/that/does/not/exist/test.log"
-	err := Init(invalidPath)
+	// A regular file where the log directory should be makes the path unusable on every OS.
+	blocker := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	err := Init(filepath.Join(blocker, "test.log"))
 	if err == nil {
-		t.Error("Init() expected error with invalid path, got nil")
+		t.Fatal("Init() expected error with invalid path, got nil")
+	}
+	// The server must keep running on a stderr-only logger instead of exiting.
+	Get().Info().Msg("still logging")
+}
+
+func TestInitLogger_CreatesDirectory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "nested", "dir", "test.log")
+	if err := Init(path); err != nil {
+		t.Fatalf("Init() error = %v", err)
+	}
+	Get().Info().Msg("hello")
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("log file not created: %v", err)
+	}
+}
+
+func TestDefaultFilePath(t *testing.T) {
+	path := DefaultFilePath()
+	if filepath.Base(path) != FileName || filepath.Base(filepath.Dir(path)) != "mtg-mcp" {
+		t.Errorf("DefaultFilePath() = %q, want .../mtg-mcp/%s", path, FileName)
+	}
+	if !filepath.IsAbs(path) {
+		t.Errorf("DefaultFilePath() = %q, want an absolute path independent of the working directory", path)
 	}
 }
 
