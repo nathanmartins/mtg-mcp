@@ -732,14 +732,14 @@ func TestGroupArchidektDeckCards(t *testing.T) {
 
 	groups := groupArchidektDeckCards(cards, premier, excluded)
 
-	if len(groups.creatures) != 1 {
-		t.Errorf("creatures = %v, want 1 entry", groups.creatures)
+	if len(groups.Creatures) != 1 {
+		t.Errorf("creatures = %v, want 1 entry", groups.Creatures)
 	}
-	if len(groups.others) != 1 || groups.others[0] != "1x Treasure Token" {
-		t.Errorf("others = %v, want [1x Treasure Token]", groups.others)
+	if len(groups.Others) != 1 || groups.Others[0] != "1x Treasure Token" {
+		t.Errorf("others = %v, want [1x Treasure Token]", groups.Others)
 	}
-	if groups.totalCards != 2 {
-		t.Errorf("totalCards = %d, want 2 (commander + sideboard + maybeboard excluded)", groups.totalCards)
+	if groups.TotalCards != 2 {
+		t.Errorf("totalCards = %d, want 2 (commander + sideboard + maybeboard excluded)", groups.TotalCards)
 	}
 }
 

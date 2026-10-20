@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathanmartins/mtg-mcp/internal/deckfmt"
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
@@ -332,9 +333,9 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	groups := groupArchidektDeckCards(deck.Cards, premier, excluded)
 
 	output.WriteString("\n## Mainboard\n")
-	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
+	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.TotalCards+len(commanders))
 
-	groups.writeTo(&output)
+	groups.Render(&output)
 
 	// Out-of-deck zones (Sideboard / Maybeboard), listed separately
 	var maybeboard, sideboard []string
@@ -390,15 +391,15 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 
 // groupArchidektDeckCards categorizes non-commander, in-deck cards by oracle type,
 // excluding cards that sit outside the deck (Sideboard / Maybeboard).
-func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[string]bool) deckCardGroups {
-	var groups deckCardGroups
+func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[string]bool) deckfmt.CardGroups {
+	var groups deckfmt.CardGroups
 	for _, entry := range cards {
 		// Skip commanders and cards outside the deck (Sideboard / Maybeboard)
 		if archidektIsCommander(entry, premier) || !archidektEntryInDeck(entry, excluded) {
 			continue
 		}
 		oracle := entry.Card.OracleCard
-		groups.add(strings.Join(oracle.Types, " "), oracle.Name, entry.Quantity)
+		groups.Add(strings.Join(oracle.Types, " "), oracle.Name, entry.Quantity)
 	}
 	return groups
 }

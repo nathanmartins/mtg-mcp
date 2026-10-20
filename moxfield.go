@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/nathanmartins/mtg-mcp/internal/deckfmt"
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
@@ -238,59 +239,6 @@ func ExtractPublicIDFromURL(url string) string {
 	return url // Return as-is if no parsing needed
 }
 
-// deckCardGroups organizes deck cards by type for display formatting. It is shared by the
-// Moxfield and Archidekt deck formatters so both render mainboards identically.
-type deckCardGroups struct {
-	creatures     []string
-	instants      []string
-	sorceries     []string
-	artifacts     []string
-	enchantments  []string
-	planeswalkers []string
-	lands         []string
-	others        []string
-	totalCards    int
-}
-
-// add files one card entry under the first matching type in typeLine. The order matters:
-// an artifact creature is a creature, and a land creature is a creature too.
-func (g *deckCardGroups) add(typeLine, name string, quantity int) {
-	cardLine := fmt.Sprintf("%dx %s", quantity, name)
-	g.totalCards += quantity
-
-	typeLine = strings.ToLower(typeLine)
-	switch {
-	case strings.Contains(typeLine, "creature"):
-		g.creatures = append(g.creatures, cardLine)
-	case strings.Contains(typeLine, "instant"):
-		g.instants = append(g.instants, cardLine)
-	case strings.Contains(typeLine, "sorcery"):
-		g.sorceries = append(g.sorceries, cardLine)
-	case strings.Contains(typeLine, "artifact"):
-		g.artifacts = append(g.artifacts, cardLine)
-	case strings.Contains(typeLine, "enchantment"):
-		g.enchantments = append(g.enchantments, cardLine)
-	case strings.Contains(typeLine, "planeswalker"):
-		g.planeswalkers = append(g.planeswalkers, cardLine)
-	case strings.Contains(typeLine, "land"):
-		g.lands = append(g.lands, cardLine)
-	default:
-		g.others = append(g.others, cardLine)
-	}
-}
-
-// writeTo renders every non-empty group, in the fixed order the deck output uses.
-func (g *deckCardGroups) writeTo(output *strings.Builder) {
-	output.WriteString(formatCardGroup("Creatures", g.creatures))
-	output.WriteString(formatCardGroup("Instants", g.instants))
-	output.WriteString(formatCardGroup("Sorceries", g.sorceries))
-	output.WriteString(formatCardGroup("Artifacts", g.artifacts))
-	output.WriteString(formatCardGroup("Enchantments", g.enchantments))
-	output.WriteString(formatCardGroup("Planeswalkers", g.planeswalkers))
-	output.WriteString(formatCardGroup("Lands", g.lands))
-	output.WriteString(formatCardGroup("Other", g.others))
-}
-
 // sortedEntries returns a Moxfield board's entries ordered by their map key (the card
 // name), so a deck renders the same way every time instead of in map iteration order.
 func sortedEntries(board map[string]MoxfieldCardEntry) []MoxfieldCardEntry {
@@ -302,10 +250,10 @@ func sortedEntries(board map[string]MoxfieldCardEntry) []MoxfieldCardEntry {
 }
 
 // groupDeckCards categorizes mainboard cards by type.
-func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
-	var groups deckCardGroups
+func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckfmt.CardGroups {
+	var groups deckfmt.CardGroups
 	for _, entry := range sortedEntries(mainboard) {
-		groups.add(entry.Card.TypeLine, entry.Card.Name, entry.Quantity)
+		groups.Add(entry.Card.TypeLine, entry.Card.Name, entry.Quantity)
 	}
 	return groups
 }
@@ -365,22 +313,6 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 	return output.String()
 }
 
-// formatCardGroup formats a category of cards with a title.
-func formatCardGroup(title string, cards []string) string {
-	if len(cards) == 0 {
-		return ""
-	}
-
-	var output strings.Builder
-	_, _ = fmt.Fprintf(&output, "**%s (%d):**\n", title, len(cards))
-	for _, c := range cards {
-		_, _ = fmt.Fprintf(&output, "- %s\n", c)
-	}
-	output.WriteString("\n")
-
-	return output.String()
-}
-
 // FormatDeckForDisplay formats a Moxfield deck for text display.
 func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 	var output strings.Builder
@@ -391,9 +323,9 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 
 	groups := groupDeckCards(deck.Mainboard)
 
-	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders))
+	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.TotalCards+len(deck.Commanders))
 
-	groups.writeTo(&output)
+	groups.Render(&output)
 
 	writeMoxfieldBoard(&output, "Sideboard", deck.Sideboard)
 	writeMoxfieldBoard(&output, "Maybeboard", deck.Maybeboard)

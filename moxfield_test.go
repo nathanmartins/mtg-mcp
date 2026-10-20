@@ -600,26 +600,26 @@ func TestGroupDeckCards(t *testing.T) {
 
 	groups := groupDeckCards(mainboard)
 
-	if len(groups.instants) != 1 || groups.instants[0] != "1x Counterspell" {
-		t.Errorf("instants = %v, want [1x Counterspell]", groups.instants)
+	if len(groups.Instants) != 1 || groups.Instants[0] != "1x Counterspell" {
+		t.Errorf("instants = %v, want [1x Counterspell]", groups.Instants)
 	}
-	if len(groups.sorceries) != 1 || groups.sorceries[0] != "1x Ponder" {
-		t.Errorf("sorceries = %v, want [1x Ponder]", groups.sorceries)
+	if len(groups.Sorceries) != 1 || groups.Sorceries[0] != "1x Ponder" {
+		t.Errorf("sorceries = %v, want [1x Ponder]", groups.Sorceries)
 	}
-	if len(groups.enchantments) != 1 || groups.enchantments[0] != "1x Sylvan Library" {
-		t.Errorf("enchantments = %v, want [1x Sylvan Library]", groups.enchantments)
+	if len(groups.Enchantments) != 1 || groups.Enchantments[0] != "1x Sylvan Library" {
+		t.Errorf("enchantments = %v, want [1x Sylvan Library]", groups.Enchantments)
 	}
-	if len(groups.planeswalkers) != 1 {
-		t.Errorf("planeswalkers = %v, want 1 entry", groups.planeswalkers)
+	if len(groups.Planeswalkers) != 1 {
+		t.Errorf("planeswalkers = %v, want 1 entry", groups.Planeswalkers)
 	}
-	if len(groups.lands) != 1 || groups.lands[0] != "1x Island" {
-		t.Errorf("lands = %v, want [1x Island]", groups.lands)
+	if len(groups.Lands) != 1 || groups.Lands[0] != "1x Island" {
+		t.Errorf("lands = %v, want [1x Island]", groups.Lands)
 	}
-	if len(groups.others) != 1 || groups.others[0] != "2x Unknown Token" {
-		t.Errorf("others = %v, want [2x Unknown Token]", groups.others)
+	if len(groups.Others) != 1 || groups.Others[0] != "2x Unknown Token" {
+		t.Errorf("others = %v, want [2x Unknown Token]", groups.Others)
 	}
-	if groups.totalCards != 7 {
-		t.Errorf("totalCards = %d, want 7", groups.totalCards)
+	if groups.TotalCards != 7 {
+		t.Errorf("totalCards = %d, want 7", groups.TotalCards)
 	}
 }
 
