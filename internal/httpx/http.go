@@ -3,7 +3,7 @@ package httpx
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -66,9 +66,11 @@ func GetWithClient(ctx context.Context, rawURL string, client *http.Client) (*ht
 	return client.Do(req)
 }
 
-// GetJSON GETs reqURL with client and decodes a 200 response body into target. Any other
-// status is returned as a *StatusError naming source, without decoding the body:
-// upstream error pages are often not JSON (EDHREC answers unknown slugs with XML).
+// GetJSON GETs reqURL with client and decodes a 200 response body into target with
+// encoding/json/v2, which matches field names case-sensitively and rejects invalid UTF-8 and
+// duplicate names. Any other status is returned as a *StatusError naming source, without
+// decoding the body: upstream error pages are often not JSON (EDHREC answers unknown slugs
+// with XML).
 func GetJSON(ctx context.Context, client *http.Client, reqURL, source string, target any) error {
 	resp, err := GetWithClient(ctx, reqURL, client)
 	if err != nil {
@@ -82,7 +84,7 @@ func GetJSON(ctx context.Context, client *http.Client, reqURL, source string, ta
 		return &StatusError{Source: source, StatusCode: resp.StatusCode}
 	}
 
-	if decodeErr := json.NewDecoder(resp.Body).Decode(target); decodeErr != nil {
+	if decodeErr := json.UnmarshalRead(resp.Body, target); decodeErr != nil {
 		return fmt.Errorf("failed to decode %s response: %w", source, decodeErr)
 	}
 
