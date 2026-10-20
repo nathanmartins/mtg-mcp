@@ -3,7 +3,7 @@ package mtgserver
 import (
 	"context"
 	"encoding/base64"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -731,7 +731,7 @@ func getExchangeRate(ctx context.Context, rawURL string, get httpGetter) (float6
 		} `json:"rates"`
 	}
 
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
+	if decodeErr := json.UnmarshalRead(resp.Body, &result); decodeErr != nil {
 		return 0, decodeErr
 	}
 

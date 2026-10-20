@@ -2,7 +2,8 @@ package mtgserver
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 
 	"github.com/BlueMonday/go-scryfall"
@@ -74,12 +75,13 @@ func (s *Server) handleBannedListResource(
 		}
 	}
 
-	data, err := json.MarshalIndent(map[string]any{
+	// Deterministic sorts the map keys, matching the v1 MarshalIndent output this replaced.
+	data, err := json.Marshal(map[string]any{
 		"format":       defaultFormat,
 		"total_banned": result.TotalCards,
 		"cards":        bannedCards,
 		"last_updated": "real-time",
-	}, "", "  ")
+	}, json.Deterministic(true), jsontext.WithIndent("  "))
 	if err != nil {
 		return nil, err
 	}
