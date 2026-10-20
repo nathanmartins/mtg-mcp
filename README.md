@@ -403,7 +403,8 @@ Once connected to Claude Desktop, you can ask questions like:
 
 - `cmd/mtg-mcp` holds the binary's entrypoint.
 - `internal/` holds one package per upstream API, plus `mtgserver`, which exposes them as MCP tools and resources.
-- Each package keeps its tests next to the code: `*_test.go` (with `httptest` mocks) and `*_e2e_test.go` (real API calls).
+- Each package keeps its tests next to the code: unit tests use `httptest` mocks.
+- E2E tests (`e2e_test.go`, `*_e2e_test.go`) call the real APIs and only build with the `e2e` tag.
 
 ```text
 mtg-mcp/
@@ -548,10 +549,11 @@ The workflow:
 
 **E2E Test Files:**
 
-- `internal/archidekt/archidekt_e2e_test.go` - Archidekt API integration tests
-- `internal/edhrec/edhrec_e2e_test.go` - EDHREC API integration tests
-- `internal/moxfield/moxfield_e2e_test.go` - Moxfield API integration tests
-- `internal/rules/rules_e2e_test.go` - Comprehensive Rules fetch integration tests
+- `internal/archidekt/e2e_test.go` - Archidekt API integration tests
+- `internal/edhrec/e2e_test.go` - EDHREC API integration tests
+- `internal/moxfield/e2e_test.go` - Moxfield API integration tests
+- `internal/rules/e2e_test.go` - Comprehensive Rules fetch integration tests
+- `internal/httpx/json_v2_e2e_test.go` - checks `encoding/json/v2` decodes real responses like v1
 - `internal/mtgserver/scryfall_e2e_test.go` and `scryfall_image_e2e_test.go` - Scryfall API integration tests
 
 **Note:** E2E tests make real API calls and are subject to:
