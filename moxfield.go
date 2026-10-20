@@ -131,17 +131,12 @@ func moxfieldSortType(sort string) (string, error) {
 	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, moxfieldSortValues())
 }
 
-// moxfieldSortDirection maps our asc/desc surface onto Moxfield's capitalised values.
-func moxfieldSortDirection(direction string) (string, error) {
-	switch direction {
-	case sortDirectionAsc:
-		return moxfieldDirectionAscending, nil
-	case sortDirectionDesc:
-		return moxfieldDirectionDescending, nil
-	default:
-		return "", fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
-			direction, sortDirectionAsc, sortDirectionDesc)
+// moxfieldSortDirection maps a sort order onto Moxfield's capitalised wire values.
+func moxfieldSortDirection(ascending bool) string {
+	if ascending {
+		return moxfieldDirectionAscending
 	}
+	return moxfieldDirectionDescending
 }
 
 // GetMoxfieldDeck fetches a deck by its public ID.

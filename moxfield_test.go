@@ -464,14 +464,11 @@ func TestMoxfieldSortType(t *testing.T) {
 }
 
 func TestMoxfieldSortDirection(t *testing.T) {
-	if got, err := moxfieldSortDirection(sortDirectionDesc); err != nil || got != "Descending" {
-		t.Errorf("desc = (%q, %v), want (Descending, nil)", got, err)
+	if got := moxfieldSortDirection(false); got != "Descending" {
+		t.Errorf("descending = %q, want Descending", got)
 	}
-	if got, err := moxfieldSortDirection(sortDirectionAsc); err != nil || got != "Ascending" {
-		t.Errorf("asc = (%q, %v), want (Ascending, nil)", got, err)
-	}
-	if _, err := moxfieldSortDirection("sideways"); err == nil {
-		t.Error("expected an error for an invalid direction")
+	if got := moxfieldSortDirection(true); got != "Ascending" {
+		t.Errorf("ascending = %q, want Ascending", got)
 	}
 }
 

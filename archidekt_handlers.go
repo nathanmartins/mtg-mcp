@@ -162,19 +162,11 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 	}
 	params.Sort = sortKey
 
-	direction, err := enumArg(args, "sort_direction", sortDirectionDesc)
+	ascending, err := sortAscendingArg(args)
 	if err != nil {
 		return params, err
 	}
-	switch direction {
-	case sortDirectionDesc:
-		params.Ascending = false
-	case sortDirectionAsc:
-		params.Ascending = true
-	default:
-		return params, fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
-			direction, sortDirectionAsc, sortDirectionDesc)
-	}
+	params.Ascending = ascending
 
 	if params.Bracket != 0 && (params.Bracket < archidektMinBracket || params.Bracket > archidektMaxBracket) {
 		return params, fmt.Errorf("invalid bracket %d (accepted: %d-%d, or omit for all brackets)",

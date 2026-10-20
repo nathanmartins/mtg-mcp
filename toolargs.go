@@ -24,6 +24,25 @@ func sortDirectionLabel(ascending bool) string {
 	return sortDirectionDesc
 }
 
+// sortAscendingArg reads the sort_direction argument (asc or desc, default desc) and reports
+// whether it asks for ascending order. Each deck-search client maps the result onto its own
+// wire format, so the tool vocabulary stays in the handlers.
+func sortAscendingArg(args map[string]any) (bool, error) {
+	direction, err := enumArg(args, "sort_direction", sortDirectionDesc)
+	if err != nil {
+		return false, err
+	}
+	switch direction {
+	case sortDirectionAsc:
+		return true, nil
+	case sortDirectionDesc:
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
+			direction, sortDirectionAsc, sortDirectionDesc)
+	}
+}
+
 // stringArg returns the string argument stored under key, or fallback when the
 // argument is absent, not a string, or empty. MCP delivers arguments as untyped JSON.
 func stringArg(args map[string]any, key, fallback string) string {

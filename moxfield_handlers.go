@@ -119,15 +119,11 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (Mox
 	}
 	params.SortType = sortType
 
-	directionKey, err := enumArg(args, "sort_direction", sortDirectionDesc)
+	ascending, err := sortAscendingArg(args)
 	if err != nil {
 		return params, err
 	}
-	direction, err := moxfieldSortDirection(directionKey)
-	if err != nil {
-		return params, err
-	}
-	params.SortDirection = direction
+	params.SortDirection = moxfieldSortDirection(ascending)
 
 	if params.PageNumber < 1 {
 		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.PageNumber)
