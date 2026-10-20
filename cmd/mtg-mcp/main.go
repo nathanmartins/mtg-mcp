@@ -97,7 +97,7 @@ func main() {
 
 	mcpServer := server.NewMCPServer(
 		"MTG Commander Assistant",
-		"1.0.0",
+		version,               // the build version, so clients and bug reports see the real release
 		server.WithRecovery(), // Add panic recovery middleware
 	)
 	mtgServer.Register(mcpServer)
