@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	// DefaultBaseURL is the live Archidekt API root.
 	DefaultBaseURL             = "https://archidekt.com/api"
 	archidektCommanderCategory = "Commander"
 	// apiSource names Archidekt in upstream status and decode errors.

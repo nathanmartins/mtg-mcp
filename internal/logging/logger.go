@@ -11,6 +11,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// Log level names accepted by SetLevel.
 const (
 	LevelDebug = "debug"
 	LevelInfo  = "info"

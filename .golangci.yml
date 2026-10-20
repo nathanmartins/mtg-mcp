@@ -444,8 +444,6 @@ linters:
       - common-false-positives
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
-      - text: 'exported \S+ \S+ should have comment( \(or a comment on this block\))? or be unexported'
-        linters: [revive]
       - path: '_test\.go'
         linters:
           - bodyclose

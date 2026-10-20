@@ -16,12 +16,14 @@ import (
 )
 
 const (
-	rulesPageURL       = "https://magic.wizards.com/en/rules"
-	rulesCacheTTL      = 24 * time.Hour
+	rulesPageURL  = "https://magic.wizards.com/en/rules"
+	rulesCacheTTL = 24 * time.Hour
+	// SearchDefaultLimit is the default number of matches search_rules returns.
 	SearchDefaultLimit = 10
-	SearchMaxLimit     = 20
-	rulesHTTPTimeout   = 30 * time.Second
-	rulesMaxBodyBytes  = 8 << 20 // 8 MiB cap on fetched bodies (the rules .txt is ~1 MiB)
+	// SearchMaxLimit caps the number of matches search_rules returns.
+	SearchMaxLimit    = 20
+	rulesHTTPTimeout  = 30 * time.Second
+	rulesMaxBodyBytes = 8 << 20 // 8 MiB cap on fetched bodies (the rules .txt is ~1 MiB)
 )
 
 // rulesTxtLinkPattern discovers the comprehensive rules .txt URL embedded in the WotC rules page.

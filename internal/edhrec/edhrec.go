@@ -16,10 +16,14 @@ const (
 	// DefaultBaseURL is the live EDHREC JSON pages endpoint.
 	DefaultBaseURL       = "https://json.edhrec.com/pages"
 	percentageMultiplier = 100.0
-	PriceTierBudget      = "budget"
-	PriceTierExpensive   = "expensive"
-	maxThemesListed      = 15
-	DefaultLimit         = 10
+	// PriceTierBudget selects EDHREC's budget recommendations.
+	PriceTierBudget = "budget"
+	// PriceTierExpensive selects EDHREC's expensive recommendations.
+	PriceTierExpensive = "expensive"
+	maxThemesListed    = 15
+	// DefaultLimit is the default number of cards shown per recommendation list or combos page.
+	DefaultLimit = 10
+	// DefaultSetCardsLimit is the default number of cards shown per set-cards list.
 	DefaultSetCardsLimit = 25
 )
 

@@ -25,8 +25,9 @@ const (
 	archidektCountUnknown = -1
 	// archidektCommanderFormat is Archidekt's deckFormat id for Commander/EDH.
 	archidektCommanderFormat = "3"
-	// MinBracket and MaxBracket bound the EDH bracket filter.
+	// MinBracket is the lowest EDH bracket the bracket filter accepts.
 	MinBracket = 1
+	// MaxBracket is the highest EDH bracket the bracket filter accepts.
 	MaxBracket = 4
 	// MaxDeckSize bounds the deck-size filter (Commander decks are 100 cards;
 	// the cap only exists to reject nonsense input).

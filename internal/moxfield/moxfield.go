@@ -118,6 +118,7 @@ type SearchParams struct {
 }
 
 const (
+	// DefaultBaseURL is the live Moxfield API root for deck reads and user deck lists.
 	DefaultBaseURL = "https://api.moxfield.com/v2"
 	// DefaultSearchURL is a different host from DefaultBaseURL:
 	// deck reads live on api.moxfield.com, deck search only exists on api2.
@@ -131,7 +132,8 @@ const (
 	// DirectionAscending and DirectionDescending are Moxfield's wire
 	// values for sortDirection. They are not the tool's vocabulary: the caller passes
 	// asc/desc and the output must be rendered back in those terms.
-	DirectionAscending  = "Ascending"
+	DirectionAscending = "Ascending"
+	// DirectionDescending is Moxfield's wire value for descending order.
 	DirectionDescending = "Descending"
 )
 

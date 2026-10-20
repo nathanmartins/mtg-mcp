@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	// DefaultTimeout bounds a single request made through Get.
 	DefaultTimeout = 10 * time.Second
 	// APITimeout bounds a single deck-site API request. MCP request contexts carry no
 	// deadline, and several tools issue requests in sequence (Moxfield commander
