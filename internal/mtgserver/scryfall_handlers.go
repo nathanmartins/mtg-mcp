@@ -223,7 +223,7 @@ func (s *Server) handleGetCardImage(
 		return mcp.NewToolResultError(fmt.Sprintf("No %s image available for %s", q.size, card.Name)), nil
 	}
 
-	return buildCardImageResult(ctx, card, usedLang, q.language, q.size, images)
+	return s.buildCardImageResult(ctx, card, usedLang, q.language, q.size, images)
 }
 
 const (
@@ -299,7 +299,7 @@ type cardImageDatum struct {
 // returns an MCP Apps result: a text summary with a per-face Scryfall link (the
 // fallback for non-UI clients), the images in structuredContent (rendered by the
 // ui://mtg-card widget), and _meta.ui.resourceUri pointing at that fixed widget.
-func buildCardImageResult(
+func (s *Server) buildCardImageResult(
 	ctx context.Context,
 	card scryfall.Card,
 	usedLang scryfall.Lang,
@@ -328,7 +328,7 @@ func buildCardImageResult(
 
 	data := cardImageData{Name: card.Name, Language: string(usedLang), Size: size, Fallback: fallback}
 	for _, img := range images {
-		raw, dlErr := cardImageBytesFetcher(ctx, img.url)
+		raw, dlErr := s.fetchImage(ctx, img.url)
 		if dlErr != nil {
 			logging.Get().Error().Err(dlErr).Str("tool", "get_card_image").
 				Str("url", img.url).Msg("Failed to download card image")
@@ -482,7 +482,7 @@ func (s *Server) handleGetPrice(
 	_, _ = fmt.Fprintf(&output, "# Pricing for %s\n", card.Name)
 	_, _ = fmt.Fprintf(&output, "Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
 
-	usdToBRL, err := exchangeRateFetcher(ctx)
+	usdToBRL, err := s.fetchExchangeRate(ctx)
 	if err != nil {
 		logging.Get().Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
 		usdToBRL = 5.40
@@ -698,10 +698,6 @@ const exchangeRateURL = "https://api.frankfurter.app/latest?from=USD&to=BRL"
 
 // httpGetter performs an HTTP GET; httpx.Get satisfies it in production, and a stub satisfies it in tests.
 type httpGetter func(ctx context.Context, rawURL string) (*http.Response, error)
-
-// exchangeRateFetcher fetches the current USD to BRL exchange rate.
-// It is a package variable, so tests can substitute a deterministic implementation.
-var exchangeRateFetcher = getUSDToBRLRate //nolint:gochecknoglobals // test seam for the price handler
 
 // getUSDToBRLRate fetches the current USD to BRL exchange rate.
 func getUSDToBRLRate(ctx context.Context) (float64, error) {
@@ -969,10 +965,6 @@ func (s *Server) findLocalizedCard(
 
 	return scryfall.Card{}, false
 }
-
-// cardImageBytesFetcher downloads a card image and returns its raw bytes.
-// It is a package variable so tests can substitute a deterministic implementation.
-var cardImageBytesFetcher = fetchCardImageBytes //nolint:gochecknoglobals // test seam for the image handler
 
 // fetchCardImageBytes downloads the image at the given HTTPS URL.
 func fetchCardImageBytes(ctx context.Context, rawURL string) ([]byte, error) {

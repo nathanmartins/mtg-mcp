@@ -3,6 +3,7 @@
 package mtgserver
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/BlueMonday/go-scryfall"
@@ -46,6 +47,10 @@ type Server struct {
 	archidekt      *archidekt.Client
 	edhrec         *edhrec.Client
 	rules          *rules.Cache
+	// fetchExchangeRate and fetchImage reach the currency API and the card image CDN. New
+	// wires the live implementations; tests substitute stubs.
+	fetchExchangeRate func(ctx context.Context) (float64, error)
+	fetchImage        func(ctx context.Context, rawURL string) ([]byte, error)
 }
 
 // New creates a new MTG Commander MCP server.
@@ -61,6 +66,9 @@ func New() (*Server, error) {
 		archidekt:      archidekt.NewClient(),
 		edhrec:         edhrec.NewClient(),
 		rules:          &rules.Cache{},
+
+		fetchExchangeRate: getUSDToBRLRate,
+		fetchImage:        fetchCardImageBytes,
 	}, nil
 }
 

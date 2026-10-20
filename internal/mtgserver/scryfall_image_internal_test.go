@@ -12,19 +12,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// stubImageFetcher replaces the download seam with one that echoes the URL back
-// as fake image bytes, restoring the original when the test ends.
-func stubImageFetcher(t *testing.T) {
-	t.Helper()
-
-	prev := cardImageBytesFetcher
-	cardImageBytesFetcher = func(_ context.Context, rawURL string) ([]byte, error) {
-		return []byte("IMG:" + rawURL), nil
-	}
-	t.Cleanup(func() { cardImageBytesFetcher = prev })
-}
-
-// stubbedSrc is the data URI stubImageFetcher produces for a given size/url pair.
+// stubbedSrc is the data URI the stub image fetcher (see newTestScryfallServer) produces for a given size/url pair.
 func stubbedSrc(mime, rawURL string) string {
 	return "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString([]byte("IMG:"+rawURL))
 }
@@ -169,15 +157,12 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 	})
 
 	t.Run("download failure returns error", func(t *testing.T) {
-		prev := cardImageBytesFetcher
-		cardImageBytesFetcher = func(context.Context, string) ([]byte, error) {
-			return nil, http.ErrHandlerTimeout
-		}
-		t.Cleanup(func() { cardImageBytesFetcher = prev })
-
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
+		s.fetchImage = func(context.Context, string) ([]byte, error) {
+			return nil, http.ErrHandlerTimeout
+		}
 		res, _ := s.handleGetCardImage(t.Context(), toolRequest(map[string]any{"name": "Sol Ring"}))
 		if !res.IsError {
 			t.Error("expected error result when the image download fails")
@@ -187,7 +172,6 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 
 func TestHandleGetCardImageRendering(t *testing.T) {
 	t.Run("english single-faced card returns structuredContent + fixed ui:// URI", func(t *testing.T) {
-		stubImageFetcher(t)
 		searched := false
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/search") {
@@ -232,7 +216,6 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 	})
 
 	t.Run("size parameter selects png data URI", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
@@ -254,7 +237,6 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 	})
 
 	t.Run("double-faced card yields one image per face", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverImageJSON)
 		})
@@ -277,7 +259,6 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 
 func TestHandleGetCardImageLanguage(t *testing.T) {
 	t.Run("localized italian printing", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/cards/named"):
@@ -307,7 +288,6 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 	})
 
 	t.Run("falls back to english when no localized printing", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/search") {
 				scryfallError(w, http.StatusNotFound)
@@ -333,7 +313,6 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 
 func TestHandleGetCardImageEdition(t *testing.T) {
 	t.Run("set selects that set's printing", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/named") && r.URL.Query().Get("set") == "c21" {
 				jsonResponse(w, solRingC21JSON)
@@ -358,7 +337,6 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("set + collector_number selects the exact printing", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/cards/c21/263" {
 				jsonResponse(w, solRingC21JSON)
@@ -385,7 +363,6 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("collector_number pointing at a different card falls back to default", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.URL.Path == "/cards/xyz/999":
@@ -421,7 +398,6 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("unknown set falls back to the default printing", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("set") == "zzz" {
 				scryfallError(w, http.StatusNotFound)
@@ -457,7 +433,6 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	}
 
 	t.Run("face=back returns only the back face", func(t *testing.T) {
-		stubImageFetcher(t)
 		res, _ := dfc(t).handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Delver of Secrets", "face": "back",
 		}))
@@ -469,7 +444,6 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=front returns only the front face", func(t *testing.T) {
-		stubImageFetcher(t)
 		res, _ := dfc(t).handleGetCardImage(t.Context(), toolRequest(map[string]any{
 			"name": "Delver of Secrets", "face": "front",
 		}))
@@ -480,7 +454,6 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=front keys on card face order, not the image-filtered slice", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverFrontlessJSON)
 		})
@@ -496,7 +469,6 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=back returns the back even when the front lacks that size", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverFrontlessJSON)
 		})
@@ -510,7 +482,6 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=back on a single-faced card is an error", func(t *testing.T) {
-		stubImageFetcher(t)
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})

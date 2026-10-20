@@ -25,7 +25,13 @@ func newTestScryfallServer(t *testing.T, handler http.HandlerFunc) *Server {
 		t.Fatalf("failed to create scryfall test client: %v", err)
 	}
 
-	return &Server{scryfallClient: client}
+	// Stub the currency API and image CDN so handler tests never reach them; tests of the
+	// failure paths override these fields on their own server.
+	return &Server{
+		scryfallClient:    client,
+		fetchExchangeRate: func(context.Context) (float64, error) { return 5.0, nil },
+		fetchImage:        func(_ context.Context, rawURL string) ([]byte, error) { return []byte("IMG:" + rawURL), nil },
+	}
 }
 
 // toolRequest builds a CallToolRequest carrying the supplied arguments.
@@ -362,11 +368,6 @@ func TestHandleGetRulings(t *testing.T) {
 }
 
 func TestHandleGetPrice(t *testing.T) {
-	// Stub the exchange rate so the handler never touches the live API.
-	prev := exchangeRateFetcher
-	exchangeRateFetcher = func(context.Context) (float64, error) { return 5.0, nil }
-	t.Cleanup(func() { exchangeRateFetcher = prev })
-
 	t.Run("missing name", func(t *testing.T) {
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {})
 		res, _ := s.handleGetPrice(t.Context(), toolRequest(nil))
@@ -452,16 +453,12 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("falls back when rate fetch fails", func(t *testing.T) {
-		exchangeRateFetcher = func(context.Context) (float64, error) {
-			return 0, io.ErrUnexpectedEOF
-		}
-		defer func() {
-			exchangeRateFetcher = func(context.Context) (float64, error) { return 5.0, nil }
-		}()
-
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingJSON)
 		})
+		s.fetchExchangeRate = func(context.Context) (float64, error) {
+			return 0, io.ErrUnexpectedEOF
+		}
 		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{"name": "Sol Ring"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)

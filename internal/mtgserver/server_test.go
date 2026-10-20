@@ -36,6 +36,9 @@ func TestNewWiresProductionClients(t *testing.T) {
 	if s.edhrec == nil || *s.edhrec != *edhrec.NewClient() {
 		t.Errorf("edhrec client = %+v, want edhrec.NewClient()", s.edhrec)
 	}
+	if s.fetchExchangeRate == nil || s.fetchImage == nil {
+		t.Error("New() must wire the exchange-rate and image fetchers")
+	}
 }
 
 // TestRegisterToolsAndResources pins the exact tool and resource surface Register exposes,
