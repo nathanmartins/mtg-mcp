@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -42,7 +42,7 @@ func TestRulesCountsAndHandlers(t *testing.T) {
 	}
 
 	// Pre-populate the cache so handlers do no network.
-	srv := &MTGCommanderServer{rules: rules.NewSeededCache(rules.Parse(sampleRulesTxt))}
+	srv := &Server{rules: rules.NewSeededCache(rules.Parse(sampleRulesTxt))}
 
 	req := mcp.CallToolRequest{}
 	req.Params.Arguments = map[string]any{"rule": "702.19"}

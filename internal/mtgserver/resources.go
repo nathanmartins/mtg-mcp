@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func (s *MTGCommanderServer) handleCommanderRules(
+func (s *Server) handleCommanderRules(
 	_ context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
@@ -54,7 +54,7 @@ Commander is a multiplayer format for Magic: The Gathering, emphasizing social i
 	}, nil
 }
 
-func (s *MTGCommanderServer) handleBannedListResource(
+func (s *Server) handleBannedListResource(
 	ctx context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {

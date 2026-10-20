@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"testing"

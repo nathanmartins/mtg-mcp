@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
-func (s *MTGCommanderServer) handleSearchCards(
+func (s *Server) handleSearchCards(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -94,7 +94,7 @@ func (s *MTGCommanderServer) handleSearchCards(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetCardDetails(
+func (s *Server) handleGetCardDetails(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -176,7 +176,7 @@ func (q imageQuery) validate() error {
 	return nil
 }
 
-func (s *MTGCommanderServer) handleGetCardImage(
+func (s *Server) handleGetCardImage(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -357,7 +357,7 @@ func buildCardImageResult(
 // handleCardImageUIResource serves the fixed MCP Apps widget for cardImageWidgetURI.
 // The document renders no card by itself; the host delivers the per-card images to it
 // as structuredContent via ui/notifications/tool-result (see cardImageAppScript).
-func (s *MTGCommanderServer) handleCardImageUIResource(
+func (s *Server) handleCardImageUIResource(
 	_ context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
@@ -370,7 +370,7 @@ func (s *MTGCommanderServer) handleCardImageUIResource(
 	}, nil
 }
 
-func (s *MTGCommanderServer) handleCheckLegality(
+func (s *Server) handleCheckLegality(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -412,7 +412,7 @@ func (s *MTGCommanderServer) handleCheckLegality(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetRulings(
+func (s *Server) handleGetRulings(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -447,7 +447,7 @@ func (s *MTGCommanderServer) handleGetRulings(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetPrice(
+func (s *Server) handleGetPrice(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -538,7 +538,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleGetBannedList(
+func (s *Server) handleGetBannedList(
 	ctx context.Context,
 	_ mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -564,7 +564,7 @@ func (s *MTGCommanderServer) handleGetBannedList(
 	return mcp.NewToolResultText(output.String()), nil
 }
 
-func (s *MTGCommanderServer) handleValidateDeck(
+func (s *Server) handleValidateDeck(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -864,7 +864,7 @@ func cardImagesForFace(card scryfall.Card, size, face string) ([]cardImage, erro
 // requested—looks up a localized printing that has an image, falling back to
 // English when none exists. Returns the chosen card and the language actually used;
 // the error is non-nil only when the English lookup itself fails.
-func (s *MTGCommanderServer) resolveCardForImage(
+func (s *Server) resolveCardForImage(
 	ctx context.Context,
 	q imageQuery,
 ) (scryfall.Card, scryfall.Lang, error) {
@@ -898,7 +898,7 @@ func (s *MTGCommanderServer) resolveCardForImage(
 
 // pinnedPrinting fetches the exact printing for set + collector number (in the
 // requested language when non-English), reporting false to trigger a fallback.
-func (s *MTGCommanderServer) pinnedPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
+func (s *Server) pinnedPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
 	var (
 		card scryfall.Card
 		err  error
@@ -937,7 +937,7 @@ func cardMatchesName(card scryfall.Card, name string) bool {
 
 // setPrinting fetches the named card's printing within a set, preferring the
 // requested language, reporting false to trigger a fallback to the default printing.
-func (s *MTGCommanderServer) setPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
+func (s *Server) setPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
 	base, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{Set: q.set})
 	if err != nil {
 		logging.Get().Warn().Err(err).Str("tool", "get_card_image").
@@ -956,7 +956,7 @@ func (s *MTGCommanderServer) setPrinting(ctx context.Context, q imageQuery) (scr
 
 // findLocalizedCard searches for a printing of the named card in the requested
 // language that has an image at the requested size.
-func (s *MTGCommanderServer) findLocalizedCard(
+func (s *Server) findLocalizedCard(
 	ctx context.Context,
 	canonicalName, language, size, set string,
 ) (scryfall.Card, bool) {

@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
-func (s *MTGCommanderServer) handleGetMoxfieldDeck(
+func (s *Server) handleGetMoxfieldDeck(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -49,7 +49,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 	return mcp.NewToolResultText(output), nil
 }
 
-func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
+func (s *Server) handleGetMoxfieldUserDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -139,7 +139,7 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (mox
 	return params, nil
 }
 
-func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
+func (s *Server) handleSearchMoxfieldDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {

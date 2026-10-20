@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -34,7 +34,7 @@ func resourceText(t *testing.T, contents []mcp.ResourceContents) string {
 }
 
 func TestHandleCommanderRules(t *testing.T) {
-	s := &MTGCommanderServer{}
+	s := &Server{}
 
 	contents, err := s.handleCommanderRules(context.Background(), readResourceRequest("commander://rules"))
 	if err != nil {

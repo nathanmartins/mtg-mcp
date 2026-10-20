@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"testing"
@@ -8,9 +8,9 @@ import (
 )
 
 func TestNewMTGCommanderServer(t *testing.T) {
-	s, err := NewMTGCommanderServer()
+	s, err := New()
 	if err != nil {
-		t.Fatalf("NewMTGCommanderServer() error = %v", err)
+		t.Fatalf("New() error = %v", err)
 	}
 	if s == nil || s.scryfallClient == nil {
 		t.Fatal("expected a server with an initialized Scryfall client")
@@ -20,9 +20,9 @@ func TestNewMTGCommanderServer(t *testing.T) {
 // TestNewMTGCommanderServerMoxfieldWiring pins the production Moxfield settings: the search
 // URL is a different host from deck reads, and verification requests must be spaced.
 func TestNewMTGCommanderServerMoxfieldWiring(t *testing.T) {
-	s, err := NewMTGCommanderServer()
+	s, err := New()
 	if err != nil {
-		t.Fatalf("NewMTGCommanderServer() error = %v", err)
+		t.Fatalf("New() error = %v", err)
 	}
 	if s.moxfieldSearchURL != moxfield.DefaultSearchURL {
 		t.Errorf("moxfieldSearchURL = %q, want %q", s.moxfieldSearchURL, moxfield.DefaultSearchURL)
@@ -36,9 +36,9 @@ func TestNewMTGCommanderServerMoxfieldWiring(t *testing.T) {
 // TestRegisterToolsAndResources exercises the registration wiring. It must not
 // panic and should register every tool and resource without error.
 func TestRegisterToolsAndResources(t *testing.T) {
-	s, err := NewMTGCommanderServer()
+	s, err := New()
 	if err != nil {
-		t.Fatalf("NewMTGCommanderServer() error = %v", err)
+		t.Fatalf("New() error = %v", err)
 	}
 
 	mcpServer := server.NewMCPServer("test", "0.0.0", server.WithRecovery())

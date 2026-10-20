@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 // which return before any network call and are therefore hermetic.
 
 func TestMoxfieldHandlerValidation(t *testing.T) {
-	s := &MTGCommanderServer{}
+	s := &Server{}
 	ctx := context.Background()
 
 	t.Run("get deck missing id", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestMoxfieldHandlerValidation(t *testing.T) {
 }
 
 func TestArchidektHandlerValidation(t *testing.T) {
-	s := &MTGCommanderServer{}
+	s := &Server{}
 	ctx := context.Background()
 
 	t.Run("get deck missing id", func(t *testing.T) {
@@ -68,7 +68,7 @@ func TestArchidektHandlerValidation(t *testing.T) {
 }
 
 func TestEDHRECHandlerValidation(t *testing.T) {
-	s := &MTGCommanderServer{}
+	s := &Server{}
 	ctx := context.Background()
 
 	t.Run("recommendations missing commander", func(t *testing.T) {

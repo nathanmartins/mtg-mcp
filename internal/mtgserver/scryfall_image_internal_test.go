@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -449,7 +449,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 }
 
 func TestHandleGetCardImageFace(t *testing.T) {
-	dfc := func(t *testing.T) *MTGCommanderServer {
+	dfc := func(t *testing.T) *Server {
 		t.Helper()
 		return newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverImageJSON)
@@ -539,7 +539,7 @@ func TestHandleCardImageUIResource(t *testing.T) {
 	// The widget is a fixed, static resource: it renders no card itself and performs
 	// no download. Per-card images arrive via ui/notifications/tool-result, so the
 	// widget script reads structuredContent.images and runs the MCP Apps handshake.
-	s := &MTGCommanderServer{}
+	s := &Server{}
 
 	contents, err := s.handleCardImageUIResource(context.Background(), readResourceRequest(cardImageWidgetURI))
 	if err != nil {

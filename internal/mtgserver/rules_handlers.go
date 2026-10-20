@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/rules"
 )
 
-func (s *MTGCommanderServer) handleComprehensiveRulesResource(
+func (s *Server) handleComprehensiveRulesResource(
 	ctx context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
@@ -25,7 +25,7 @@ func (s *MTGCommanderServer) handleComprehensiveRulesResource(
 	}, nil
 }
 
-func (s *MTGCommanderServer) handleGetRule(
+func (s *Server) handleGetRule(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -44,7 +44,7 @@ func (s *MTGCommanderServer) handleGetRule(
 	return mcp.NewToolResultText(rules.FormatRule(number, text)), nil
 }
 
-func (s *MTGCommanderServer) handleSearchRules(
+func (s *Server) handleSearchRules(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -68,7 +68,7 @@ func (s *MTGCommanderServer) handleSearchRules(
 	return mcp.NewToolResultText(rules.FormatRuleSearch(keyword, cr.Search(keyword, limit))), nil
 }
 
-func (s *MTGCommanderServer) handleGetGlossaryTerm(
+func (s *Server) handleGetGlossaryTerm(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {

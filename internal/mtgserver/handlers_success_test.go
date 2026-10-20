@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -44,7 +44,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 			"sol": {Quantity: 1, Card: moxfield.CardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
 		},
 	}
-	s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusOK, deck)}
+	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusOK, deck)}
 
 	res, err := s.handleGetMoxfieldDeck(context.Background(), toolRequest(map[string]any{"deck_id": "abc123"}))
 	if err != nil {
@@ -59,7 +59,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldDeckFailure(t *testing.T) {
-	s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
 	res, _ := s.handleGetMoxfieldDeck(context.Background(), toolRequest(map[string]any{"deck_id": "abc123"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
@@ -83,7 +83,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 			},
 		},
 	}
-	s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
+	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
 
 	res, err := s.handleGetMoxfieldUserDecks(context.Background(), toolRequest(map[string]any{
 		"username":  "tester",
@@ -101,7 +101,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
-	s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
 	res, _ := s.handleGetMoxfieldUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
@@ -134,7 +134,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(deckServer.Close)
 
-		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL, moxfieldBaseURL: deckServer.URL}
+		s := &Server{moxfieldSearchURL: ts.URL, moxfieldBaseURL: deckServer.URL}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
 			"format":         "modern",
@@ -177,7 +177,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
+		s := &Server{moxfieldSearchURL: ts.URL}
 		if _, err := s.handleSearchMoxfieldDecks(
 			context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}),
 		); err != nil {
@@ -194,7 +194,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("no results", func(t *testing.T) {
 		resp := moxfield.SearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Nobody"}))
 		if !strings.Contains(resultText(t, res), "No decks with this commander were found") {
 			t.Error("expected no-decks message")
@@ -202,7 +202,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusInternalServerError, nil)}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -211,7 +211,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
 		// The stub answers 200 on any path, so only local validation can make this an error.
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
+		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "price",
 		}))
@@ -226,7 +226,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	t.Run("limit beyond the verification budget is rejected", func(t *testing.T) {
 		// Verification confirms at most moxfield.VerifyMaxChecks decks per call, so a
 		// larger limit could never be honoured and must not be silently truncated.
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
+		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks + 1),
 		}))
@@ -247,7 +247,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
+		s := &Server{moxfieldSearchURL: ts.URL}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks),
 		}))
@@ -264,7 +264,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("wrong-typed page is rejected", func(t *testing.T) {
-		s := &MTGCommanderServer{moxfieldSearchURL: "http://127.0.0.1:1"}
+		s := &Server{moxfieldSearchURL: "http://127.0.0.1:1"}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "page": true,
 		}))
@@ -296,7 +296,7 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 	}))
 	defer deckServer.Close()
 
-	s := &MTGCommanderServer{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
+	s := &Server{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
 	res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 		"commander": "Atraxa, Praetors' Voice",
 		"limit":     float64(1),
@@ -338,7 +338,7 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 	}))
 	defer deckServer.Close()
 
-	s := &MTGCommanderServer{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
+	s := &Server{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
 	res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 		"commander": "Atraxa, Praetors' Voice",
 		"limit":     float64(5),
@@ -441,7 +441,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 	url := jsonServer(t, http.StatusOK, sampleArchidektDeck())
 
 	t.Run("full deck", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: url}
+		s := &Server{archidektBaseURL: url}
 		res, err := s.handleGetArchidektDeck(context.Background(), toolRequest(map[string]any{"deck_id": "123"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -452,7 +452,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 	})
 
 	t.Run("lands only", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: url}
+		s := &Server{archidektBaseURL: url}
 		res, err := s.handleGetArchidektDeck(context.Background(), toolRequest(map[string]any{
 			"deck_id":    "123",
 			"lands_only": true,
@@ -467,7 +467,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 }
 
 func TestHandleGetArchidektDeckFailure(t *testing.T) {
-	s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+	s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
 	res, _ := s.handleGetArchidektDeck(context.Background(), toolRequest(map[string]any{"deck_id": "123"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
@@ -483,7 +483,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 				{ID: 1, Name: "Deck A", DeckFormat: 3, ViewCount: 5, UpdatedAt: "2024-01-01"},
 			},
 		}
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, err := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{
 			"username": "tester",
 			"page":     float64(1),
@@ -501,7 +501,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 
 	t.Run("no results", func(t *testing.T) {
 		resp := archidekt.UserDecksResponse{Count: 0, Next: "", Results: nil}
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, _ := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
 		if !strings.Contains(resultText(t, res), "No public decks found") {
 			t.Error("expected no-decks message")
@@ -509,7 +509,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
 		res, _ := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -525,7 +525,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 				{ID: 9, Name: "Atraxa Brew", DeckFormat: 3, ViewCount: 99, UpdatedAt: "2024-02-02"},
 			},
 		}
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"bracket":   float64(4),
@@ -551,7 +551,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &MTGCommanderServer{archidektBaseURL: ts.URL}
+		s := &Server{archidektBaseURL: ts.URL}
 		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "colors": " wu",
 		}))
@@ -567,7 +567,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -575,7 +575,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "trending",
 		}))
@@ -586,7 +586,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("invalid colors are rejected", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "colors": "WX",
 		}))
@@ -596,7 +596,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("wrong-typed limit is rejected", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": "5",
 		}))
@@ -606,7 +606,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("empty sort is rejected", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "",
 		}))
@@ -618,7 +618,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	t.Run("page beyond the reachable range is rejected", func(t *testing.T) {
 		// (page-1)*limit used to overflow int here, producing a negative window offset
 		// and panicking on collected[offset:end] after a perfectly successful fetch.
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, archidekt.UserDecksResponse{
+		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, archidekt.UserDecksResponse{
 			Count:   5,
 			Results: []archidekt.DeckSummary{{ID: 1, Name: "Deck"}},
 		})}
@@ -634,7 +634,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("fractional limit is rejected", func(t *testing.T) {
-		s := &MTGCommanderServer{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
 		res, _ := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": 7.9,
 		}))
@@ -661,7 +661,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 				},
 			},
 		}
-		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"limit":     float64(5),
@@ -675,7 +675,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
+		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
 		res, _ := s.handleGetEDHRECRecommendations(
 			context.Background(),
 			toolRequest(map[string]any{"commander": "Nobody"}),
@@ -701,7 +701,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 				},
 			},
 		}
-		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, err := s.handleGetEDHRECCombos(context.Background(), toolRequest(map[string]any{
 			"colors": "colorless",
 			"limit":  float64(5),
@@ -715,7 +715,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
+		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
 		res, _ := s.handleGetEDHRECCombos(context.Background(), toolRequest(map[string]any{"colors": "zz"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -738,7 +738,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 				},
 			},
 		}
-		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, err := s.handleGetEDHRECSetCards(context.Background(), toolRequest(map[string]any{"set": "rna"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -749,7 +749,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &MTGCommanderServer{edhrecBaseURL: jsonServer(t, http.StatusForbidden, nil)}
+		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusForbidden, nil)}
 		res, _ := s.handleGetEDHRECSetCards(context.Background(), toolRequest(map[string]any{"set": "notaset"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -777,7 +777,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		s := &MTGCommanderServer{edhrecBaseURL: ts.URL}
+		s := &Server{edhrecBaseURL: ts.URL}
 		res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"theme":     "infekt",
@@ -800,7 +800,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		s := &MTGCommanderServer{edhrecBaseURL: ts.URL}
+		s := &Server{edhrecBaseURL: ts.URL}
 		res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"theme":     "infect",
@@ -824,7 +824,7 @@ func TestHandleGetEDHRECRecommendationsBadPriceTier(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	s := &MTGCommanderServer{edhrecBaseURL: ts.URL}
+	s := &Server{edhrecBaseURL: ts.URL}
 	res, err := s.handleGetEDHRECRecommendations(context.Background(), toolRequest(map[string]any{
 		"commander":  "Atraxa, Praetors' Voice",
 		"price_tier": "middle",

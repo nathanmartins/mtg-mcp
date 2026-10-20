@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 )
 
 // newE2EImageServer builds a server backed by the real Scryfall API.
-func newE2EImageServer(t *testing.T) *MTGCommanderServer {
+func newE2EImageServer(t *testing.T) *Server {
 	t.Helper()
 
 	client, err := scryfall.NewClient()
@@ -18,7 +18,7 @@ func newE2EImageServer(t *testing.T) *MTGCommanderServer {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}
 
-	return &MTGCommanderServer{scryfallClient: client}
+	return &Server{scryfallClient: client}
 }
 
 // TestGetCardImageEnglishE2E fetches a plain English card image end-to-end.

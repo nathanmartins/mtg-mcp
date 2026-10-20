@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -54,7 +54,7 @@ func recFilterFromArgs(args map[string]any) (edhrec.RecFilter, error) {
 	return edhrec.RecFilter{Theme: theme, PriceTier: tier}, nil
 }
 
-func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
+func (s *Server) handleGetEDHRECRecommendations(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -115,7 +115,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 	return mcp.NewToolResultText(output), nil
 }
 
-func (s *MTGCommanderServer) handleGetEDHRECCombos(
+func (s *Server) handleGetEDHRECCombos(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -135,7 +135,7 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(
 	return mcp.NewToolResultText(output), nil
 }
 
-func (s *MTGCommanderServer) handleGetEDHRECSetCards(
+func (s *Server) handleGetEDHRECSetCards(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {

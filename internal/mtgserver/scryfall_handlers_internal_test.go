@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 )
 
 // newTestScryfallServer spins up an httptest server with the given handler and
-// returns an MTGCommanderServer whose Scryfall client targets it.
-func newTestScryfallServer(t *testing.T, handler http.HandlerFunc) *MTGCommanderServer {
+// returns an Server whose Scryfall client targets it.
+func newTestScryfallServer(t *testing.T, handler http.HandlerFunc) *Server {
 	t.Helper()
 
 	ts := httptest.NewServer(handler)
@@ -25,7 +25,7 @@ func newTestScryfallServer(t *testing.T, handler http.HandlerFunc) *MTGCommander
 		t.Fatalf("failed to create scryfall test client: %v", err)
 	}
 
-	return &MTGCommanderServer{scryfallClient: client}
+	return &Server{scryfallClient: client}
 }
 
 // toolRequest builds a CallToolRequest carrying the supplied arguments.

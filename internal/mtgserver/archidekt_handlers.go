@@ -1,4 +1,4 @@
-package main
+package mtgserver
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
-func (s *MTGCommanderServer) handleGetArchidektDeck(
+func (s *Server) handleGetArchidektDeck(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -65,7 +65,7 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 	return mcp.NewToolResultText(output), nil
 }
 
-func (s *MTGCommanderServer) handleGetArchidektUserDecks(
+func (s *Server) handleGetArchidektUserDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
@@ -195,7 +195,7 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (ar
 	return params, nil
 }
 
-func (s *MTGCommanderServer) handleSearchArchidektDecks(
+func (s *Server) handleSearchArchidektDecks(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
