@@ -50,9 +50,11 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 7. **validate_deck** – Validate a Commander deck
     - 100-card deck size check
-    - Singleton rule verification (no duplicates except basics)
-    - Commander legality check
-    - Color identity validation
+    - Commander eligibility (rule 903.3) and ban check
+    - Singleton rule, exempting basic lands (including Snow-Covered) and cards like Relentless Rats
+    - Every card checked against the commander's color identity and the Commander banned list
+    - Flags names Scryfall does not recognize
+    - Looks cards up in batches of 75, so a full deck costs two Scryfall requests
     - Supports JSON array or text format decklists
 
 8. **get_card_image** – Get a card's image, localized by language
@@ -578,6 +580,8 @@ The workflow:
 - `internal/rules/e2e_test.go` - Comprehensive Rules fetch integration tests
 - `internal/httpx/json_v2_e2e_test.go` - checks `encoding/json/v2` decodes real responses like v1
 - `internal/mtgserver/scryfall_e2e_test.go` and `scryfall_image_e2e_test.go` - Scryfall API integration tests
+- `internal/mtgserver/tools_e2e_test.go` - calls every MCP tool and reads every resource against the live APIs
+  (a test fails when a registered tool has no e2e case)
 
 **Note:** E2E tests make real API calls and are subject to:
 
