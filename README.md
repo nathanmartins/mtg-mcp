@@ -203,6 +203,19 @@ The server uses stdio transport for communication with MCP clients like Claude D
 ./mtg-mcp
 ```
 
+Command-line flags:
+
+| Flag | Description |
+| ---- | ----------- |
+| `--version` | Print the version and exit |
+| `--debug` | Enable debug logging |
+| `--log-file PATH` | Write the log file to `PATH` (also settable with the `MTG_MCP_LOG_FILE` env var) |
+
+Logs go to stderr and to a log file; stdout is reserved for the MCP protocol.
+By default the log file is `mtg-mcp/mtg-commander-server.log` in the user cache directory.
+That is `~/Library/Caches` on macOS, `~/.cache` on Linux and `%LocalAppData%` on Windows.
+If the file cannot be opened, the server logs to stderr only and keeps running.
+
 #### Connecting to Claude Desktop
 
 To use this server with Claude Desktop, add the following configuration to your `claude_desktop_config.json`:
