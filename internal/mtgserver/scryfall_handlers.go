@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/BlueMonday/go-scryfall"
@@ -31,10 +32,7 @@ func (s *Server) handleSearchCards(
 	args := request.GetArguments()
 	if limitVal, hasLimit := args["limit"]; hasLimit {
 		if limitFloat, ok := limitVal.(float64); ok {
-			limit = int(limitFloat)
-			if limit > maxSearchLimit {
-				limit = maxSearchLimit
-			}
+			limit = min(int(limitFloat), maxSearchLimit)
 		}
 	}
 
@@ -629,13 +627,7 @@ func (s *Server) handleValidateDeck(
 	basicLands := []string{"plains", "island", "swamp", "mountain", "forest", "wastes"}
 	for name, count := range cardCounts {
 		if count > 1 {
-			isBasic := false
-			for _, basic := range basicLands {
-				if name == basic {
-					isBasic = true
-					break
-				}
-			}
+			isBasic := slices.Contains(basicLands, name)
 			if !isBasic {
 				duplicates = append(duplicates, fmt.Sprintf("%s (x%d)", name, count))
 			}
@@ -674,9 +666,9 @@ func parseDecklistString(decklistStr string) []string {
 // Supports grouped quantities (e.g., "9 Plains" produces 9 entries).
 func parseTextDecklist(decklistStr string) []string {
 	var cardNames []string
-	lines := strings.Split(decklistStr, "\n")
+	lines := strings.SplitSeq(decklistStr, "\n")
 
-	for _, line := range lines {
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue

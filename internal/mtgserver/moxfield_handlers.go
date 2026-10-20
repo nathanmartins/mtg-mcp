@@ -63,10 +63,7 @@ func (s *Server) handleGetMoxfieldUserDecks(
 	args := request.GetArguments()
 	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
 		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
-			pageSize = int(pageSizeFloat)
-			if pageSize > maxPageSize {
-				pageSize = maxPageSize
-			}
+			pageSize = min(int(pageSizeFloat), maxPageSize)
 		}
 	}
 

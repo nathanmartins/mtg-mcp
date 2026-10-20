@@ -494,7 +494,7 @@ func TestFormatDeckForDisplay(t *testing.T) {
 	deck := &Deck{
 		Name:         "Test Deck",
 		Format:       "commander",
-		Authors:      []interface{}{"Author1", "Author2"},
+		Authors:      []any{"Author1", "Author2"},
 		ViewCount:    1000,
 		LikeCount:    100,
 		CommentCount: 50,
@@ -675,7 +675,7 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 		deck := &Deck{
 			Name:    "Test",
 			Format:  "commander",
-			Authors: []interface{}{42, true},
+			Authors: []any{42, true},
 		}
 		got := formatDeckHeader(deck)
 		if strings.Contains(got, "**Author:**") {

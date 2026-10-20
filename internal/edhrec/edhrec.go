@@ -225,10 +225,7 @@ func GetSetCardsWithURL(ctx context.Context, setCode, baseURL string) (*Response
 // topThemes returns the highest-count themes, capped at maxThemesListed, plus the number
 // omitted. tag_counts arrives sorted by count descending.
 func topThemes(tags []TagCount) ([]TagCount, int) {
-	count := len(tags)
-	if count > maxThemesListed {
-		count = maxThemesListed
-	}
+	count := min(len(tags), maxThemesListed)
 
 	return tags[:count], len(tags) - count
 }
