@@ -74,7 +74,7 @@ func (s *MTGCommanderServer) handleBannedListResource(
 		}
 	}
 
-	data, err := json.MarshalIndent(map[string]interface{}{
+	data, err := json.MarshalIndent(map[string]any{
 		"format":       defaultFormat,
 		"total_banned": result.TotalCards,
 		"cards":        bannedCards,

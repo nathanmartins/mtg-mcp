@@ -55,7 +55,7 @@ type MoxfieldDeck struct {
 	ViewCount    int                          `json:"viewCount"`
 	LikeCount    int                          `json:"likeCount"`
 	CommentCount int                          `json:"commentCount"`
-	Authors      interface{}                  `json:"authors,omitempty"` // Can be string slice or object
+	Authors      any                          `json:"authors,omitempty"` // Can be string slice or object
 }
 
 // MoxfieldCardEntry represents a card in a Moxfield deck.
@@ -387,7 +387,7 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 
 	// Authors field can be either []string or an object, handle gracefully
 	if deck.Authors != nil {
-		authors, ok := deck.Authors.([]interface{})
+		authors, ok := deck.Authors.([]any)
 		if !ok || len(authors) == 0 {
 			goto skipAuthors
 		}
