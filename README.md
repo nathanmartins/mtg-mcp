@@ -136,7 +136,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 3. **get_glossary_term** - Get a Comprehensive Rules glossary definition by term.
 
-#### EDHREC Meta Data (2 tools)
+#### EDHREC Meta Data (3 tools)
 
 1. **get_edhrec_recommendations** – Get EDHREC recommendations for a commander
     - High-synergy cards with synergy scores
@@ -145,13 +145,20 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
     - Card categories (creatures, instants, artifacts, etc.)
     - Deck count and meta-statistics
     - Salt scores for controversial cards
+    - Optional `theme` (an EDHREC theme slug such as `infect`; the unfiltered response lists them)
+    - Optional `price_tier` (`budget` or `expensive`)
 
 2. **get_edhrec_combos** – Get popular combos for color combinations
     - Combo cards and prerequisites
     - Combo results (e.g., "Infinite mana", "Win the game")
     - Usage statistics and percentages
     - Ranked by popularity
-    - Color identity filtering (w/u/b/r/g)
+    - Colors as WUBRG letters in any order (`wu`, `UW`, `c` for colorless) or EDHREC names (`azorius`, `esper`)
+
+3. **get_edhrec_set_cards** – Get the Commander-relevant cards of a Magic set
+    - New commanders the set introduced, with their deck counts
+    - The set's cards with the share of eligible decks playing them
+    - Takes the short lowercase set code (`blb`, `c21`); full set names are not accepted
 
 ### Resources (Data Sources)
 
@@ -170,6 +177,10 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
    - Fetched at runtime from the official WotC page
    - Cached for repeated use
    - Includes all rules sections and glossary
+
+4. **ui://mtg-card** - Card image widget for MCP Apps hosts
+   - Linked from the `get_card_image` tool, so supporting hosts render the card inline
+   - The tool also returns the image itself and its URL for hosts without MCP Apps support
 
 ## Installation
 
