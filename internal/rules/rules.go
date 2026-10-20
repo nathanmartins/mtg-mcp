@@ -3,6 +3,7 @@ package rules
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,13 @@ import (
 
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
+)
+
+var (
+	errNoRulesLink   = errors.New("could not find comprehensive rules .txt link")
+	errUntrustedHost = errors.New("discovered rules link points to an untrusted host")
+	errNoRules       = errors.New("fetched rules text contained no parseable rules")
+	errTooLarge      = errors.New("rules source response exceeded")
 )
 
 const (
@@ -197,13 +205,13 @@ func getWithURL(ctx context.Context, pageURL string) (*Rules, error) {
 
 	link := rulesTxtLinkPattern.FindString(page)
 	if link == "" {
-		return nil, fmt.Errorf("could not find comprehensive rules .txt link on %s", pageURL)
+		return nil, fmt.Errorf("%w on %s", errNoRulesLink, pageURL)
 	}
 
 	// Only follow a link that stays on the same host/domain as the page we scraped, so a
 	// compromised or tampered page cannot redirect us to fetch arbitrary remote content.
 	if !rulesLinkHostAllowed(pageURL, link) {
-		return nil, fmt.Errorf("discovered rules link points to an untrusted host: %s", link)
+		return nil, fmt.Errorf("%w: %s", errUntrustedHost, link)
 	}
 
 	encodedLink := strings.ReplaceAll(link, " ", "%20")
@@ -214,7 +222,7 @@ func getWithURL(ctx context.Context, pageURL string) (*Rules, error) {
 
 	cr := Parse(txt)
 	if len(cr.rules) == 0 {
-		return nil, fmt.Errorf("fetched rules text contained no parseable rules (%d bytes)", len(txt))
+		return nil, fmt.Errorf("%w (%d bytes)", errNoRules, len(txt))
 	}
 	cr.SourceURL = encodedLink
 	return cr, nil
@@ -283,7 +291,7 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 		return "", err
 	}
 	if len(body) > rulesMaxBodyBytes {
-		return "", fmt.Errorf("rules source response exceeded %d bytes", rulesMaxBodyBytes)
+		return "", fmt.Errorf("%w %d bytes", errTooLarge, rulesMaxBodyBytes)
 	}
 	return string(body), nil
 }

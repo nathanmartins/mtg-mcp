@@ -13,6 +13,8 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
+var errNetworkDown = errors.New("network down")
+
 // commanderDeck builds a deck payload whose commander zone holds the given cards.
 func commanderDeck(publicID string, commanders ...string) Deck {
 	zone := make(map[string]CardEntry, len(commanders))
@@ -260,7 +262,7 @@ func TestIsRateLimited(t *testing.T) {
 	if isRateLimited(&httpx.StatusError{Source: apiSource, StatusCode: http.StatusNotFound}) {
 		t.Error("404 must not be detected as a rate limit")
 	}
-	if isRateLimited(errors.New("network down")) {
+	if isRateLimited(errNetworkDown) {
 		t.Error("a plain error must not be detected as a rate limit")
 	}
 }

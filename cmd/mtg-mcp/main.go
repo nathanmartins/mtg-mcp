@@ -14,6 +14,9 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/mtgserver"
 )
 
+// errUnexpectedArgs reports positional arguments; the command takes flags only.
+var errUnexpectedArgs = errors.New("unexpected arguments")
+
 // Build-time variables injected via -ldflags.
 var (
 	version   = "dev"
@@ -50,7 +53,7 @@ func parseOptions(args []string, getenv func(string) string, output io.Writer) (
 		return opts, err
 	}
 	if fs.NArg() > 0 {
-		err := fmt.Errorf("unexpected arguments: %v", fs.Args())
+		err := fmt.Errorf("%w: %v", errUnexpectedArgs, fs.Args())
 		_, _ = fmt.Fprintln(output, err)
 		fs.Usage()
 		return opts, err

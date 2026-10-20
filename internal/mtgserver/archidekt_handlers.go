@@ -168,14 +168,14 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (ar
 	params.Ascending = ascending
 
 	if params.Bracket != 0 && (params.Bracket < archidekt.MinBracket || params.Bracket > archidekt.MaxBracket) {
-		return params, fmt.Errorf("invalid bracket %d (accepted: %d-%d, or omit for all brackets)",
-			params.Bracket, archidekt.MinBracket, archidekt.MaxBracket)
+		return params, fmt.Errorf("%w bracket %d (accepted: %d-%d, or omit for all brackets)",
+			errInvalid, params.Bracket, archidekt.MinBracket, archidekt.MaxBracket)
 	}
 	if params.Page < 1 || params.Page > archidekt.SearchMaxPage {
-		return params, fmt.Errorf("invalid page %d (accepted: 1-%d)", params.Page, archidekt.SearchMaxPage)
+		return params, fmt.Errorf("%w page %d (accepted: 1-%d)", errInvalid, params.Page, archidekt.SearchMaxPage)
 	}
 	if params.Limit < 1 || params.Limit > archidekt.SearchMaxLimit {
-		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.Limit, archidekt.SearchMaxLimit)
+		return params, fmt.Errorf("%w limit %d (accepted: 1-%d)", errInvalid, params.Limit, archidekt.SearchMaxLimit)
 	}
 	if _, err = archidekt.OrderBy(params.Sort, params.Ascending); err != nil {
 		return params, err
@@ -186,8 +186,8 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (ar
 	}
 	params.Colors = colors
 	if params.DeckSize < 0 || params.DeckSize > archidekt.MaxDeckSize {
-		return params, fmt.Errorf("invalid deck_size %d (accepted: 1-%d, or omit)",
-			params.DeckSize, archidekt.MaxDeckSize)
+		return params, fmt.Errorf("%w deck_size %d (accepted: 1-%d, or omit)",
+			errInvalid, params.DeckSize, archidekt.MaxDeckSize)
 	}
 
 	return params, nil

@@ -4,6 +4,7 @@ package moxfield
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"net/http"
@@ -16,6 +17,9 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/deckfmt"
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
+
+// errUnsupportedSort reports a sort key the Moxfield API would reject.
+var errUnsupportedSort = errors.New("unsupported sort")
 
 // apiSource names Moxfield in upstream status and decode errors.
 const apiSource = "moxfield API"
@@ -154,7 +158,7 @@ func ParseSortType(sort string) (string, error) {
 	if slices.Contains(sortKeys(), sort) {
 		return sort, nil
 	}
-	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, SortValues())
+	return "", fmt.Errorf("%w %q (accepted: %s)", errUnsupportedSort, sort, SortValues())
 }
 
 // SortDirection maps a sort order onto Moxfield's capitalised wire values.

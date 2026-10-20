@@ -1,9 +1,14 @@
 package mtgserver
 
 import (
+	"errors"
 	"fmt"
 	"math"
 )
+
+// errInvalid prefixes every rejected tool argument ("invalid limit 0 (...)"), so the
+// caller-facing wording stays uniform across tools.
+var errInvalid = errors.New("invalid")
 
 const (
 	// sortDirectionAsc and sortDirectionDesc are the direction values every search tool accepts.
@@ -38,8 +43,8 @@ func sortAscendingArg(args map[string]any) (bool, error) {
 	case sortDirectionDesc:
 		return false, nil
 	default:
-		return false, fmt.Errorf("invalid sort_direction %q (accepted: %s, %s)",
-			direction, sortDirectionAsc, sortDirectionDesc)
+		return false, fmt.Errorf("%w sort_direction %q (accepted: %s, %s)",
+			errInvalid, direction, sortDirectionAsc, sortDirectionDesc)
 	}
 }
 
@@ -68,10 +73,10 @@ func enumArg(args map[string]any, key, fallback string) (string, error) {
 	}
 	value, isString := raw.(string)
 	if !isString {
-		return "", fmt.Errorf("invalid %s: expected a string, got %T", key, raw)
+		return "", fmt.Errorf("%w %s: expected a string, got %T", errInvalid, key, raw)
 	}
 	if value == "" {
-		return "", fmt.Errorf("invalid %s: expected a non-empty value", key)
+		return "", fmt.Errorf("%w %s: expected a non-empty value", errInvalid, key)
 	}
 	return value, nil
 }
@@ -85,7 +90,7 @@ func cappedIntArg(args map[string]any, key string, fallback, minimum, maximum in
 		return 0, err
 	}
 	if value < minimum {
-		return 0, fmt.Errorf("invalid %s %d (must be at least %d)", key, value, minimum)
+		return 0, fmt.Errorf("%w %s %d (must be at least %d)", errInvalid, key, value, minimum)
 	}
 	return min(value, maximum), nil
 }
@@ -102,14 +107,14 @@ func intArg(args map[string]any, key string, fallback int) (int, error) {
 	}
 	value, isFloat := raw.(float64)
 	if !isFloat {
-		return 0, fmt.Errorf("invalid %s: expected a number, got %T", key, raw)
+		return 0, fmt.Errorf("%w %s: expected a number, got %T", errInvalid, key, raw)
 	}
 	if value != math.Trunc(value) {
-		return 0, fmt.Errorf("invalid %s: expected a whole number, got %v", key, value)
+		return 0, fmt.Errorf("%w %s: expected a whole number, got %v", errInvalid, key, value)
 	}
 	if value < math.MinInt32 || value > math.MaxInt32 {
-		return 0, fmt.Errorf("invalid %s: %v is out of range (accepted: %d to %d)",
-			key, value, math.MinInt32, math.MaxInt32)
+		return 0, fmt.Errorf("%w %s: %v is out of range (accepted: %d to %d)",
+			errInvalid, key, value, math.MinInt32, math.MaxInt32)
 	}
 	return int(value), nil
 }

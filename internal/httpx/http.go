@@ -11,6 +11,9 @@ import (
 	"time"
 )
 
+// errInvalidURL reports a URL Get refuses: unparseable or not https.
+var errInvalidURL = errors.New("invalid or non-HTTPS URL")
+
 const (
 	// DefaultTimeout bounds a single request made through Get.
 	DefaultTimeout = 10 * time.Second
@@ -55,7 +58,7 @@ func APIClient() *http.Client {
 func Get(ctx context.Context, rawURL string) (*http.Response, error) {
 	parsed, err := url.Parse(rawURL)
 	if err != nil || parsed.Scheme != "https" {
-		return nil, fmt.Errorf("invalid or non-HTTPS URL: %s", rawURL)
+		return nil, fmt.Errorf("%w: %s", errInvalidURL, rawURL)
 	}
 
 	return GetWithClient(ctx, parsed.String(), defaultClient)

@@ -21,7 +21,7 @@ func optionalStringArg(args map[string]any, key string) (string, error) {
 
 	str, ok := raw.(string)
 	if !ok {
-		return "", fmt.Errorf("argument %q must be a string", key)
+		return "", fmt.Errorf("%w %s: expected a string", errInvalid, key)
 	}
 
 	return strings.TrimSpace(str), nil
@@ -44,11 +44,12 @@ func recFilterFromArgs(args map[string]any) (edhrec.RecFilter, error) {
 
 	if tier != "" && tier != edhrec.PriceTierBudget && tier != edhrec.PriceTierExpensive {
 		return edhrec.RecFilter{}, fmt.Errorf(
-			"argument %q must be %q or %q, got %q",
+			"%w %s %q (accepted: %s, %s)",
+			errInvalid,
 			paramPriceTier,
+			tier,
 			edhrec.PriceTierBudget,
 			edhrec.PriceTierExpensive,
-			tier,
 		)
 	}
 

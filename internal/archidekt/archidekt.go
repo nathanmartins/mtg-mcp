@@ -4,6 +4,7 @@ package archidekt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +14,11 @@ import (
 
 	"github.com/nathanmartins/mtg-mcp/internal/deckfmt"
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
+)
+
+var (
+	errDeckNotFound = errors.New("not found (it may be private or deleted)")
+	errNoDeckID     = errors.New("could not extract a numeric deck ID")
 )
 
 const (
@@ -139,7 +145,7 @@ func (c *Client) GetDeck(ctx context.Context, deckID int) (*Deck, error) {
 	var deck Deck
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &deck); err != nil {
 		if httpx.HasStatus(err, http.StatusNotFound) {
-			return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
+			return nil, fmt.Errorf("deck %d %w", deckID, errDeckNotFound)
 		}
 		return nil, err
 	}
@@ -188,7 +194,7 @@ func ExtractDeckID(input string) (int, error) {
 		}
 	}
 
-	return 0, fmt.Errorf("could not extract a numeric deck ID from %q", input)
+	return 0, fmt.Errorf("%w from %q", errNoDeckID, input)
 }
 
 // FormatName returns a human-readable format name for a numeric format code.

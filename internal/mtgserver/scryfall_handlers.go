@@ -18,6 +18,11 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
+var (
+	errCollectorNeedsSet = errors.New("collector_number requires set")
+	errNoBackFace        = errors.New("no back face image available for this card")
+)
+
 func (s *Server) handleSearchCards(
 	ctx context.Context,
 	request mcp.CallToolRequest,
@@ -160,13 +165,13 @@ type imageQuery struct {
 func (q imageQuery) validate() error {
 	if !isValidImageSize(q.size) {
 		return fmt.Errorf(
-			"invalid size %q; valid sizes: small, normal, large, png, art_crop, border_crop", q.size)
+			"%w size %q; valid sizes: small, normal, large, png, art_crop, border_crop", errInvalid, q.size)
 	}
 	if q.face != "" && q.face != faceFront && q.face != faceBack {
-		return fmt.Errorf("invalid face %q; valid faces: front, back", q.face)
+		return fmt.Errorf("%w face %q; valid faces: front, back", errInvalid, q.face)
 	}
 	if q.collectorNumber != "" && q.set == "" {
-		return errors.New("collector_number requires set")
+		return errCollectorNeedsSet
 	}
 
 	return nil
@@ -804,7 +809,7 @@ func getExchangeRate(ctx context.Context, rawURL string, get httpGetter) (float6
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("exchange rate request failed with status %d", resp.StatusCode)
+		return 0, &httpx.StatusError{Source: "exchange rate API", StatusCode: resp.StatusCode}
 	}
 
 	var result struct {
@@ -904,7 +909,7 @@ func cardImages(card scryfall.Card, size string) []cardImage {
 func cardImagesForFace(card scryfall.Card, size, face string) ([]cardImage, error) {
 	if card.ImageURIs != nil {
 		if face == faceBack {
-			return nil, errors.New("no back face image available for this card")
+			return nil, errNoBackFace
 		}
 		if url, ok := imageURLForSize(*card.ImageURIs, size); ok && url != "" {
 			return []cardImage{{faceName: card.Name, url: url}}, nil
@@ -922,7 +927,7 @@ func cardImagesForFace(card scryfall.Card, size, face string) ([]cardImage, erro
 	case faceBack:
 		const backFaceIndex = 1
 		if len(faces) <= backFaceIndex {
-			return nil, errors.New("no back face image available for this card")
+			return nil, errNoBackFace
 		}
 		faces = faces[backFaceIndex : backFaceIndex+1]
 	}
@@ -1075,7 +1080,7 @@ func getImageBytes(ctx context.Context, rawURL string, get httpGetter) ([]byte, 
 	}()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("image download failed with status %d", resp.StatusCode)
+		return nil, &httpx.StatusError{Source: "card image download", StatusCode: resp.StatusCode}
 	}
 
 	return io.ReadAll(resp.Body)

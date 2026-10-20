@@ -2,12 +2,20 @@ package archidekt
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
 
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
+)
+
+var (
+	errUnsupportedSort = errors.New("unsupported sort")
+	errInvalidColor    = errors.New("invalid color")
+	errDuplicateColor  = errors.New("duplicate color")
+	errPageSizeChanged = errors.New("archidekt page size changed")
 )
 
 const (
@@ -133,7 +141,7 @@ func OrderBy(sort string, ascending bool) (string, error) {
 		}
 		return "-" + field.Field, nil
 	}
-	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, SortValues())
+	return "", fmt.Errorf("%w %q (accepted: %s)", errUnsupportedSort, sort, SortValues())
 }
 
 // NormalizeColors converts a colour string such as "WU" into the
@@ -149,10 +157,15 @@ func NormalizeColors(colors string) (string, error) {
 	letters := make([]string, 0, len(trimmed))
 	for _, letter := range trimmed {
 		if !strings.ContainsRune(archidektColorLetters, letter) {
-			return "", fmt.Errorf("invalid color %q (accepted letters: %s)", string(letter), archidektColorLetters)
+			return "", fmt.Errorf(
+				"%w %q (accepted letters: %s)",
+				errInvalidColor,
+				string(letter),
+				archidektColorLetters,
+			)
 		}
 		if seen[letter] {
-			return "", fmt.Errorf("duplicate color %q", string(letter))
+			return "", fmt.Errorf("%w %q", errDuplicateColor, string(letter))
 		}
 		seen[letter] = true
 		letters = append(letters, string(letter))
@@ -227,9 +240,8 @@ func (c *Client) SearchDecks(ctx context.Context, params SearchParams) (*SearchR
 		// every offset here is wrong. Fail loudly instead of serving a silently wrong
 		// slice of results.
 		if page.Next != "" && len(page.Results) != archidektAPIPageSize {
-			return nil, fmt.Errorf(
-				"archidekt page size changed: got %d results, expected %d",
-				len(page.Results), archidektAPIPageSize)
+			return nil, fmt.Errorf("%w: got %d results, expected %d",
+				errPageSizeChanged, len(page.Results), archidektAPIPageSize)
 		}
 		collected = append(collected, page.Results...)
 		if page.Next == "" {

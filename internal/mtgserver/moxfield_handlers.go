@@ -121,13 +121,13 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (mox
 	params.SortDirection = moxfield.SortDirection(ascending)
 
 	if params.PageNumber < 1 {
-		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.PageNumber)
+		return params, fmt.Errorf("%w page %d (must be 1 or greater)", errInvalid, params.PageNumber)
 	}
 	// The limit is bounded by what verification can actually deliver, not by Moxfield's
 	// page size: at most moxfield.VerifyMaxChecks decks are ever fetched and confirmed,
 	// so a larger limit could never be honoured.
 	if params.PageSize < 1 || params.PageSize > moxfield.VerifyMaxChecks {
-		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.PageSize, moxfield.VerifyMaxChecks)
+		return params, fmt.Errorf("%w limit %d (accepted: 1-%d)", errInvalid, params.PageSize, moxfield.VerifyMaxChecks)
 	}
 
 	return params, nil

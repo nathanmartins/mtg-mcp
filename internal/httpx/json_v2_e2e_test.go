@@ -83,7 +83,7 @@ func fetchBody(t *testing.T, rawURL string) ([]byte, error) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status %d", resp.StatusCode)
+		return nil, &httpx.StatusError{Source: "e2e fetch", StatusCode: resp.StatusCode}
 	}
 	return io.ReadAll(resp.Body)
 }

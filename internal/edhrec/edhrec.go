@@ -4,6 +4,7 @@ package edhrec
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -11,6 +12,9 @@ import (
 
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
+
+// errInvalidColors reports a combo color string that is neither WUBRG letters nor a page name.
+var errInvalidColors = errors.New("invalid colors")
 
 const (
 	// DefaultBaseURL is the live EDHREC JSON pages endpoint.
@@ -223,8 +227,8 @@ func ComboPageName(colors string) (string, error) {
 		}
 	}
 	if colors == "" || strings.Trim(colors, wubrgOrder) != "" {
-		return "", fmt.Errorf("invalid colors %q: use WUBRG letters (e.g. 'wu') or an EDHREC name (e.g. 'azorius')",
-			colors)
+		return "", fmt.Errorf("%w %q: use WUBRG letters (e.g. 'wu') or an EDHREC name (e.g. 'azorius')",
+			errInvalidColors, colors)
 	}
 	return names[key.String()], nil
 }

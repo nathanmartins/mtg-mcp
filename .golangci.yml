@@ -54,6 +54,7 @@ linters:
     - durationcheck # checks for two durations multiplied together
     - embeddedstructfieldcheck # checks embedded types in structs
     - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
+    - err113 # checks that errors are static sentinels wrapped with %w rather than built ad hoc
     - errchkjson # checks types passed to the json encoding functions
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
@@ -148,7 +149,6 @@ linters:
     # - dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     # [useless without config]
     # [too strict]
-    # - err113 # checks the errors handling expressions
     # [don't see profit + I'm against of omitting errors like in the first example]
     # [replaced by errcheck]
     # [use more powerful depguard]
