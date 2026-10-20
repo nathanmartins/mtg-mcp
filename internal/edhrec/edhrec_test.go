@@ -286,7 +286,7 @@ func TestGetCombosForColors(t *testing.T) {
 		},
 		{
 			name:       "404 not found",
-			colors:     "invalid",
+			colors:     "wu",
 			mockStatus: http.StatusNotFound,
 			wantErr:    true,
 		},
@@ -798,4 +798,55 @@ func TestFormatCommanderRecsForDisplayEdgeCases(t *testing.T) {
 			t.Errorf("FormatCommanderRecs() missing truncation suffix, got:\n%s", got)
 		}
 	})
+}
+
+func TestComboPageName(t *testing.T) {
+	tests := []struct {
+		colors  string
+		want    string
+		wantErr bool
+	}{
+		{colors: "wu", want: "azorius"},
+		{colors: "UW", want: "azorius"},
+		{colors: " gw ", want: "selesnya"},
+		{colors: "rbu", want: "grixis"},
+		{colors: "gbrw", want: "dune-brood"},
+		{colors: "wubrg", want: "five-color"},
+		{colors: "w", want: "mono-white"},
+		{colors: "c", want: "colorless"},
+		{colors: "colorless", want: "colorless"},
+		{colors: "Azorius", want: "azorius"},
+		{colors: "yore-tiller", want: "yore-tiller"},
+		{colors: "wuu", want: "azorius"},
+		{colors: "", wantErr: true},
+		{colors: "zz", wantErr: true},
+		{colors: "wc", wantErr: true},
+		{colors: "white", wantErr: true},
+	}
+	for _, tt := range tests {
+		got, err := ComboPageName(tt.colors)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("ComboPageName(%q) error = %v, wantErr %v", tt.colors, err, tt.wantErr)
+			continue
+		}
+		if got != tt.want {
+			t.Errorf("ComboPageName(%q) = %q, want %q", tt.colors, got, tt.want)
+		}
+	}
+}
+
+func TestGetCombosForColorsRequestsNamedPage(t *testing.T) {
+	var gotPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		_ = json.NewEncoder(w).Encode(ComboResponse{})
+	}))
+	defer server.Close()
+
+	if _, err := GetCombosForColorsWithURL(t.Context(), "UW", server.URL); err != nil {
+		t.Fatalf("GetCombosForColorsWithURL() error = %v", err)
+	}
+	if gotPath != "/combos/azorius.json" {
+		t.Errorf("requested %q, want /combos/azorius.json", gotPath)
+	}
 }

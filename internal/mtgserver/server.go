@@ -441,7 +441,8 @@ func (s *Server) registerEDHRECTools(mcpServer *server.MCPServer) {
 			"colors",
 			mcp.Required(),
 			mcp.Description(
-				"Color combination (w=white, u=blue, b=black, r=red, g=green, e.g., 'wu' for Azorius, 'wubrg' for 5-color)",
+				"Color combination as WUBRG letters in any order ('wu' for Azorius, 'wubrg' for five-color, "+
+					"'c' for colorless) or an EDHREC name such as 'azorius', 'esper' or 'yore-tiller'",
 			),
 		),
 		mcp.WithNumber("limit",

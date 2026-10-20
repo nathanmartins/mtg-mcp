@@ -189,14 +189,60 @@ func GetCombosForColors(ctx context.Context, colors string) (*ComboData, error) 
 	return GetCombosForColorsWithURL(ctx, colors, DefaultBaseURL)
 }
 
+// wubrgOrder is the canonical color order combo page keys are written in.
+const wubrgOrder = "wubrg"
+
+// comboPageNames maps a color identity, as letters in WUBRG order, to the name EDHREC files
+// its combo page under. EDHREC has no letter-coded combo pages: /combos/wu.json is a 403.
+func comboPageNames() map[string]string {
+	return map[string]string{
+		"": "colorless", "w": "mono-white", "u": "mono-blue", "b": "mono-black", "r": "mono-red", "g": "mono-green",
+		"wu": "azorius", "ub": "dimir", "br": "rakdos", "rg": "gruul", "wg": "selesnya",
+		"wb": "orzhov", "ur": "izzet", "bg": "golgari", "wr": "boros", "ug": "simic",
+		"wub": "esper", "ubr": "grixis", "brg": "jund", "wrg": "naya", "wug": "bant",
+		"wbg": "abzan", "wur": "jeskai", "ubg": "sultai", "wbr": "mardu", "urg": "temur",
+		"wubr": "yore-tiller", "ubrg": "glint-eye", "wbrg": "dune-brood", "wurg": "ink-treader", "wubg": "witch-maw",
+		"wubrg": "five-color",
+	}
+}
+
+// ComboPageName resolves colors to EDHREC's combo page name. It accepts WUBRG letters in any
+// order and case ("UW", "c" for colorless) or a page name EDHREC already uses ("azorius").
+func ComboPageName(colors string) (string, error) {
+	colors = strings.ToLower(strings.TrimSpace(colors))
+	names := comboPageNames()
+	for _, name := range names {
+		if colors == name {
+			return name, nil
+		}
+	}
+
+	if colors == "c" {
+		return names[""], nil
+	}
+	var key strings.Builder
+	for _, color := range wubrgOrder {
+		if strings.ContainsRune(colors, color) {
+			key.WriteRune(color)
+		}
+	}
+	if colors == "" || strings.Trim(colors, wubrgOrder) != "" {
+		return "", fmt.Errorf("invalid colors %q: use WUBRG letters (e.g. 'wu') or an EDHREC name (e.g. 'azorius')",
+			colors)
+	}
+	return names[key.String()], nil
+}
+
 // GetCombosForColorsWithURL fetches combos with a custom base URL.
 func GetCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ComboData, error) {
-	// Color codes: w (white), u (blue), b (black), r (red), g (green)
-	// Examples: "wu" (azorius), "ubr" (grixis), "wubrg" (5-color)
-	reqURL := fmt.Sprintf("%s/combos/%s.json", baseURL, url.PathEscape(strings.ToLower(colors)))
+	pageName, err := ComboPageName(colors)
+	if err != nil {
+		return nil, err
+	}
+	reqURL := fmt.Sprintf("%s/combos/%s.json", baseURL, url.PathEscape(pageName))
 
 	var comboResp ComboResponse
-	if err := fetchEDHRECPage(ctx, reqURL, "combos", &comboResp); err != nil {
+	if err = fetchEDHRECPage(ctx, reqURL, "combos", &comboResp); err != nil {
 		return nil, err
 	}
 
