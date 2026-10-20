@@ -581,77 +581,156 @@ func (s *Server) handleValidateDeck(
 
 	cardNames := parseDecklistString(decklistStr)
 
-	var output strings.Builder
-	output.WriteString("# Commander Deck Validation\n\n")
-
 	commander, err := s.scryfallClient.GetCardByName(ctx, commanderName, false, scryfall.GetCardByNameOptions{})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Commander card not found: %v", err)), nil
 	}
 
-	colorIdentity := make([]string, len(commander.ColorIdentity))
-	for i, c := range commander.ColorIdentity {
-		colorIdentity[i] = string(c)
-	}
-
-	_, _ = fmt.Fprintf(&output, "**Commander:** %s\n", commander.Name)
-	_, _ = fmt.Fprintf(&output, "**Color Identity:** %s\n\n", strings.Join(colorIdentity, ", "))
+	report := &deckReport{}
+	report.printf("# Commander Deck Validation\n\n")
+	report.printf("**Commander:** %s\n", commander.Name)
+	report.printf("**Color Identity:** %s\n\n", formatColorIdentity(commander.ColorIdentity))
 
 	if commander.Legalities.Commander == scryfall.LegalityBanned {
-		output.WriteString("❌ **ERROR:** Your commander is banned in Commander format!\n\n")
+		report.problem("❌ **ERROR:** Your commander is banned in Commander format!\n\n")
+	}
+	if !commanderEligible(commander) {
+		report.problem("❌ **ERROR:** This card cannot be a commander: it must be a legendary creature, Vehicle, " +
+			"or Spacecraft with power/toughness, or say it can be your commander (rule 903.3).\n\n")
 	}
 
-	isLegendary := strings.Contains(strings.ToLower(commander.TypeLine), "legendary")
-	canBeCommander := isLegendary || strings.Contains(strings.ToLower(commander.OracleText), "can be your commander")
+	report.deckSize(len(cardNames))
 
-	if !canBeCommander {
-		output.WriteString(
-			"❌ **ERROR:** This card cannot be a commander (must be legendary or have special text allowing it)!\n\n",
-		)
+	cards, unknown, lookupErr := s.lookupCards(ctx, cardNames)
+	report.singleton(cardNames, cards)
+	if lookupErr != nil {
+		logging.Get().Warn().Err(lookupErr).Str("tool", "validate_deck").Msg("Card lookup failed")
+		report.problem(fmt.Sprintf("\n⚠️ **Could not check color identity or card legality:** %v\n", lookupErr))
+	} else {
+		report.cardChecks(cardNames, cards, unknown, commander.ColorIdentity)
 	}
 
-	totalCards := len(cardNames)
-	_, _ = fmt.Fprintf(&output, "**Deck Size:** %d cards ", totalCards)
-	switch totalCards {
+	report.verdict()
+	return mcp.NewToolResultText(report.String()), nil
+}
+
+// deckReport accumulates validate_deck output and counts the problems it reports.
+type deckReport struct {
+	out      strings.Builder
+	problems int
+}
+
+func (r *deckReport) String() string {
+	return r.out.String()
+}
+
+func (r *deckReport) printf(format string, args ...any) {
+	_, _ = fmt.Fprintf(&r.out, format, args...)
+}
+
+// problem writes text that describes a rule violation (or an unverifiable check).
+func (r *deckReport) problem(text string) {
+	r.problems++
+	r.out.WriteString(text)
+}
+
+// list writes a heading and its sorted entries, counting a problem when there are entries.
+func (r *deckReport) list(heading, okText string, entries []string) {
+	if len(entries) == 0 {
+		r.printf("\n**%s:** ✅ %s\n", heading, okText)
+		return
+	}
+	slices.Sort(entries)
+	r.problems++
+	r.printf("\n**%s:** ❌\n", heading)
+	for _, entry := range entries {
+		r.printf("  - %s\n", entry)
+	}
+}
+
+func (r *deckReport) deckSize(total int) {
+	r.printf("**Deck Size:** %d cards ", total)
+	switch total {
 	case deckValidationBasicCardCount:
-		output.WriteString("✅\n")
+		r.out.WriteString("✅\n")
 	case deckValidationCommanderCount:
-		output.WriteString("(Note: 100 cards including commander, should be 99 in decklist)\n")
+		r.out.WriteString("(Note: 100 cards including commander, should be 99 in decklist)\n")
 	default:
-		output.WriteString("❌ (should be 99 cards plus commander)\n")
+		r.problem("❌ (should be 99 cards plus commander)\n")
 	}
+}
 
-	cardCounts := make(map[string]int)
-	for _, name := range cardNames {
-		cardCounts[strings.ToLower(strings.TrimSpace(name))]++
+// singleton flags cards present more often than allowed. With card data it honours the Basic
+// supertype and cards whose text permits more copies; otherwise it falls back to basic names.
+func (r *deckReport) singleton(names []string, cards map[string]scryfall.Card) {
+	counts := make(map[string]int)
+	display := make(map[string]string)
+	limits := make(map[string]int)
+	for _, name := range names {
+		key := cardKey(name)
+		limit := 1
+		if card, ok := cards[key]; ok {
+			key, limit = cardKey(card.Name), allowedCopies(card)
+			display[key] = card.Name
+		} else if slices.Contains(basicLandNames(), key) {
+			limit = unlimitedCopies
+		}
+		if _, ok := display[key]; !ok {
+			display[key] = strings.TrimSpace(name)
+		}
+		counts[key]++
+		limits[key] = limit
 	}
 
 	var duplicates []string
-	basicLands := []string{"plains", "island", "swamp", "mountain", "forest", "wastes"}
-	for name, count := range cardCounts {
-		if count > 1 {
-			isBasic := slices.Contains(basicLands, name)
-			if !isBasic {
-				duplicates = append(duplicates, fmt.Sprintf("%s (x%d)", name, count))
-			}
+	for key, count := range counts {
+		if limit := limits[key]; limit != unlimitedCopies && count > limit {
+			duplicates = append(duplicates, fmt.Sprintf("%s (x%d)", display[key], count))
+		}
+	}
+	r.list("Singleton Rule", "No duplicates", duplicates)
+}
+
+// cardChecks reports unknown names, cards outside the commander's color identity, and cards
+// that are banned or not legal in Commander.
+func (r *deckReport) cardChecks(
+	names []string,
+	cards map[string]scryfall.Card,
+	unknown []string,
+	identity []scryfall.Color,
+) {
+	var offColor, banned []string
+	checked := make(map[string]bool)
+	for _, name := range names {
+		card, ok := cards[cardKey(name)]
+		if !ok || checked[card.Name] {
+			continue
+		}
+		checked[card.Name] = true
+		if !colorIdentityWithin(card, identity) {
+			offColor = append(offColor, fmt.Sprintf("%s (%s)", card.Name, formatColorIdentity(card.ColorIdentity)))
+		}
+		switch card.Legalities.Commander {
+		case scryfall.LegalityBanned:
+			banned = append(banned, card.Name+" (banned)")
+		case scryfall.LegalityNotLegal:
+			banned = append(banned, card.Name+" (not legal in Commander)")
+		case scryfall.LegalityLegal, scryfall.LegalityRestricted:
 		}
 	}
 
-	output.WriteString("\n**Singleton Rule:** ")
-	if len(duplicates) == 0 {
-		output.WriteString("✅ No duplicates\n")
-	} else {
-		output.WriteString("❌ Found duplicates:\n")
-		for _, dup := range duplicates {
-			_, _ = fmt.Fprintf(&output, "  - %s\n", dup)
-		}
+	r.list("Color Identity", "Every card is within the commander's color identity", offColor)
+	r.list("Banned List", "No banned or illegal cards", banned)
+	r.list("Card Names", "Every card was found on Scryfall", unknown)
+}
+
+// verdict ends the report with a one-line summary.
+func (r *deckReport) verdict() {
+	if r.problems == 0 {
+		r.out.WriteString("\n**Result:** ✅ The deck passes every check.\n")
+		return
 	}
-
-	output.WriteString(
-		"\n*Note: Full color identity and banned card validation requires checking each card individually, which may take some time.*",
-	)
-
-	return mcp.NewToolResultText(output.String()), nil
+	r.printf("\n**Result:** ❌ Found %d problem area(s); see above.\n", r.problems)
 }
 
 // parseDecklistString converts a decklist from JSON or text format to card names.
