@@ -119,18 +119,23 @@ func (f EDHRECRecFilter) segments() string {
 	return path.String()
 }
 
+// edhrecSlugInvalidChars and edhrecSlugHyphenRuns are compiled once rather than on every
+// SanitizeCardName call.
+var (
+	edhrecSlugInvalidChars = regexp.MustCompile("[^a-z0-9-]+")
+	edhrecSlugHyphenRuns   = regexp.MustCompile("-+")
+)
+
 // SanitizeCardName converts a card name to EDHREC URL format.
 func SanitizeCardName(name string) string {
 	// Lowercase
 	sanitized := strings.ToLower(name)
 
 	// Remove special characters and replace spaces with hyphens
-	reg := regexp.MustCompile("[^a-z0-9-]+")
-	sanitized = reg.ReplaceAllString(strings.ReplaceAll(sanitized, " ", "-"), "")
+	sanitized = edhrecSlugInvalidChars.ReplaceAllString(strings.ReplaceAll(sanitized, " ", "-"), "")
 
 	// Remove duplicate hyphens
-	reg2 := regexp.MustCompile("-+")
-	sanitized = reg2.ReplaceAllString(sanitized, "-")
+	sanitized = edhrecSlugHyphenRuns.ReplaceAllString(sanitized, "-")
 
 	// Trim hyphens from start and end
 	sanitized = strings.Trim(sanitized, "-")
