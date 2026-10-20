@@ -235,7 +235,8 @@ func ExtractPublicIDFromURL(url string) string {
 	return url // Return as-is if no parsing needed
 }
 
-// deckCardGroups organizes deck cards by type for display formatting.
+// deckCardGroups organizes deck cards by type for display formatting. It is shared by the
+// Moxfield and Archidekt deck formatters so both render mainboards identically.
 type deckCardGroups struct {
 	creatures     []string
 	instants      []string
@@ -248,44 +249,51 @@ type deckCardGroups struct {
 	totalCards    int
 }
 
+// add files one card entry under the first matching type in typeLine. The order matters:
+// an artifact creature is a creature, and a land creature is a creature too.
+func (g *deckCardGroups) add(typeLine, name string, quantity int) {
+	cardLine := fmt.Sprintf("%dx %s", quantity, name)
+	g.totalCards += quantity
+
+	typeLine = strings.ToLower(typeLine)
+	switch {
+	case strings.Contains(typeLine, "creature"):
+		g.creatures = append(g.creatures, cardLine)
+	case strings.Contains(typeLine, "instant"):
+		g.instants = append(g.instants, cardLine)
+	case strings.Contains(typeLine, "sorcery"):
+		g.sorceries = append(g.sorceries, cardLine)
+	case strings.Contains(typeLine, "artifact"):
+		g.artifacts = append(g.artifacts, cardLine)
+	case strings.Contains(typeLine, "enchantment"):
+		g.enchantments = append(g.enchantments, cardLine)
+	case strings.Contains(typeLine, "planeswalker"):
+		g.planeswalkers = append(g.planeswalkers, cardLine)
+	case strings.Contains(typeLine, "land"):
+		g.lands = append(g.lands, cardLine)
+	default:
+		g.others = append(g.others, cardLine)
+	}
+}
+
+// writeTo renders every non-empty group, in the fixed order the deck output uses.
+func (g *deckCardGroups) writeTo(output *strings.Builder) {
+	output.WriteString(formatCardGroup("Creatures", g.creatures))
+	output.WriteString(formatCardGroup("Instants", g.instants))
+	output.WriteString(formatCardGroup("Sorceries", g.sorceries))
+	output.WriteString(formatCardGroup("Artifacts", g.artifacts))
+	output.WriteString(formatCardGroup("Enchantments", g.enchantments))
+	output.WriteString(formatCardGroup("Planeswalkers", g.planeswalkers))
+	output.WriteString(formatCardGroup("Lands", g.lands))
+	output.WriteString(formatCardGroup("Other", g.others))
+}
+
 // groupDeckCards categorizes mainboard cards by type.
 func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
-	groups := deckCardGroups{
-		creatures:     []string{},
-		instants:      []string{},
-		sorceries:     []string{},
-		artifacts:     []string{},
-		enchantments:  []string{},
-		planeswalkers: []string{},
-		lands:         []string{},
-		others:        []string{},
-	}
-
+	var groups deckCardGroups
 	for _, entry := range mainboard {
-		cardLine := fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.Name)
-		groups.totalCards += entry.Quantity
-
-		typeLine := strings.ToLower(entry.Card.TypeLine)
-		switch {
-		case strings.Contains(typeLine, "creature"):
-			groups.creatures = append(groups.creatures, cardLine)
-		case strings.Contains(typeLine, "instant"):
-			groups.instants = append(groups.instants, cardLine)
-		case strings.Contains(typeLine, "sorcery"):
-			groups.sorceries = append(groups.sorceries, cardLine)
-		case strings.Contains(typeLine, "artifact"):
-			groups.artifacts = append(groups.artifacts, cardLine)
-		case strings.Contains(typeLine, "enchantment"):
-			groups.enchantments = append(groups.enchantments, cardLine)
-		case strings.Contains(typeLine, "planeswalker"):
-			groups.planeswalkers = append(groups.planeswalkers, cardLine)
-		case strings.Contains(typeLine, "land"):
-			groups.lands = append(groups.lands, cardLine)
-		default:
-			groups.others = append(groups.others, cardLine)
-		}
+		groups.add(entry.Card.TypeLine, entry.Card.Name, entry.Quantity)
 	}
-
 	return groups
 }
 
@@ -365,16 +373,7 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 
 	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(deck.Commanders))
 
-	output.WriteString(formatCardGroup("Creatures", groups.creatures))
-	output.WriteString(formatCardGroup("Instants", groups.instants))
-	output.WriteString(formatCardGroup("Sorceries", groups.sorceries))
-	output.WriteString(formatCardGroup("Artifacts", groups.artifacts))
-	output.WriteString(formatCardGroup("Enchantments", groups.enchantments))
-	output.WriteString(formatCardGroup("Planeswalkers", groups.planeswalkers))
-	output.WriteString(formatCardGroup("Lands", groups.lands))
-	if len(groups.others) > 0 {
-		output.WriteString(formatCardGroup("Other", groups.others))
-	}
+	groups.writeTo(&output)
 
 	// Sideboard
 	if len(deck.Sideboard) > 0 {

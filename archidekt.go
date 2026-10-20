@@ -332,16 +332,7 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	output.WriteString("\n## Mainboard\n")
 	_, _ = fmt.Fprintf(&output, "\n**Total Cards:** %d\n\n", groups.totalCards+len(commanders))
 
-	output.WriteString(formatCardGroup("Creatures", groups.creatures))
-	output.WriteString(formatCardGroup("Instants", groups.instants))
-	output.WriteString(formatCardGroup("Sorceries", groups.sorceries))
-	output.WriteString(formatCardGroup("Artifacts", groups.artifacts))
-	output.WriteString(formatCardGroup("Enchantments", groups.enchantments))
-	output.WriteString(formatCardGroup("Planeswalkers", groups.planeswalkers))
-	output.WriteString(formatCardGroup("Lands", groups.lands))
-	if len(groups.others) > 0 {
-		output.WriteString(formatCardGroup("Other", groups.others))
-	}
+	groups.writeTo(&output)
 
 	// Out-of-deck zones (Sideboard / Maybeboard), listed separately
 	var maybeboard, sideboard []string
@@ -398,46 +389,14 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 // groupArchidektDeckCards categorizes non-commander, in-deck cards by oracle type,
 // excluding cards that sit outside the deck (Sideboard / Maybeboard).
 func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[string]bool) deckCardGroups {
-	groups := deckCardGroups{
-		creatures:     []string{},
-		instants:      []string{},
-		sorceries:     []string{},
-		artifacts:     []string{},
-		enchantments:  []string{},
-		planeswalkers: []string{},
-		lands:         []string{},
-		others:        []string{},
-	}
-
+	var groups deckCardGroups
 	for _, entry := range cards {
 		// Skip commanders and cards outside the deck (Sideboard / Maybeboard)
 		if archidektIsCommander(entry, premier) || !archidektEntryInDeck(entry, excluded) {
 			continue
 		}
-
-		cardLine := fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name)
-		groups.totalCards += entry.Quantity
-
-		typeLine := strings.ToLower(strings.Join(entry.Card.OracleCard.Types, " "))
-		switch {
-		case strings.Contains(typeLine, "creature"):
-			groups.creatures = append(groups.creatures, cardLine)
-		case strings.Contains(typeLine, "instant"):
-			groups.instants = append(groups.instants, cardLine)
-		case strings.Contains(typeLine, "sorcery"):
-			groups.sorceries = append(groups.sorceries, cardLine)
-		case strings.Contains(typeLine, "artifact"):
-			groups.artifacts = append(groups.artifacts, cardLine)
-		case strings.Contains(typeLine, "enchantment"):
-			groups.enchantments = append(groups.enchantments, cardLine)
-		case strings.Contains(typeLine, "planeswalker"):
-			groups.planeswalkers = append(groups.planeswalkers, cardLine)
-		case strings.Contains(typeLine, "land"):
-			groups.lands = append(groups.lands, cardLine)
-		default:
-			groups.others = append(groups.others, cardLine)
-		}
+		oracle := entry.Card.OracleCard
+		groups.add(strings.Join(oracle.Types, " "), oracle.Name, entry.Quantity)
 	}
-
 	return groups
 }
