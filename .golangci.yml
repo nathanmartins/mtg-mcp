@@ -45,26 +45,29 @@ linters:
     - bidichk # checks for dangerous unicode character sequences
     - bodyclose # checks whether HTTP response body is closed successfully
     - canonicalheader # checks whether net/http.Header uses canonical header
+    - contextcheck # checks whether a function uses a non-inherited context
     - copyloopvar # detects places where loop variables are copied (Go 1.22+)
     - cyclop # checks function and package cyclomatic complexity
     - depguard # checks if package imports are in a list of acceptable packages
     - dupl # tool for code clone detection
+    - dupword # checks for duplicate words in the source code
     - durationcheck # checks for two durations multiplied together
     - embeddedstructfieldcheck # checks embedded types in structs
     - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
+    - errchkjson # checks types passed to the json encoding functions
     - errname # checks that sentinel errors are prefixed with the Err and error types are suffixed with the Error
     - errorlint # finds code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # checks exhaustiveness of enum switch statements
     - exptostd # detects functions from golang.org/x/exp/ that can be replaced by std functions
     - fatcontext # detects nested contexts in loops
     - forbidigo # forbids identifiers
+    - forcetypeassert # finds forced type assertions
     - funcorder # checks the order of functions, methods, and constructors
     - funlen # tool for detection of long functions
     - gocheckcompilerdirectives # validates go compiler directive comments (//go:)
     - gochecknoglobals # checks that no global variables exist
     - gochecknoinits # checks that no init functions are present in Go code
     - gochecksumtype # checks exhaustiveness on Go "sum types"
-    # - gocognit # computes and checks the cognitive complexity of functions
     - goconst # finds repeated strings that could be replaced by a constant
     - gocritic # provides diagnostics that check for bugs, performance and style issues
     - gocyclo # computes and checks the cyclomatic complexity of functions
@@ -79,13 +82,13 @@ linters:
     - loggercheck # checks key value pairs for common logger libraries (kitlog,klog,logr,zap)
     - makezero # finds slice declarations with non-zero initial length
     - mirror # reports wrong mirror patterns of bytes/strings usage
+    - misspell # finds commonly misspelled English words in comments
     - mnd # detects magic numbers
     - modernize # suggests simplifications using modern Go language and library features
     - musttag # enforces field tags in (un)marshaled structs
     - nakedret # finds naked returns in functions greater than a specified function length
     - nestif # reports deeply nested if statements
     - nilerr # finds the code that returns nil even if it checks that the error is not nil
-    # reports that it checks for err != nil, but it returns a different nil value error
     - nilnesserr # (powered by nilness and nilerr)
     - nilnil # checks that there is no simultaneous return of nil error and an invalid value
     - noctx # finds sending http request without context.Context
@@ -106,7 +109,7 @@ linters:
     - staticcheck # is a go vet on steroids, applying a ton of static analysis checks
     - testableexamples # checks if examples are testable (have an expected output)
     - testifylint # checks usage of github.com/stretchr/testify
-    # - testpackage # makes you use a separate _test package
+    - thelper # detects test helpers without t.Helper() and checks their parameter conventions
     - tparallel # detects inappropriate usage of t.Parallel() method in your Go test codes
     - unconvert # removes unnecessary type conversions
     - unparam # reports unused function parameters
@@ -115,6 +118,10 @@ linters:
     - usetesting # reports uses of functions with replacement inside the testing package
     - wastedassign # finds wasted assignment statements
     - whitespace # detects leading and trailing whitespace
+    - zerologlint # detects zerolog events that are built but never dispatched
+    # - gocognit # computes and checks the cognitive complexity of functions
+    # reports that it checks for err != nil, but it returns a different nil value error
+    # - testpackage # makes you use a separate _test package
 
     ## you may want to enable
     # - arangolint # opinionated best practices for arangodb client
@@ -134,21 +141,16 @@ linters:
     # [great idea, but too many false positives]
     # - varnamelen # checks that the length of a variable's name matches its scope
     # - wrapcheck # checks that errors returned from external packages are wrapped
-    # - zerologlint # detects the wrong usage of zerolog that a user forgets to dispatch zerolog.Event
 
     ## disabled
     # - containedctx # detects struct contained context.Context field
     # [too many false positives]
-    # - contextcheck # checks the function whether use a non-inherited context
     # - dogsled # checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     # [useless without config]
-    # - dupword # checks for duplicate words in the source code
     # [too strict]
     # - err113 # checks the errors handling expressions
     # [don't see profit + I'm against of omitting errors like in the first example]
-    # - errchkjson # checks types passed to the json encoding functions
     # [replaced by errcheck]
-    # - forcetypeassert # finds forced type assertions
     # [use more powerful depguard]
     # - gomodguard # allow and block lists linter for direct Go module dependencies
     # - gosmopolitan # reports certain i18n/l10n anti-patterns in your Go codebase
@@ -158,13 +160,11 @@ linters:
     # - lll # reports long lines
     # - maintidx # measures the maintainability index of each function
     # [useless]
-    # - misspell # finds commonly misspelled English words in comments
     # [too strict and mostly code is not more readable]
     # - nlreturn # checks for a new line before return and branch statements to increase code clarity
     # [too many false positives]
     # - paralleltest # detects missing usage of t.Parallel() method in your Go test
     # - tagliatelle # checks the struct tags
-    # - thelper # detects golang test helpers without t.Helper() call
     # [too strict and mostly code is not more readable]
     # - wsl # whitespace linter forces you to use empty lines
     # [too strict and mostly code is not more readable]

@@ -91,8 +91,14 @@ func fetchBody(t *testing.T, rawURL string) ([]byte, error) {
 // firstDifference renders both values as JSON and shows where they first diverge.
 func firstDifference(t *testing.T, a, b any) string {
 	t.Helper()
-	left, _ := jsonv1.Marshal(a)
-	right, _ := jsonv1.Marshal(b)
+	left, err := jsonv1.Marshal(a)
+	if err != nil {
+		return fmt.Sprintf("cannot render v1 value: %v", err)
+	}
+	right, err := jsonv1.Marshal(b)
+	if err != nil {
+		return fmt.Sprintf("cannot render v2 value: %v", err)
+	}
 	i := 0
 	for i < min(len(left), len(right)) && left[i] == right[i] {
 		i++
