@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-mtg-commander-server
-mtg-chat
+/mtg-commander-server
+/mtg-chat
 
 # Log files
 *.log
@@ -35,7 +35,7 @@ go.work
 # Build artifacts
 dist/
 build/
-mtg-mcp
+/mtg-mcp
 
 # pi agent stuff
 .pi/
