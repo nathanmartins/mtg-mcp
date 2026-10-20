@@ -484,9 +484,14 @@ func (s *Server) handleGetPrice(
 	_, _ = fmt.Fprintf(&output, "Set: %s (%s) #%s\n\n", card.SetName, strings.ToUpper(card.Set), card.CollectorNumber)
 
 	usdToBRL, err := s.fetchExchangeRate(ctx)
+	conversionNote := "converted"
 	if err != nil {
 		logging.Get().Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
-		usdToBRL = 5.40
+		usdToBRL = fallbackUSDToBRL
+		conversionNote = fmt.Sprintf(
+			"converted at a fallback rate of %.2f; the live rate was unavailable",
+			fallbackUSDToBRL,
+		)
 	}
 
 	hasPricing := false
@@ -494,7 +499,7 @@ func (s *Server) handleGetPrice(
 	if card.Prices.USD != "" {
 		_, _ = fmt.Fprintf(&output, "**USD:** $%s\n", card.Prices.USD)
 		if brl, ok := convertToBRL(card.Prices.USD, usdToBRL); ok {
-			_, _ = fmt.Fprintf(&output, "**BRL:** R$ %.2f (converted)\n", brl)
+			_, _ = fmt.Fprintf(&output, "**BRL:** R$ %.2f (%s)\n", brl, conversionNote)
 		}
 		hasPricing = true
 	}
@@ -502,7 +507,7 @@ func (s *Server) handleGetPrice(
 	if card.Prices.USDFoil != "" {
 		_, _ = fmt.Fprintf(&output, "**USD (Foil):** $%s\n", card.Prices.USDFoil)
 		if brl, ok := convertToBRL(card.Prices.USDFoil, usdToBRL); ok {
-			_, _ = fmt.Fprintf(&output, "**BRL (Foil):** R$ %.2f (converted)\n", brl)
+			_, _ = fmt.Fprintf(&output, "**BRL (Foil):** R$ %.2f (%s)\n", brl, conversionNote)
 		}
 		hasPricing = true
 	}
@@ -695,7 +700,11 @@ func parseCardLine(line string) (string, int) {
 	return line, 1
 }
 
-const exchangeRateURL = "https://api.frankfurter.app/latest?from=USD&to=BRL"
+const (
+	exchangeRateURL = "https://api.frankfurter.app/latest?from=USD&to=BRL"
+	// fallbackUSDToBRL is used when the live rate cannot be fetched; the output says so.
+	fallbackUSDToBRL = 5.40
+)
 
 // httpGetter performs an HTTP GET; httpx.Get satisfies it in production, and a stub satisfies it in tests.
 type httpGetter func(ctx context.Context, rawURL string) (*http.Response, error)

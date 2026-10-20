@@ -467,6 +467,9 @@ func TestHandleGetPrice(t *testing.T) {
 		if !strings.Contains(resultText(t, res), "BRL:** R$ 8.10") {
 			t.Errorf("expected fallback rate conversion, got:\n%s", resultText(t, res))
 		}
+		if !strings.Contains(resultText(t, res), "fallback rate of 5.40") {
+			t.Errorf("expected the output to disclose the fallback rate, got:\n%s", resultText(t, res))
+		}
 	})
 }
 
