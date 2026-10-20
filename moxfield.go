@@ -2,41 +2,21 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 )
 
-// moxfieldHTTPTimeout bounds a single Moxfield request. Commander verification issues
-// one request per candidate deck, so an unbounded client would let a single hung
-// upstream request stall the whole tool call.
-const moxfieldHTTPTimeout = 15 * time.Second
+// moxfieldSource names Moxfield in upstream status and decode errors.
+const moxfieldSource = "moxfield API"
 
-// moxfieldStatusError reports a non-200 response from the Moxfield API. The status is
-// preserved so callers can treat rate limiting (429) differently from hard failures.
-type moxfieldStatusError struct {
-	StatusCode int
-}
-
-func (e *moxfieldStatusError) Error() string {
-	return fmt.Sprintf("moxfield API returned status %d", e.StatusCode)
-}
-
-// isMoxfieldRateLimited reports whether err is a Moxfield HTTP 429.
+// isMoxfieldRateLimited reports whether err is a Moxfield HTTP 429, which callers treat
+// differently from hard failures.
 func isMoxfieldRateLimited(err error) bool {
-	var statusErr *moxfieldStatusError
-	return errors.As(err, &statusErr) && statusErr.StatusCode == http.StatusTooManyRequests
-}
-
-// moxfieldHTTPClient returns a client with an explicit timeout.
-func moxfieldHTTPClient() *http.Client {
-	return &http.Client{Timeout: moxfieldHTTPTimeout}
+	return hasStatus(err, http.StatusTooManyRequests)
 }
 
 // MoxfieldDeck represents a deck from Moxfield.
@@ -162,40 +142,17 @@ func moxfieldSortDirection(direction string) (string, error) {
 
 // GetMoxfieldDeck fetches a deck by its public ID.
 func GetMoxfieldDeck(ctx context.Context, publicID string) (*MoxfieldDeck, error) {
-	return getMoxfieldDeckWithURL(ctx, publicID, "https://api.moxfield.com/v2")
+	return getMoxfieldDeckWithURL(ctx, publicID, defaultMoxfieldBaseURL)
 }
 
 // getMoxfieldDeckWithURL fetches a deck with a custom base URL.
 func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*MoxfieldDeck, error) {
 	reqURL := fmt.Sprintf("%s/decks/all/%s", baseURL, url.PathEscape(publicID))
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := moxfieldHTTPClient()
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
-	}
-
 	var deck MoxfieldDeck
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&deck); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	if err := getJSON(ctx, apiHTTPClient(), reqURL, moxfieldSource, &deck); err != nil {
+		return nil, err
 	}
-
 	return &deck, nil
 }
 
@@ -215,33 +172,10 @@ func getUserDecksWithURL(
 	queryParams.Set("pageSize", strconv.Itoa(pageSize))
 	reqURL := fmt.Sprintf("%s/users/%s/decks?%s", baseURL, url.PathEscape(username), queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := moxfieldHTTPClient()
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
-	}
-
 	var decksResp MoxfieldUserDecksResponse
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&decksResp); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", decodeErr)
+	if err := getJSON(ctx, apiHTTPClient(), reqURL, moxfieldSource, &decksResp); err != nil {
+		return nil, err
 	}
-
 	return &decksResp, nil
 }
 
@@ -282,33 +216,10 @@ func searchMoxfieldDecksWithURL(
 	}
 	reqURL := fmt.Sprintf("%s?%s", searchURL, queryParams.Encode())
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	client := moxfieldHTTPClient()
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, &moxfieldStatusError{StatusCode: resp.StatusCode}
-	}
-
 	var searchResp MoxfieldSearchResponse
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&searchResp); decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode search response: %w", decodeErr)
+	if err := getJSON(ctx, apiHTTPClient(), reqURL, moxfieldSource, &searchResp); err != nil {
+		return nil, err
 	}
-
 	return &searchResp, nil
 }
 

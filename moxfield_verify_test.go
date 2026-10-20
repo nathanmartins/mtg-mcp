@@ -232,10 +232,10 @@ func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 }
 
 func TestIsMoxfieldRateLimited(t *testing.T) {
-	if !isMoxfieldRateLimited(&moxfieldStatusError{StatusCode: http.StatusTooManyRequests}) {
+	if !isMoxfieldRateLimited(&httpStatusError{Source: moxfieldSource, StatusCode: http.StatusTooManyRequests}) {
 		t.Error("429 must be detected as a rate limit")
 	}
-	if isMoxfieldRateLimited(&moxfieldStatusError{StatusCode: http.StatusNotFound}) {
+	if isMoxfieldRateLimited(&httpStatusError{Source: moxfieldSource, StatusCode: http.StatusNotFound}) {
 		t.Error("404 must not be detected as a rate limit")
 	}
 	if isMoxfieldRateLimited(errors.New("network down")) {
