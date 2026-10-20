@@ -7,20 +7,18 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	scryfall "github.com/BlueMonday/go-scryfall"
 )
 
-// newE2EImageServer builds a server backed by the real Scryfall API.
+// newE2EImageServer builds the production server, so the test exercises the same wiring
+// (Scryfall client and image fetcher) the binary uses.
 func newE2EImageServer(t *testing.T) *Server {
 	t.Helper()
 
-	client, err := scryfall.NewClient()
+	s, err := New()
 	if err != nil {
-		t.Fatalf("Failed to create Scryfall client: %v", err)
+		t.Fatalf("New() error = %v", err)
 	}
-
-	return &Server{scryfallClient: client}
+	return s
 }
 
 // TestGetCardImageEnglishE2E fetches a plain English card image end-to-end.
