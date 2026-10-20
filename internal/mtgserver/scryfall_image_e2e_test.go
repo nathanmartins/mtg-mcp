@@ -27,7 +27,7 @@ func TestGetCardImageEnglishE2E(t *testing.T) {
 	defer cancel()
 
 	s := newE2EImageServer(t)
-	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{"name": "Sol Ring"}))
+	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{paramName: testSolRing}))
 	if err != nil {
 		t.Fatalf("handleGetCardImage() failed: %v", err)
 	}
@@ -63,10 +63,7 @@ func TestGetCardImageItalianE2E(t *testing.T) {
 	defer cancel()
 
 	s := newE2EImageServer(t)
-	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{
-		"name":     "Sol Ring",
-		"language": "it",
-	}))
+	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{paramName: testSolRing, paramLanguage: "it"}))
 	if err != nil {
 		t.Fatalf("handleGetCardImage() failed: %v", err)
 	}
@@ -94,10 +91,10 @@ func TestGetCardImageFallbackE2E(t *testing.T) {
 
 	s := newE2EImageServer(t)
 	// Universes Beyond cards have no Italian printing.
-	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{
-		"name":     "Abaddon the Despoiler",
-		"language": "it",
-	}))
+	res, err := s.handleGetCardImage(
+		ctx,
+		toolRequest(map[string]any{paramName: "Abaddon the Despoiler", paramLanguage: "it"}),
+	)
 	if err != nil {
 		t.Fatalf("handleGetCardImage() failed: %v", err)
 	}
@@ -113,7 +110,7 @@ func TestGetCardImageDoubleFacedE2E(t *testing.T) {
 	defer cancel()
 
 	s := newE2EImageServer(t)
-	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{"name": "Delver of Secrets"}))
+	res, err := s.handleGetCardImage(ctx, toolRequest(map[string]any{paramName: testDelver}))
 	if err != nil {
 		t.Fatalf("handleGetCardImage() failed: %v", err)
 	}

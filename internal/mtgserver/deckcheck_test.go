@@ -12,20 +12,37 @@ import (
 	"github.com/BlueMonday/go-scryfall"
 )
 
+// scryfallCardJSON is the subset of a Scryfall card object the validate_deck fixtures need.
+type scryfallCardJSON struct {
+	Object        string             `json:"object"`
+	ID            string             `json:"id"`
+	Name          string             `json:"name"`
+	TypeLine      string             `json:"type_line"`
+	OracleText    string             `json:"oracle_text"`
+	ColorIdentity []string           `json:"color_identity"`
+	Legalities    map[string]string  `json:"legalities"`
+	CardFaces     []scryfallFaceJSON `json:"card_faces,omitempty"`
+}
+
+type scryfallFaceJSON struct {
+	Name     string `json:"name"`
+	TypeLine string `json:"type_line"`
+}
+
 // fixtureCard renders a minimal Scryfall card object.
-func fixtureCard(name, typeLine, oracle string, identity []string, legality string) map[string]any {
-	return map[string]any{
-		"object": "card", "id": strings.ReplaceAll(strings.ToLower(name), " ", "-"),
-		"name": name, "type_line": typeLine, "oracle_text": oracle,
-		"color_identity": identity, "legalities": map[string]string{"commander": legality},
+func fixtureCard(name, typeLine, oracle string, identity []string, legality string) *scryfallCardJSON {
+	return &scryfallCardJSON{
+		Object: "card", ID: strings.ReplaceAll(strings.ToLower(name), " ", "-"),
+		Name: name, TypeLine: typeLine, OracleText: oracle,
+		ColorIdentity: identity, Legalities: map[string]string{defaultFormat: legality},
 	}
 }
 
 // deckCheckFixture emulates the two Scryfall endpoints validate_deck uses: /cards/named for the
 // commander and /cards/collection for the decklist. Cards are looked up by lowercase name.
 type deckCheckFixture struct {
-	commander        map[string]any
-	cards            map[string]map[string]any
+	commander        *scryfallCardJSON
+	cards            map[string]*scryfallCardJSON
 	collectionStatus int
 	collectionCalls  atomic.Int32
 }
@@ -58,7 +75,7 @@ func (f *deckCheckFixture) server(t *testing.T) *Server {
 				t.Errorf("collection request has %d identifiers, Scryfall accepts %d",
 					len(req.Identifiers), collectionBatchSize)
 			}
-			data, notFound := []map[string]any{}, []map[string]string{}
+			data, notFound := []*scryfallCardJSON{}, []map[string]string{}
 			for _, id := range req.Identifiers {
 				if card, ok := f.cards[strings.ToLower(id.Name)]; ok {
 					data = append(data, card)
@@ -88,16 +105,17 @@ func writeJSON(t *testing.T, w http.ResponseWriter, v any) {
 	}
 }
 
-func atraxa() map[string]any {
-	return fixtureCard("Atraxa, Praetors' Voice", "Legendary Creature — Phyrexian Angel Horror",
-		"Flying, vigilance", []string{"W", "U", "B", "G"}, "legal")
+func atraxa() *scryfallCardJSON {
+	return fixtureCard(testAtraxa, "Legendary Creature — Phyrexian Angel Horror",
+		"Flying, vigilance", []string{"W", "U", "B", "G"}, testLegal)
 }
 
 func validateDeck(t *testing.T, s *Server, commander, decklist string) string {
 	t.Helper()
-	res, err := s.handleValidateDeck(t.Context(), toolRequest(map[string]any{
-		"commander": commander, "decklist": decklist,
-	}))
+	res, err := s.handleValidateDeck(
+		t.Context(),
+		toolRequest(map[string]any{paramCommander: commander, argDecklist: decklist}),
+	)
 	if err != nil {
 		t.Fatalf("handleValidateDeck() error = %v", err)
 	}
@@ -109,8 +127,8 @@ func TestHandleValidateDeckArguments(t *testing.T) {
 	s := fixture.server(t)
 
 	for name, args := range map[string]map[string]any{
-		"missing commander": {"decklist": "1 Sol Ring"},
-		"missing decklist":  {"commander": "Atraxa"},
+		"missing commander": {"decklist": testDecklistSolRing},
+		"missing decklist":  {defaultFormat: testAtraxaShort},
 	} {
 		res, _ := s.handleValidateDeck(t.Context(), toolRequest(args))
 		if !res.IsError {
@@ -119,27 +137,28 @@ func TestHandleValidateDeckArguments(t *testing.T) {
 	}
 
 	missing := (&deckCheckFixture{}).server(t)
-	res, _ := missing.handleValidateDeck(t.Context(), toolRequest(map[string]any{
-		"commander": "nope", "decklist": "1 Sol Ring",
-	}))
+	res, _ := missing.handleValidateDeck(
+		t.Context(),
+		toolRequest(map[string]any{paramCommander: testUnknownCard, argDecklist: testDecklistSolRing}),
+	)
 	if !res.IsError {
 		t.Error("expected an error result when the commander is not found")
 	}
 }
 
 func TestHandleValidateDeckBatchesLookupsAndPassesALegalDeck(t *testing.T) {
-	fixture := &deckCheckFixture{commander: atraxa(), cards: map[string]map[string]any{
-		"forest": fixtureCard("Forest", "Basic Land — Forest", "({T}: Add {G}.)", nil, "legal"),
+	fixture := &deckCheckFixture{commander: atraxa(), cards: map[string]*scryfallCardJSON{
+		"forest": fixtureCard("Forest", "Basic Land — Forest", "({T}: Add {G}.)", nil, testLegal),
 	}}
 	var deck strings.Builder
 	deck.WriteString("19 Forest\n")
 	for i := range 80 {
 		name := fmt.Sprintf("Test Card %d", i)
-		fixture.cards[strings.ToLower(name)] = fixtureCard(name, "Creature — Elf", "", []string{"G"}, "legal")
+		fixture.cards[strings.ToLower(name)] = fixtureCard(name, "Creature — Elf", "", []string{"G"}, testLegal)
 		_, _ = fmt.Fprintf(&deck, "1 %s\n", name)
 	}
 
-	text := validateDeck(t, fixture.server(t), "Atraxa, Praetors' Voice", deck.String())
+	text := validateDeck(t, fixture.server(t), testAtraxa, deck.String())
 
 	// 81 distinct names: one batch of 75 and one of 6.
 	if got := fixture.collectionCalls.Load(); got != 2 {
@@ -154,21 +173,30 @@ func TestHandleValidateDeckBatchesLookupsAndPassesALegalDeck(t *testing.T) {
 }
 
 func TestHandleValidateDeckReportsEveryProblem(t *testing.T) {
-	fixture := &deckCheckFixture{commander: atraxa(), cards: map[string]map[string]any{
-		"sol ring":            fixtureCard("Sol Ring", "Artifact", "{T}: Add {C}{C}.", nil, "legal"),
-		"lightning bolt":      fixtureCard("Lightning Bolt", "Instant", "Deal 3 damage.", []string{"R"}, "legal"),
-		"mana crypt":          fixtureCard("Mana Crypt", "Artifact", "", nil, "banned"),
-		"ach! hans, run!":     fixtureCard("Ach! Hans, Run!", "Enchantment", "", []string{"R", "G"}, "not_legal"),
-		"snow-covered forest": fixtureCard("Snow-Covered Forest", "Basic Snow Land — Forest", "", nil, "legal"),
-		"relentless rats": fixtureCard("Relentless Rats", "Creature — Rat",
-			"A deck can have any number of cards named Relentless Rats.", []string{"B"}, "legal"),
-		"seven dwarves": fixtureCard("Seven Dwarves", "Creature — Dwarf",
-			"A deck can have up to seven cards named Seven Dwarves.", []string{"R"}, "legal"),
-	}}
+	fixture := &deckCheckFixture{
+		commander: atraxa(),
+		cards: map[string]*scryfallCardJSON{
+			testSolRingQuery: fixtureCard(testSolRing, "Artifact", "{T}: Add {C}{C}.", nil, testLegal),
+			"lightning bolt": fixtureCard(
+				testLightningBolt,
+				"Instant",
+				"Deal 3 damage.",
+				[]string{"R"},
+				testLegal,
+			),
+			"mana crypt":          fixtureCard(testManaCrypt, "Artifact", "", nil, testBanned),
+			"ach! hans, run!":     fixtureCard("Ach! Hans, Run!", "Enchantment", "", []string{"R", "G"}, "not_legal"),
+			"snow-covered forest": fixtureCard("Snow-Covered Forest", "Basic Snow Land — Forest", "", nil, testLegal),
+			"relentless rats": fixtureCard("Relentless Rats", "Creature — Rat",
+				"A deck can have any number of cards named Relentless Rats.", []string{"B"}, testLegal),
+			"seven dwarves": fixtureCard("Seven Dwarves", "Creature — Dwarf",
+				"A deck can have up to seven cards named Seven Dwarves.", []string{"R"}, testLegal),
+		},
+	}
 	decklist := "2 Sol Ring\n1 Lightning Bolt\n1 Mana Crypt\n1 Ach! Hans, Run!\n1 Not A Real Card\n" +
 		"3 Snow-Covered Forest\n12 Relentless Rats\n8 Seven Dwarves\n"
 
-	text := validateDeck(t, fixture.server(t), "Atraxa, Praetors' Voice", decklist)
+	text := validateDeck(t, fixture.server(t), testAtraxa, decklist)
 
 	for _, want := range []string{
 		"Sol Ring (x2)", "Seven Dwarves (x8)", // over the singleton / "up to seven" limits
@@ -195,14 +223,14 @@ func TestHandleValidateDeckReportsEveryProblem(t *testing.T) {
 
 func TestHandleValidateDeckMatchesDoubleFacedCardsByFrontFace(t *testing.T) {
 	delver := fixtureCard("Delver of Secrets // Insectile Aberration", "Creature — Human Wizard // Creature — Insect",
-		"", []string{"U"}, "legal")
-	delver["card_faces"] = []map[string]any{
-		{"name": "Delver of Secrets", "type_line": "Creature — Human Wizard"},
-		{"name": "Insectile Aberration", "type_line": "Creature — Human Insect"},
+		"", []string{"U"}, testLegal)
+	delver.CardFaces = []scryfallFaceJSON{
+		{Name: testDelver, TypeLine: "Creature — Human Wizard"},
+		{Name: testInsectileAberration, TypeLine: "Creature — Human Insect"},
 	}
-	fixture := &deckCheckFixture{commander: atraxa(), cards: map[string]map[string]any{"delver of secrets": delver}}
+	fixture := &deckCheckFixture{commander: atraxa(), cards: map[string]*scryfallCardJSON{"delver of secrets": delver}}
 
-	text := validateDeck(t, fixture.server(t), "Atraxa, Praetors' Voice", "1 Delver of Secrets")
+	text := validateDeck(t, fixture.server(t), testAtraxa, "1 Delver of Secrets")
 
 	if !strings.Contains(text, "Every card was found") {
 		t.Errorf("a double-faced card named by its front face should be found\n%s", text)
@@ -212,9 +240,9 @@ func TestHandleValidateDeckMatchesDoubleFacedCardsByFrontFace(t *testing.T) {
 func TestHandleValidateDeckRejectsIneligibleCommander(t *testing.T) {
 	fixture := &deckCheckFixture{commander: fixtureCard("Urza's Ruinous Blast", "Legendary Sorcery",
 		"(You may cast a legendary sorcery only if you control a legendary creature or planeswalker.)",
-		[]string{"W"}, "legal")}
+		[]string{"W"}, testLegal)}
 
-	text := validateDeck(t, fixture.server(t), "Urza's Ruinous Blast", "1 Sol Ring")
+	text := validateDeck(t, fixture.server(t), "Urza's Ruinous Blast", testDecklistSolRing)
 
 	if !strings.Contains(text, "cannot be a commander") {
 		t.Errorf("a Legendary Sorcery must not pass as a commander\n%s", text)
@@ -224,7 +252,7 @@ func TestHandleValidateDeckRejectsIneligibleCommander(t *testing.T) {
 func TestHandleValidateDeckStillChecksSingletonWhenLookupFails(t *testing.T) {
 	fixture := &deckCheckFixture{commander: atraxa(), collectionStatus: http.StatusInternalServerError}
 
-	text := validateDeck(t, fixture.server(t), "Atraxa, Praetors' Voice", "2 Sol Ring\n4 Snow-Covered Forest")
+	text := validateDeck(t, fixture.server(t), testAtraxa, "2 Sol Ring\n4 Snow-Covered Forest")
 
 	for _, want := range []string{"Could not check color identity or card legality", "Sol Ring (x2)"} {
 		if !strings.Contains(text, want) {

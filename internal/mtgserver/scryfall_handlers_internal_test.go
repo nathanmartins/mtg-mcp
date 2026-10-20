@@ -122,7 +122,7 @@ func TestHandleSearchCards(t *testing.T) {
 			jsonResponse(w, body)
 		})
 
-		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{"query": "sol ring"}))
+		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{argQuery: testSolRingQuery}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -130,7 +130,7 @@ func TestHandleSearchCards(t *testing.T) {
 			t.Fatal("unexpected error result")
 		}
 		text := resultText(t, res)
-		for _, want := range []string{"Sol Ring", "Found 1 cards", "Type: Artifact", "Commander Legal: legal"} {
+		for _, want := range []string{testSolRing, "Found 1 cards", "Type: Artifact", "Commander Legal: legal"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("output missing %q\n%s", want, text)
 			}
@@ -143,7 +143,7 @@ func TestHandleSearchCards(t *testing.T) {
 			jsonResponse(w, body)
 		})
 
-		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{"query": "zzzz"}))
+		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{argQuery: "zzzz"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -162,10 +162,10 @@ func TestHandleSearchCards(t *testing.T) {
 		})
 
 		// limit above maxSearchLimit gets clamped; only 1 card requested via small limit here.
-		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{
-			"query": "sol ring",
-			"limit": float64(1),
-		}))
+		res, err := s.handleSearchCards(
+			t.Context(),
+			toolRequest(map[string]any{argQuery: testSolRingQuery, argLimit: float64(1)}),
+		)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -183,7 +183,7 @@ func TestHandleSearchCards(t *testing.T) {
 			scryfallError(w, http.StatusInternalServerError)
 		})
 
-		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{"query": "x"}))
+		res, err := s.handleSearchCards(t.Context(), toolRequest(map[string]any{argQuery: "x"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -218,7 +218,7 @@ func TestHandleGetCardDetails(t *testing.T) {
 			jsonResponse(w, card)
 		})
 
-		res, err := s.handleGetCardDetails(t.Context(), toolRequest(map[string]any{"name": "Test Walker"}))
+		res, err := s.handleGetCardDetails(t.Context(), toolRequest(map[string]any{paramName: "Test Walker"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -237,7 +237,7 @@ func TestHandleGetCardDetails(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
-		res, _ := s.handleGetCardDetails(t.Context(), toolRequest(map[string]any{"name": "nope"}))
+		res, _ := s.handleGetCardDetails(t.Context(), toolRequest(map[string]any{paramName: testUnknownCard}))
 		if !res.IsError {
 			t.Error("expected error result for missing card")
 		}
@@ -250,8 +250,8 @@ func TestHandleCheckLegality(t *testing.T) {
 		legality  string
 		wantInOut string
 	}{
-		{"legal", "legal", "LEGAL"},
-		{"banned", "banned", "BANNED"},
+		{testLegal, testLegal, "LEGAL"},
+		{testBanned, testBanned, "BANNED"},
 		{"not legal", "not_legal", "NOT LEGAL"},
 	}
 	for _, tc := range cases {
@@ -262,7 +262,7 @@ func TestHandleCheckLegality(t *testing.T) {
 			s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 				jsonResponse(w, card)
 			})
-			res, err := s.handleCheckLegality(t.Context(), toolRequest(map[string]any{"name": "Card X"}))
+			res, err := s.handleCheckLegality(t.Context(), toolRequest(map[string]any{paramName: "Card X"}))
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -285,7 +285,7 @@ func TestHandleCheckLegality(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
-		res, _ := s.handleCheckLegality(t.Context(), toolRequest(map[string]any{"name": "nope"}))
+		res, _ := s.handleCheckLegality(t.Context(), toolRequest(map[string]any{paramName: testUnknownCard}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -316,12 +316,12 @@ func TestHandleGetRulings(t *testing.T) {
 			}
 		})
 
-		res, err := s.handleGetRulings(t.Context(), toolRequest(map[string]any{"name": "Doubling Season"}))
+		res, err := s.handleGetRulings(t.Context(), toolRequest(map[string]any{paramName: testDoublingSeason}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		text := resultText(t, res)
-		for _, want := range []string{"Doubling Season", "Found 1 ruling", "It works like this."} {
+		for _, want := range []string{testDoublingSeason, "Found 1 ruling", "It works like this."} {
 			if !strings.Contains(text, want) {
 				t.Errorf("output missing %q\n%s", want, text)
 			}
@@ -336,7 +336,7 @@ func TestHandleGetRulings(t *testing.T) {
 			}
 			jsonResponse(w, `{"object":"list","has_more":false,"data":[]}`)
 		})
-		res, _ := s.handleGetRulings(t.Context(), toolRequest(map[string]any{"name": "Doubling Season"}))
+		res, _ := s.handleGetRulings(t.Context(), toolRequest(map[string]any{paramName: testDoublingSeason}))
 		if !strings.Contains(resultText(t, res), "No official rulings") {
 			t.Error("expected no-rulings message")
 		}
@@ -346,7 +346,7 @@ func TestHandleGetRulings(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
-		res, _ := s.handleGetRulings(t.Context(), toolRequest(map[string]any{"name": "nope"}))
+		res, _ := s.handleGetRulings(t.Context(), toolRequest(map[string]any{paramName: testUnknownCard}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -360,7 +360,7 @@ func TestHandleGetRulings(t *testing.T) {
 			}
 			scryfallError(w, http.StatusInternalServerError)
 		})
-		res, _ := s.handleGetRulings(t.Context(), toolRequest(map[string]any{"name": "Doubling Season"}))
+		res, _ := s.handleGetRulings(t.Context(), toolRequest(map[string]any{paramName: testDoublingSeason}))
 		if !res.IsError {
 			t.Error("expected error result when rulings fetch fails")
 		}
@@ -383,7 +383,7 @@ func TestHandleGetPrice(t *testing.T) {
 			}
 			jsonResponse(w, solRingJSON)
 		})
-		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{"name": "Sol Ring"}))
+		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{paramName: testSolRing}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -405,10 +405,7 @@ func TestHandleGetPrice(t *testing.T) {
 			}
 			jsonResponse(w, `{"object":"list","total_cards":1,"has_more":false,"data":[`+solRingJSON+`]}`)
 		})
-		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{
-			"name": "Sol Ring",
-			"set":  "cmr",
-		}))
+		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{paramName: testSolRing, paramSet: "cmr"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -421,10 +418,10 @@ func TestHandleGetPrice(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, `{"object":"list","total_cards":0,"has_more":false,"data":[]}`)
 		})
-		res, _ := s.handleGetPrice(t.Context(), toolRequest(map[string]any{
-			"name": "Sol Ring",
-			"set":  "zzz",
-		}))
+		res, _ := s.handleGetPrice(
+			t.Context(),
+			toolRequest(map[string]any{paramName: testSolRing, paramSet: testGibberish}),
+		)
 		if !res.IsError {
 			t.Error("expected error result for missing card in set")
 		}
@@ -436,7 +433,7 @@ func TestHandleGetPrice(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, card)
 		})
-		res, _ := s.handleGetPrice(t.Context(), toolRequest(map[string]any{"name": "No Price"}))
+		res, _ := s.handleGetPrice(t.Context(), toolRequest(map[string]any{paramName: "No Price"}))
 		if !strings.Contains(resultText(t, res), "No pricing data available") {
 			t.Error("expected no-pricing message")
 		}
@@ -446,7 +443,7 @@ func TestHandleGetPrice(t *testing.T) {
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
-		res, _ := s.handleGetPrice(t.Context(), toolRequest(map[string]any{"name": "nope"}))
+		res, _ := s.handleGetPrice(t.Context(), toolRequest(map[string]any{paramName: testUnknownCard}))
 		if !res.IsError {
 			t.Error("expected error result")
 		}
@@ -459,7 +456,7 @@ func TestHandleGetPrice(t *testing.T) {
 		s.fetchExchangeRate = func(context.Context) (float64, error) {
 			return 0, io.ErrUnexpectedEOF
 		}
-		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{"name": "Sol Ring"}))
+		res, err := s.handleGetPrice(t.Context(), toolRequest(map[string]any{paramName: testSolRing}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -486,7 +483,7 @@ func TestHandleGetBannedList(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		text := resultText(t, res)
-		for _, want := range []string{"Banned List", "Total banned cards: 2", "Mana Crypt", "Channel"} {
+		for _, want := range []string{"Banned List", "Total banned cards: 2", testManaCrypt, "Channel"} {
 			if !strings.Contains(text, want) {
 				t.Errorf("output missing %q\n%s", want, text)
 			}

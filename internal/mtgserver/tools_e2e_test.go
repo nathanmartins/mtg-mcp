@@ -28,47 +28,47 @@ type toolE2ECase struct {
 // and user-deck tools need IDs discovered at run time, so TestMoxfieldToolsE2E covers them.
 func toolE2ECases() map[string]toolE2ECase {
 	return map[string]toolE2ECase{
-		"search_cards":             {map[string]any{"query": "sol ring", "limit": 3.0}, []string{"Sol Ring"}},
-		"get_card_details":         {map[string]any{"name": "Sol Ring"}, []string{"Sol Ring", "Commander: legal"}},
-		"check_commander_legality": {map[string]any{"name": "Mana Crypt"}, []string{"Mana Crypt", "BANNED"}},
-		"get_card_rulings":         {map[string]any{"name": "Doubling Season"}, []string{"Doubling Season"}},
-		"get_card_price":           {map[string]any{"name": "Sol Ring"}, []string{"Sol Ring", "USD"}},
-		"get_banned_list":          {map[string]any{}, []string{"Banned List", "Mana Crypt"}},
+		"search_cards":             {map[string]any{argQuery: testSolRingQuery, argLimit: 3.0}, []string{testSolRing}},
+		"get_card_details":         {map[string]any{paramName: testSolRing}, []string{testSolRing, "Commander: legal"}},
+		"check_commander_legality": {map[string]any{paramName: testManaCrypt}, []string{testManaCrypt, "BANNED"}},
+		"get_card_rulings":         {map[string]any{paramName: testDoublingSeason}, []string{testDoublingSeason}},
+		"get_card_price":           {map[string]any{paramName: testSolRing}, []string{testSolRing, "USD"}},
+		"get_banned_list":          {map[string]any{}, []string{"Banned List", testManaCrypt}},
 		"validate_deck": {
 			map[string]any{
-				"commander": "Atraxa, Praetors' Voice",
+				paramCommander: testAtraxa,
 				// Delver checks that a double-faced card named by its front face resolves on the
 				// real collection endpoint; the snow basics must not count as duplicates.
-				"decklist": "1 Sol Ring\n1 Lightning Bolt\n1 Mana Crypt\n1 Delver of Secrets\n" +
+				argDecklist: "1 Sol Ring\n1 Lightning Bolt\n1 Mana Crypt\n1 Delver of Secrets\n" +
 					"4 Snow-Covered Island\n30 Forest",
 			},
 			[]string{"Lightning Bolt (R)", "Mana Crypt (banned)", "Every card was found", "No duplicates"},
 		},
-		"get_card_image": {map[string]any{"name": "Sol Ring", "size": "small"}, []string{"Sol Ring"}},
+		"get_card_image": {map[string]any{paramName: testSolRing, paramSize: "small"}, []string{testSolRing}},
 		"search_moxfield_decks": {
-			map[string]any{"commander": "Atraxa, Praetors' Voice", "limit": 1.0},
-			[]string{"Atraxa"},
+			map[string]any{paramCommander: testAtraxa, argLimit: 1.0},
+			[]string{testAtraxaShort},
 		},
-		"get_archidekt_deck":       {map[string]any{"deck_id": "18257175"}, []string{"Deathstar Hearthhull"}},
-		"get_archidekt_user_decks": {map[string]any{"username": "nathanmartins"}, []string{"nathanmartins"}},
+		"get_archidekt_deck":       {map[string]any{argDeckID: "18257175"}, []string{"Deathstar Hearthhull"}},
+		"get_archidekt_user_decks": {map[string]any{argUsername: "nathanmartins"}, []string{"nathanmartins"}},
 		"search_archidekt_decks": {
-			map[string]any{"commander": "Atraxa, Praetors' Voice", "limit": 3.0},
+			map[string]any{paramCommander: testAtraxa, argLimit: 3.0},
 			[]string{"Archidekt Decks: Atraxa"},
 		},
-		"get_rule": {map[string]any{"rule": "702.19"}, []string{"Trample"}},
+		"get_rule": {map[string]any{"rule": "702.19"}, []string{testTrample}},
 		// Matches come back in rulebook order, so with a small limit 702.19 is not among them.
 		"search_rules": {
-			map[string]any{"keyword": "trample", "limit": 2.0},
+			map[string]any{argKeyword: testKeywordTrample, argLimit: 2.0},
 			[]string{`Rules matching "trample" (2)`},
 		},
-		"get_glossary_term": {map[string]any{"term": "Trample"}, []string{"Trample"}},
+		"get_glossary_term": {map[string]any{"term": testTrample}, []string{testTrample}},
 		"get_edhrec_recommendations": {
-			map[string]any{"commander": "Atraxa, Praetors' Voice", "limit": 3.0},
-			[]string{"Atraxa"},
+			map[string]any{paramCommander: testAtraxa, argLimit: 3.0},
+			[]string{testAtraxaShort},
 		},
 		// Letters, not a page name: checks the WUBRG mapping against the live pages.
-		"get_edhrec_combos":    {map[string]any{"colors": "uw", "limit": 3.0}, []string{"Popular Combos"}},
-		"get_edhrec_set_cards": {map[string]any{"set": "blb", "limit": 3.0}, []string{"EDHREC Set Overview"}},
+		"get_edhrec_combos":    {map[string]any{argColors: "uw", argLimit: 3.0}, []string{"Popular Combos"}},
+		"get_edhrec_set_cards": {map[string]any{paramSet: "blb", argLimit: 3.0}, []string{"EDHREC Set Overview"}},
 	}
 }
 
@@ -138,13 +138,13 @@ func TestMoxfieldToolsE2E(t *testing.T) {
 	mcpServer := registeredE2EServer(t)
 
 	search, err := moxfield.NewClient().SearchDecks(t.Context(), moxfield.SearchParams{
-		CardName: "Sol Ring", Format: "commander", PageSize: 5, PageNumber: 1,
+		CardName: testSolRing, Format: defaultFormat, PageSize: 5, PageNumber: 1,
 	})
 	if err != nil || len(search.Data) == 0 {
 		t.Fatalf("finding a Moxfield deck failed: %v", err)
 	}
 
-	deckText := callTool(t, mcpServer, "get_moxfield_deck", map[string]any{"deck_id": search.Data[0].PublicID})
+	deckText := callTool(t, mcpServer, "get_moxfield_deck", map[string]any{argDeckID: search.Data[0].PublicID})
 	if !strings.Contains(deckText, search.Data[0].Name) {
 		t.Errorf("get_moxfield_deck output missing the deck name %q:\n%s", search.Data[0].Name, deckText)
 	}
@@ -154,7 +154,7 @@ func TestMoxfieldToolsE2E(t *testing.T) {
 		t.Skip("the deck lists no author, so there is no username to look up")
 	}
 	decksText := callTool(t, mcpServer, "get_moxfield_user_decks",
-		map[string]any{"username": author[1], "page_size": 5.0})
+		map[string]any{argUsername: author[1], argPageSize: 5.0})
 	if decksText == "" {
 		t.Errorf("get_moxfield_user_decks returned no text for %q", author[1])
 	}
@@ -163,8 +163,8 @@ func TestMoxfieldToolsE2E(t *testing.T) {
 func TestResourcesE2E(t *testing.T) {
 	mcpServer := registeredE2EServer(t)
 	want := map[string]string{
-		"commander://rules":       "Commander Format Rules",
-		"commander://banned-list": "Mana Crypt",
+		testRulesURI:              "Commander Format Rules",
+		"commander://banned-list": testManaCrypt,
 		"rules://comprehensive":   "Comprehensive Rules",
 		cardImageWidgetURI:        "<html",
 	}

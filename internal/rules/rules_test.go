@@ -37,7 +37,7 @@ A keyword ability that causes damage dealt by an object to be lethal. See rule 7
 func TestParse(t *testing.T) {
 	cr := Parse(sampleRulesTxt)
 
-	for _, num := range []string{"100.1", "702.19", "702.19a", "702.19b"} {
+	for _, num := range []string{"100.1", testTrampleRule, "702.19a", "702.19b"} {
 		if _, ok := cr.rules[num]; !ok {
 			t.Errorf("expected rule %q to be parsed", num)
 		}
@@ -63,7 +63,7 @@ func TestRulesLookups(t *testing.T) {
 	cr := Parse(sampleRulesTxt)
 
 	// Rule with subrules
-	got, ok := cr.Rule("702.19")
+	got, ok := cr.Rule(testTrampleRule)
 	if !ok {
 		t.Fatal("expected rule 702.19")
 	}
@@ -85,7 +85,7 @@ func TestRulesLookups(t *testing.T) {
 
 	// Search
 	matches := cr.Search("trample", 0)
-	if len(matches) == 0 || matches[0].Number != "702.19" {
+	if len(matches) == 0 || matches[0].Number != testTrampleRule {
 		t.Errorf("Search(trample) first match should be 702.19; got %+v", matches)
 	}
 	if len(cr.Search("trample", 1)) != 1 {
@@ -118,7 +118,7 @@ func TestGetWithURL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getWithURL: %v", err)
 	}
-	if _, ok := cr.Rule("702.19"); !ok {
+	if _, ok := cr.Rule(testTrampleRule); !ok {
 		t.Error("expected parsed rule 702.19 from fetched text")
 	}
 	if !strings.Contains(cr.SourceURL, "MagicCompRules") {
@@ -183,13 +183,13 @@ func TestCache_StaleOnError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should serve stale cache, got error: %v", err)
 	}
-	if _, ok := cr.Rule("702.19"); !ok {
+	if _, ok := cr.Rule(testTrampleRule); !ok {
 		t.Error("stale cache should still answer lookups")
 	}
 }
 
 func TestRulesFormatters(t *testing.T) {
-	r := FormatRule("702.19", "702.19. Trample")
+	r := FormatRule(testTrampleRule, "702.19. Trample")
 	if !strings.Contains(r, "# Rule 702.19") || !strings.Contains(r, "Trample") {
 		t.Errorf("FormatRule wrong:\n%s", r)
 	}
@@ -199,7 +199,7 @@ func TestRulesFormatters(t *testing.T) {
 		t.Errorf("empty search should say so:\n%s", empty)
 	}
 
-	s := FormatRuleSearch("trample", []Match{{Number: "702.19", Text: "702.19. Trample\nmore"}})
+	s := FormatRuleSearch("trample", []Match{{Number: testTrampleRule, Text: "702.19. Trample\nmore"}})
 	if !strings.Contains(s, "- 702.19") || !strings.Contains(s, "trample") {
 		t.Errorf("search format wrong:\n%s", s)
 	}

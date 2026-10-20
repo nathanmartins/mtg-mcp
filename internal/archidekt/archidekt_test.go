@@ -71,7 +71,7 @@ func TestFormatName(t *testing.T) {
 		code int
 		want string
 	}{
-		{3, "Commander"},
+		{3, archidektCommanderCategory},
 		{1, "Standard"},
 		{15, "Pioneer"},
 		{999, "Unknown (999)"},
@@ -95,33 +95,33 @@ func TestGetDeck(t *testing.T) {
 		EdhBracket: new(2),
 		ViewCount:  500,
 		UpdatedAt:  "2024-01-01T00:00:00Z",
-		Owner:      Owner{ID: 1, Username: "testuser"},
+		Owner:      Owner{ID: 1, Username: testUser},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
-			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: testCreature, IsPremier: false, IncludedInDeck: true},
 		},
 		Cards: []CardEntry{
 			{
 				ID:         1,
 				Quantity:   1,
-				Categories: []string{"Commander"},
+				Categories: []string{archidektCommanderCategory},
 				Card: Card{
 					OracleCard: OracleCard{
-						Name:     "Atraxa, Praetors' Voice",
+						Name:     testAtraxa,
 						ManaCost: "{G}{W}{U}{B}",
-						Types:    []string{"Creature"},
+						Types:    []string{testCreature},
 					},
 				},
 			},
 			{
 				ID:         2,
 				Quantity:   1,
-				Categories: []string{"Artifact"},
+				Categories: []string{testArtifact},
 				Card: Card{
 					OracleCard: OracleCard{
-						Name:     "Sol Ring",
+						Name:     testSolRing,
 						ManaCost: "{1}",
-						Types:    []string{"Artifact"},
+						Types:    []string{testArtifact},
 					},
 				},
 			},
@@ -199,7 +199,7 @@ func TestGetUserDecks(t *testing.T) {
 				DeckFormat: 3,
 				ViewCount:  100,
 				UpdatedAt:  "2024-01-01T00:00:00Z",
-				Owner:      Owner{Username: "testuser"},
+				Owner:      Owner{Username: testUser},
 			},
 			{
 				ID:         222,
@@ -207,7 +207,7 @@ func TestGetUserDecks(t *testing.T) {
 				DeckFormat: 15,
 				ViewCount:  50,
 				UpdatedAt:  "2024-02-01T00:00:00Z",
-				Owner:      Owner{Username: "testuser"},
+				Owner:      Owner{Username: testUser},
 			},
 		},
 	}
@@ -221,21 +221,21 @@ func TestGetUserDecks(t *testing.T) {
 	}{
 		{
 			name:       "successful fetch",
-			username:   "testuser",
+			username:   testUser,
 			page:       1,
 			mockStatus: http.StatusOK,
 			wantErr:    false,
 		},
 		{
 			name:       "page defaults to 1 when zero",
-			username:   "testuser",
+			username:   testUser,
 			page:       0,
 			mockStatus: http.StatusOK,
 			wantErr:    false,
 		},
 		{
 			name:       "server error",
-			username:   "testuser",
+			username:   testUser,
 			page:       1,
 			mockStatus: http.StatusInternalServerError,
 			wantErr:    true,
@@ -250,7 +250,7 @@ func TestGetUserDecks(t *testing.T) {
 				if q.Get("ownerUsername") != tt.username {
 					t.Errorf("ownerUsername = %q, want %q", q.Get("ownerUsername"), tt.username)
 				}
-				if q.Has("owner") || q.Has("exactowner") {
+				if q.Has(testOwner) || q.Has("exactowner") {
 					t.Error("owner/exactowner are ignored by Archidekt and must not be sent")
 				}
 
@@ -292,38 +292,38 @@ func TestFormatDeck(t *testing.T) {
 		EdhBracket: new(3),
 		ViewCount:  1000,
 		UpdatedAt:  "2024-01-15T00:00:00Z",
-		Owner:      Owner{Username: "NorwegianWhaler"},
+		Owner:      Owner{Username: testOwnerName},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Commander"},
+				Categories: []string{archidektCommanderCategory},
 				Card: Card{
 					OracleCard: OracleCard{
 						Name:  "Hylda of the Icy Crown",
-						Types: []string{"Creature"},
+						Types: []string{testCreature},
 					},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Artifact"},
+				Categories: []string{testArtifact},
 				Card: Card{
 					OracleCard: OracleCard{
-						Name:  "Sol Ring",
-						Types: []string{"Artifact"},
+						Name:  testSolRing,
+						Types: []string{testArtifact},
 					},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Instant"},
+				Categories: []string{testInstant},
 				Card: Card{
 					OracleCard: OracleCard{
 						Name:  "Counterspell",
-						Types: []string{"Instant"},
+						Types: []string{testInstant},
 					},
 				},
 			},
@@ -333,14 +333,9 @@ func TestFormatDeck(t *testing.T) {
 	got := FormatDeck(deck)
 
 	wantContains := []string{
-		"# Hylda Control",
-		"Commander",
-		"NorwegianWhaler",
-		"1000",
+		"# Hylda Control", archidektCommanderCategory, testOwnerName, "1000",
 		"EDH Bracket",
-		"Hylda of the Icy Crown",
-		"Sol Ring",
-		"Counterspell",
+		"Hylda of the Icy Crown", testSolRing, "Counterspell",
 		"https://archidekt.com/decks/12345",
 	}
 
@@ -369,30 +364,30 @@ func TestFormatLands(t *testing.T) {
 		Name:       "Hearthhull Lands",
 		DeckFormat: 3,
 		EdhBracket: new(4),
-		Owner:      Owner{Username: "testuser"},
+		Owner:      Owner{Username: testUser},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Commander"},
+				Categories: []string{archidektCommanderCategory},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Hearthhull, the Worldseed", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: "Hearthhull, the Worldseed", Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Land"},
+				Categories: []string{testLand},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Command Tower", Types: []string{"Land"}},
+					OracleCard: OracleCard{Name: testCommandTower, Types: []string{testLand}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Artifact"},
+				Categories: []string{testArtifact},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Sol Ring", Types: []string{"Artifact"}},
+					OracleCard: OracleCard{Name: testSolRing, Types: []string{testArtifact}},
 				},
 			},
 		},
@@ -400,10 +395,10 @@ func TestFormatLands(t *testing.T) {
 
 	got := FormatLands(deck)
 
-	if !strings.Contains(got, "Command Tower") {
+	if !strings.Contains(got, testCommandTower) {
 		t.Error("Expected Command Tower in lands output")
 	}
-	if strings.Contains(got, "Sol Ring") {
+	if strings.Contains(got, testSolRing) {
 		t.Error("Sol Ring should not appear in lands-only output")
 	}
 	if strings.Contains(got, "Hearthhull, the Worldseed") {
@@ -422,30 +417,30 @@ func TestFormatDeckMaybeboardSeparated(t *testing.T) {
 		ID:         555,
 		Name:       "Maybe Deck",
 		DeckFormat: 3,
-		Owner:      Owner{Username: "tester"},
+		Owner:      Owner{Username: testUsername},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
-			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
-			{ID: 3, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: testCreature, IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: archidektMaybeboardZone, IsPremier: false, IncludedInDeck: false},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Commander"},
+				Categories: []string{archidektCommanderCategory},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: testAtraxa, Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Creature"},
+				Categories: []string{testCreature},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: testLlanowarElves, Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Maybeboard"},
+				Categories: []string{archidektMaybeboardZone},
 				Card: Card{
 					OracleCard: OracleCard{Name: "Maybe Card", Types: []string{"Sorcery"}},
 				},
@@ -467,7 +462,7 @@ func TestFormatDeckMaybeboardSeparated(t *testing.T) {
 	if !strings.Contains(maybePart, "Maybe Card") {
 		t.Error("maybeboard card should appear in the Maybeboard section")
 	}
-	if !strings.Contains(mainPart, "Llanowar Elves") {
+	if !strings.Contains(mainPart, testLlanowarElves) {
 		t.Error("mainboard creature missing from Mainboard section")
 	}
 	if !strings.Contains(mainPart, "**Total Cards:** 2") {
@@ -480,31 +475,31 @@ func TestFormatLandsExcludesMaybeboard(t *testing.T) {
 		ID:         556,
 		Name:       "Maybe Lands",
 		DeckFormat: 3,
-		Owner:      Owner{Username: "tester"},
+		Owner:      Owner{Username: testUsername},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
-			{ID: 2, Name: "Land", IsPremier: false, IncludedInDeck: true},
-			{ID: 3, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: testLand, IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: archidektMaybeboardZone, IsPremier: false, IncludedInDeck: false},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Land"},
+				Categories: []string{testLand},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Command Tower", Types: []string{"Land"}},
+					OracleCard: OracleCard{Name: testCommandTower, Types: []string{testLand}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Maybeboard"},
-				Card:       Card{OracleCard: OracleCard{Name: "Bojuka Bog", Types: []string{"Land"}}},
+				Categories: []string{archidektMaybeboardZone},
+				Card:       Card{OracleCard: OracleCard{Name: "Bojuka Bog", Types: []string{testLand}}},
 			},
 		},
 	}
 
 	got := FormatLands(deck)
 
-	if !strings.Contains(got, "Command Tower") {
+	if !strings.Contains(got, testCommandTower) {
 		t.Error("mainboard land should appear in lands-only output")
 	}
 	if strings.Contains(got, "Bojuka Bog") {
@@ -517,41 +512,41 @@ func TestFormatDeckSideboardSeparated(t *testing.T) {
 		ID:         557,
 		Name:       "Side Deck",
 		DeckFormat: 3,
-		Owner:      Owner{Username: "tester"},
+		Owner:      Owner{Username: testUsername},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
-			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: testCreature, IsPremier: false, IncludedInDeck: true},
 			// Archidekt flags Sideboard as includedInDeck=true, but in Commander it is out of the deck.
-			{ID: 3, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: archidektSideboardZone, IsPremier: false, IncludedInDeck: true},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Commander"},
+				Categories: []string{archidektCommanderCategory},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: testAtraxa, Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Creature"},
+				Categories: []string{testCreature},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: testLlanowarElves, Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Sideboard"},
+				Categories: []string{archidektSideboardZone},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
+					OracleCard: OracleCard{Name: "Pithing Needle", Types: []string{testArtifact}},
 				},
 			},
 			{
 				// Mixed category: tagged Sideboard AND a type — must still be treated as sideboard.
 				Quantity:   1,
-				Categories: []string{"Sideboard", "Creature"},
+				Categories: []string{archidektSideboardZone, testCreature},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Scavenging Ooze", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: "Scavenging Ooze", Types: []string{testCreature}},
 				},
 			},
 		},
@@ -577,7 +572,7 @@ func TestFormatDeckSideboardSeparated(t *testing.T) {
 	if !strings.Contains(sidePart, "Scavenging Ooze") {
 		t.Error("mixed-category sideboard card should appear in the Sideboard section")
 	}
-	if !strings.Contains(mainPart, "Llanowar Elves") {
+	if !strings.Contains(mainPart, testLlanowarElves) {
 		t.Error("mainboard creature missing from Mainboard section")
 	}
 	if !strings.Contains(mainPart, "**Total Cards:** 2") {
@@ -590,24 +585,24 @@ func TestFormatLandsExcludesSideboard(t *testing.T) {
 		ID:         558,
 		Name:       "Side Lands",
 		DeckFormat: 3,
-		Owner:      Owner{Username: "tester"},
+		Owner:      Owner{Username: testUsername},
 		Categories: []Category{
-			{ID: 1, Name: "Land", IsPremier: false, IncludedInDeck: true},
-			{ID: 2, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
+			{ID: 1, Name: testLand, IsPremier: false, IncludedInDeck: true},
+			{ID: 2, Name: archidektSideboardZone, IsPremier: false, IncludedInDeck: true},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Land"},
+				Categories: []string{testLand},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Command Tower", Types: []string{"Land"}},
+					OracleCard: OracleCard{Name: testCommandTower, Types: []string{testLand}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Sideboard"},
+				Categories: []string{archidektSideboardZone},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Reliquary Tower", Types: []string{"Land"}},
+					OracleCard: OracleCard{Name: "Reliquary Tower", Types: []string{testLand}},
 				},
 			},
 		},
@@ -615,7 +610,7 @@ func TestFormatLandsExcludesSideboard(t *testing.T) {
 
 	got := FormatLands(deck)
 
-	if !strings.Contains(got, "Command Tower") {
+	if !strings.Contains(got, testCommandTower) {
 		t.Error("mainboard land should appear in lands-only output")
 	}
 	if strings.Contains(got, "Reliquary Tower") {
@@ -628,38 +623,38 @@ func TestFormatZonesMatchMoxfieldStyle(t *testing.T) {
 		ID:         559,
 		Name:       "Zones Deck",
 		DeckFormat: 3,
-		Owner:      Owner{Username: "tester"},
+		Owner:      Owner{Username: testUsername},
 		Categories: []Category{
-			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
-			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
-			{ID: 3, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
-			{ID: 4, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
+			{ID: 1, Name: archidektCommanderCategory, IsPremier: true, IncludedInDeck: true},
+			{ID: 2, Name: testCreature, IsPremier: false, IncludedInDeck: true},
+			{ID: 3, Name: archidektSideboardZone, IsPremier: false, IncludedInDeck: true},
+			{ID: 4, Name: archidektMaybeboardZone, IsPremier: false, IncludedInDeck: false},
 		},
 		Cards: []CardEntry{
 			{
 				Quantity:   1,
-				Categories: []string{"Commander"},
+				Categories: []string{archidektCommanderCategory},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: testAtraxa, Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Creature"},
+				Categories: []string{testCreature},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+					OracleCard: OracleCard{Name: testLlanowarElves, Types: []string{testCreature}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Sideboard"},
+				Categories: []string{archidektSideboardZone},
 				Card: Card{
-					OracleCard: OracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
+					OracleCard: OracleCard{Name: "Pithing Needle", Types: []string{testArtifact}},
 				},
 			},
 			{
 				Quantity:   1,
-				Categories: []string{"Maybeboard"},
+				Categories: []string{archidektMaybeboardZone},
 				Card: Card{
 					OracleCard: OracleCard{Name: "Demonic Tutor", Types: []string{"Sorcery"}},
 				},
@@ -687,28 +682,28 @@ func TestFormatZonesMatchMoxfieldStyle(t *testing.T) {
 }
 
 func TestGroupDeckCards(t *testing.T) {
-	premier := map[string]bool{"Commander": true}
-	excluded := map[string]bool{"Maybeboard": true}
+	premier := map[string]bool{archidektCommanderCategory: true}
+	excluded := map[string]bool{archidektMaybeboardZone: true}
 
 	cards := []CardEntry{
 		// Commander — should be skipped
 		{
 			Quantity:   1,
-			Categories: []string{"Commander"},
-			Card:       Card{OracleCard: OracleCard{Name: "Atraxa", Types: []string{"Creature"}}},
+			Categories: []string{archidektCommanderCategory},
+			Card:       Card{OracleCard: OracleCard{Name: testAtraxaShort, Types: []string{testCreature}}},
 		},
 		// Sideboard — should be skipped
 		{
 			Quantity:   1,
-			Categories: []string{"Sideboard"},
-			Card:       Card{OracleCard: OracleCard{Name: "Swansong", Types: []string{"Instant"}}},
+			Categories: []string{archidektSideboardZone},
+			Card:       Card{OracleCard: OracleCard{Name: "Swansong", Types: []string{testInstant}}},
 		},
 		// Maybeboard (excluded) — should be skipped
 		{
 			Quantity:   1,
-			Categories: []string{"Maybeboard"},
+			Categories: []string{archidektMaybeboardZone},
 			Card: Card{
-				OracleCard: OracleCard{Name: "Cyclonic Rift", Types: []string{"Instant"}},
+				OracleCard: OracleCard{Name: "Cyclonic Rift", Types: []string{testInstant}},
 			},
 		},
 		// Unknown type — should go to others
@@ -724,7 +719,7 @@ func TestGroupDeckCards(t *testing.T) {
 			Quantity:   1,
 			Categories: []string{"Mainboard"},
 			Card: Card{
-				OracleCard: OracleCard{Name: "Birds of Paradise", Types: []string{"Creature"}},
+				OracleCard: OracleCard{Name: "Birds of Paradise", Types: []string{testCreature}},
 			},
 		},
 	}
@@ -748,7 +743,7 @@ func TestFormatDeckWithBracket(t *testing.T) {
 		Name:       "Bracket Deck",
 		DeckFormat: 3,
 		EdhBracket: new(3),
-		Owner:      Owner{Username: "tester"},
+		Owner:      Owner{Username: testUsername},
 		Cards:      []CardEntry{},
 	}
 

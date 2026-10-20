@@ -42,12 +42,12 @@ func TestRulesHandlers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handleGetRule: %v", err)
 	}
-	if !strings.Contains(toolResultText(t, res), "Trample") {
+	if !strings.Contains(toolResultText(t, res), testTrample) {
 		t.Error("handleGetRule should return rule 702.19 text")
 	}
 
 	greq := mcp.CallToolRequest{}
-	greq.Params.Arguments = map[string]any{"term": "Trample"}
+	greq.Params.Arguments = map[string]any{"term": testTrample}
 	gres, err := srv.handleGetGlossaryTerm(t.Context(), greq)
 	if err != nil {
 		t.Fatalf("handleGetGlossaryTerm: %v", err)
@@ -57,7 +57,7 @@ func TestRulesHandlers(t *testing.T) {
 	}
 
 	sreq := mcp.CallToolRequest{}
-	sreq.Params.Arguments = map[string]any{"keyword": "trample", "limit": float64(1)}
+	sreq.Params.Arguments = map[string]any{argKeyword: testKeywordTrample, argLimit: float64(1)}
 	sres, err := srv.handleSearchRules(t.Context(), sreq)
 	if err != nil {
 		t.Fatalf("handleSearchRules: %v", err)

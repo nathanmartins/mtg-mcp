@@ -21,27 +21,27 @@ func TestRecFilterFromArgs(t *testing.T) {
 		},
 		{
 			name: "price tier is lowercased",
-			args: map[string]any{"price_tier": "Budget"},
-			want: edhrec.RecFilter{PriceTier: "budget"},
+			args: map[string]any{paramPriceTier: "Budget"},
+			want: edhrec.RecFilter{PriceTier: edhrec.PriceTierBudget},
 		},
 		{
 			name:    "invalid price tier names both valid values",
-			args:    map[string]any{"price_tier": "middle"},
+			args:    map[string]any{paramPriceTier: "middle"},
 			wantErr: true,
 		},
 		{
 			name:    "wrong-typed price tier is an error",
-			args:    map[string]any{"price_tier": 42},
+			args:    map[string]any{paramPriceTier: 42},
 			wantErr: true,
 		},
 		{
 			name: "theme is trimmed and lowercased",
-			args: map[string]any{"theme": " Infect "},
-			want: edhrec.RecFilter{Theme: "infect"},
+			args: map[string]any{paramTheme: " Infect "},
+			want: edhrec.RecFilter{Theme: testThemeInfect},
 		},
 		{
 			name:    "wrong-typed theme is an error",
-			args:    map[string]any{"theme": true},
+			args:    map[string]any{paramTheme: true},
 			wantErr: true,
 		},
 	}

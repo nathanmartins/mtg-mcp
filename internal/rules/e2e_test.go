@@ -13,7 +13,7 @@ func TestGetE2E(t *testing.T) {
 		t.Fatalf("failed to fetch comprehensive rules: %v", err)
 	}
 
-	text, ok := rules.Rule("702.19")
+	text, ok := rules.Rule(testTrampleRule)
 	if !ok || !strings.Contains(text, "Trample") {
 		t.Errorf("expected rule 702.19 to mention Trample; ok=%v got=%q", ok, text)
 	}

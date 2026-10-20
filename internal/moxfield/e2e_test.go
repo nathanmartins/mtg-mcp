@@ -16,10 +16,10 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 
 	// First search for a valid deck
 	searchParams := SearchParams{
-		CardName:      "Atraxa, Praetors' Voice",
-		Format:        "commander",
-		SortType:      "updated",
-		SortDirection: "Descending",
+		CardName:      testAtraxa,
+		Format:        testFormatCommander,
+		SortType:      testSortUpdated,
+		SortDirection: DirectionDescending,
 		PageSize:      1,
 		PageNumber:    1,
 	}
@@ -76,10 +76,10 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 	// Use a known public user with decks
 	// Note: This user might not exist, so we'll search for a deck owner first
 	searchParams := SearchParams{
-		CardName:      "Atraxa, Praetors' Voice",
-		Format:        "commander",
-		SortType:      "updated",
-		SortDirection: "Descending",
+		CardName:      testAtraxa,
+		Format:        testFormatCommander,
+		SortType:      testSortUpdated,
+		SortDirection: DirectionDescending,
 		PageSize:      1,
 		PageNumber:    1,
 	}
@@ -126,10 +126,10 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 
 	// Search for a popular commander
 	params := SearchParams{
-		CardName:      "Atraxa, Praetors' Voice",
-		Format:        "commander",
-		SortType:      "updated",
-		SortDirection: "Descending",
+		CardName:      testAtraxa,
+		Format:        testFormatCommander,
+		SortType:      testSortUpdated,
+		SortDirection: DirectionDescending,
 		PageSize:      5,
 		PageNumber:    1,
 	}
@@ -177,12 +177,12 @@ func TestMoxfieldExtractPublicIDE2E(t *testing.T) {
 		{
 			name:     "full URL",
 			url:      "https://www.moxfield.com/decks/6HxHcsIL70W0wT0xGHbRqw",
-			expected: "6HxHcsIL70W0wT0xGHbRqw",
+			expected: testPublicID,
 		},
 		{
 			name:     "just ID",
-			url:      "6HxHcsIL70W0wT0xGHbRqw",
-			expected: "6HxHcsIL70W0wT0xGHbRqw",
+			url:      testPublicID,
+			expected: testPublicID,
 		},
 	}
 
@@ -205,10 +205,10 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 
 	// First search for a valid deck
 	searchParams := SearchParams{
-		CardName:      "Atraxa, Praetors' Voice",
-		Format:        "commander",
-		SortType:      "updated",
-		SortDirection: "Descending",
+		CardName:      testAtraxa,
+		Format:        testFormatCommander,
+		SortType:      testSortUpdated,
+		SortDirection: DirectionDescending,
 		PageSize:      1,
 		PageNumber:    1,
 	}

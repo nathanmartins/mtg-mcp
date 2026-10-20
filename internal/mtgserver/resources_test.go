@@ -35,7 +35,7 @@ func resourceText(t *testing.T, contents []mcp.ResourceContents) string {
 func TestHandleCommanderRules(t *testing.T) {
 	s := &Server{}
 
-	contents, err := s.handleCommanderRules(t.Context(), readResourceRequest("commander://rules"))
+	contents, err := s.handleCommanderRules(t.Context(), readResourceRequest(testRulesURI))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -51,7 +51,7 @@ func TestHandleCommanderRules(t *testing.T) {
 	if !ok {
 		t.Fatalf("contents[0] is %T, want *mcp.TextResourceContents", contents[0])
 	}
-	if textContents.URI != "commander://rules" {
+	if textContents.URI != testRulesURI {
 		t.Error("expected URI to be echoed back")
 	}
 	if textContents.MIMEType != mimeTypeTextPlain {
@@ -88,13 +88,13 @@ func TestHandleBannedListResource(t *testing.T) {
 		if unmarshalErr := json.Unmarshal([]byte(text), &parsed); unmarshalErr != nil {
 			t.Fatalf("output is not valid JSON: %v\n%s", unmarshalErr, text)
 		}
-		if parsed.Format != "commander" {
+		if parsed.Format != defaultFormat {
 			t.Errorf("format = %q, want commander", parsed.Format)
 		}
 		if parsed.TotalBanned != 1 {
 			t.Errorf("total_banned = %d, want 1", parsed.TotalBanned)
 		}
-		if len(parsed.Cards) != 1 || parsed.Cards[0].Name != "Mana Crypt" {
+		if len(parsed.Cards) != 1 || parsed.Cards[0].Name != testManaCrypt {
 			t.Errorf("unexpected cards: %+v", parsed.Cards)
 		}
 	})

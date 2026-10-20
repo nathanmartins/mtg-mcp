@@ -15,11 +15,11 @@ func TestSortAscendingArg(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "default is descending", args: map[string]any{}, want: false},
-		{name: "asc", args: map[string]any{"sort_direction": "asc"}, want: true},
-		{name: "desc", args: map[string]any{"sort_direction": "desc"}, want: false},
-		{name: "unknown value", args: map[string]any{"sort_direction": "sideways"}, wantErr: true},
-		{name: "empty value", args: map[string]any{"sort_direction": ""}, wantErr: true},
-		{name: "wrong type", args: map[string]any{"sort_direction": 1.0}, wantErr: true},
+		{name: "asc", args: map[string]any{argSortDirection: "asc"}, want: true},
+		{name: "desc", args: map[string]any{argSortDirection: "desc"}, want: false},
+		{name: "unknown value", args: map[string]any{argSortDirection: "sideways"}, wantErr: true},
+		{name: "empty value", args: map[string]any{argSortDirection: ""}, wantErr: true},
+		{name: "wrong type", args: map[string]any{argSortDirection: 1.0}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -42,17 +42,17 @@ func TestCappedIntArg(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "absent uses fallback", args: map[string]any{}, want: 10},
-		{name: "in range", args: map[string]any{"limit": 25.0}, want: 25},
-		{name: "minimum allowed", args: map[string]any{"limit": 1.0}, want: 1},
-		{name: "above maximum is capped", args: map[string]any{"limit": 500.0}, want: 50},
-		{name: "below minimum", args: map[string]any{"limit": 0.0}, wantErr: true},
-		{name: "negative", args: map[string]any{"limit": -3.0}, wantErr: true},
-		{name: "fractional", args: map[string]any{"limit": 2.5}, wantErr: true},
-		{name: "string", args: map[string]any{"limit": "10"}, wantErr: true},
+		{name: "in range", args: map[string]any{argLimit: 25.0}, want: 25},
+		{name: "minimum allowed", args: map[string]any{argLimit: 1.0}, want: 1},
+		{name: "above maximum is capped", args: map[string]any{argLimit: 500.0}, want: 50},
+		{name: "below minimum", args: map[string]any{argLimit: 0.0}, wantErr: true},
+		{name: "negative", args: map[string]any{argLimit: -3.0}, wantErr: true},
+		{name: "fractional", args: map[string]any{argLimit: 2.5}, wantErr: true},
+		{name: "string", args: map[string]any{argLimit: "10"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := cappedIntArg(tt.args, "limit", 10, 1, 50)
+			got, err := cappedIntArg(tt.args, argLimit, 10, 1, 50)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("cappedIntArg() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -73,17 +73,21 @@ func TestHandlersRejectInvalidNumbers(t *testing.T) {
 		handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
 		args    map[string]any
 	}{
-		{"search_cards fractional limit", s.handleSearchCards, map[string]any{"query": "sol", "limit": 2.5}},
-		{"search_cards zero limit", s.handleSearchCards, map[string]any{"query": "sol", "limit": 0.0}},
+		{"search_cards fractional limit", s.handleSearchCards, map[string]any{argQuery: testSol, argLimit: 2.5}},
+		{"search_cards zero limit", s.handleSearchCards, map[string]any{argQuery: testSol, argLimit: 0.0}},
 		{"moxfield user decks string page_size", s.handleGetMoxfieldUserDecks,
-			map[string]any{"username": "u", "page_size": "20"}},
+			map[string]any{argUsername: "u", argPageSize: "20"}},
 		{"archidekt user decks negative page", s.handleGetArchidektUserDecks,
-			map[string]any{"username": "u", "page": -1.0}},
-		{"search_rules fractional limit", s.handleSearchRules, map[string]any{"keyword": "trample", "limit": 1.5}},
+			map[string]any{argUsername: "u", argPage: -1.0}},
+		{
+			"search_rules fractional limit",
+			s.handleSearchRules,
+			map[string]any{argKeyword: testKeywordTrample, argLimit: 1.5},
+		},
 		{"edhrec recommendations negative limit", s.handleGetEDHRECRecommendations,
-			map[string]any{"commander": "Atraxa", "limit": -1.0}},
-		{"edhrec combos fractional limit", s.handleGetEDHRECCombos, map[string]any{"colors": "wu", "limit": 0.5}},
-		{"edhrec set cards string limit", s.handleGetEDHRECSetCards, map[string]any{"set": "blb", "limit": "5"}},
+			map[string]any{paramCommander: testAtraxaShort, argLimit: -1.0}},
+		{"edhrec combos fractional limit", s.handleGetEDHRECCombos, map[string]any{argColors: "wu", argLimit: 0.5}},
+		{"edhrec set cards string limit", s.handleGetEDHRECSetCards, map[string]any{paramSet: "blb", argLimit: "5"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -21,11 +21,11 @@ func commanderDeck(publicID string, commanders ...string) Deck {
 	for _, name := range commanders {
 		zone[name] = CardEntry{Quantity: 1, Card: CardInfo{Name: name}}
 	}
-	return Deck{PublicID: publicID, Name: "deck-" + publicID, Format: "commander", Commanders: zone}
+	return Deck{PublicID: publicID, Name: "deck-" + publicID, Format: testFormatCommander, Commanders: zone}
 }
 
 func TestDeckHasCommander(t *testing.T) {
-	deck := commanderDeck("a", "Atraxa, Praetors' Voice")
+	deck := commanderDeck("a", testAtraxa)
 	partners := commanderDeck("b", "Thrasios, Triton Hero", "Tymna the Weaver")
 
 	tests := []struct {
@@ -34,11 +34,11 @@ func TestDeckHasCommander(t *testing.T) {
 		commander string
 		want      bool
 	}{
-		{"exact match", deck, "Atraxa, Praetors' Voice", true},
+		{"exact match", deck, testAtraxa, true},
 		{"case and space insensitive", deck, "  atraxa, praetors' voice ", true},
 		{"second partner matches", partners, "Tymna the Weaver", true},
-		{"card present but not commander", deck, "Sol Ring", false},
-		{"empty commander zone", Deck{PublicID: "c"}, "Atraxa, Praetors' Voice", false},
+		{"card present but not commander", deck, testSolRing, false},
+		{"empty commander zone", Deck{PublicID: "c"}, testAtraxa, false},
 	}
 
 	for _, tt := range tests {
@@ -52,9 +52,9 @@ func TestDeckHasCommander(t *testing.T) {
 
 func TestVerifyCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 	decks := map[string]Deck{
-		"yes1": commanderDeck("yes1", "Atraxa, Praetors' Voice"),
-		"no1":  commanderDeck("no1", "Winota, Joiner of Forces"),
-		"yes2": commanderDeck("yes2", "Atraxa, Praetors' Voice"),
+		testMatch1: commanderDeck(testMatch1, testAtraxa),
+		"no1":      commanderDeck("no1", "Winota, Joiner of Forces"),
+		testMatch2: commanderDeck(testMatch2, testAtraxa),
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
@@ -67,19 +67,17 @@ func TestVerifyCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 	}))
 	defer server.Close()
 
-	candidates := []DeckSummary{{PublicID: "yes1"}, {PublicID: "no1"}, {PublicID: "yes2"}}
+	candidates := []DeckSummary{{PublicID: testMatch1}, {PublicID: "no1"}, {PublicID: testMatch2}}
 	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
 		t.Context(),
-		candidates,
-		"Atraxa, Praetors' Voice",
-		10,
+		candidates, testAtraxa, 10,
 		20,
 	)
 
 	if len(got.Decks) != 2 {
 		t.Fatalf("kept %d decks, want 2", len(got.Decks))
 	}
-	if got.Decks[0].PublicID != "yes1" || got.Decks[1].PublicID != "yes2" {
+	if got.Decks[0].PublicID != testMatch1 || got.Decks[1].PublicID != testMatch2 {
 		t.Errorf("kept the wrong decks: %+v", got.Decks)
 	}
 	if got.Checked != 3 {
@@ -95,7 +93,7 @@ func TestVerifyCommanderDecksStopsAtLimit(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
-		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, testAtraxa))
 	}))
 	defer server.Close()
 
@@ -106,9 +104,7 @@ func TestVerifyCommanderDecksStopsAtLimit(t *testing.T) {
 
 	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
 		t.Context(),
-		candidates,
-		"Atraxa, Praetors' Voice",
-		3,
+		candidates, testAtraxa, 3,
 		20,
 	)
 	if len(got.Decks) != 3 {
@@ -142,9 +138,7 @@ func TestVerifyCommanderDecksRespectsCheckBudget(t *testing.T) {
 
 	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
 		t.Context(),
-		candidates,
-		"Atraxa, Praetors' Voice",
-		10,
+		candidates, testAtraxa, 10,
 		4,
 	)
 	if got.Checked != 4 {
@@ -163,20 +157,18 @@ func TestVerifyCommanderDecksReportsUnreadableDecks(t *testing.T) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, testAtraxa))
 	}))
 	defer server.Close()
 
-	candidates := []DeckSummary{{PublicID: "yes1"}, {PublicID: "gone"}}
+	candidates := []DeckSummary{{PublicID: testMatch1}, {PublicID: "gone"}}
 	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
 		t.Context(),
-		candidates,
-		"Atraxa, Praetors' Voice",
-		10,
+		candidates, testAtraxa, 10,
 		20,
 	)
 
-	if len(got.Decks) != 1 || got.Decks[0].PublicID != "yes1" {
+	if len(got.Decks) != 1 || got.Decks[0].PublicID != testMatch1 {
 		t.Fatalf("an unreadable deck must not be presented as a match: %+v", got.Decks)
 	}
 	if got.Failed != 1 {
@@ -195,7 +187,7 @@ func TestVerifyCommanderDecksStopsOnCancelledContext(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
-		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, testAtraxa))
 	}))
 	defer server.Close()
 
@@ -205,7 +197,7 @@ func TestVerifyCommanderDecksStopsOnCancelledContext(t *testing.T) {
 	cancel()
 
 	candidates := []DeckSummary{{PublicID: "a"}, {PublicID: "b"}}
-	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(ctx, candidates, "Atraxa, Praetors' Voice", 10, 20)
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(ctx, candidates, testAtraxa, 10, 20)
 
 	if requests != 0 {
 		t.Errorf("made %d requests on a cancelled context, want 0", requests)
@@ -231,16 +223,14 @@ func TestVerifyCommanderDecksStopsOnRateLimit(t *testing.T) {
 			return
 		}
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
-		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+		_ = json.NewEncoder(w).Encode(commanderDeck(id, testAtraxa))
 	}))
 	defer server.Close()
 
 	candidates := []DeckSummary{{PublicID: "a"}, {PublicID: "b"}, {PublicID: "c"}}
 	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
 		t.Context(),
-		candidates,
-		"Atraxa, Praetors' Voice",
-		10,
+		candidates, testAtraxa, 10,
 		20,
 	)
 

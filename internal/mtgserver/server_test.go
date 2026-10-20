@@ -65,7 +65,7 @@ func TestRegisterToolsAndResources(t *testing.T) {
 
 	wantResources := []string{
 		"commander://banned-list",
-		"commander://rules",
+		testRulesURI,
 		cardImageWidgetURI,
 		"rules://comprehensive",
 	}

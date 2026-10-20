@@ -27,7 +27,7 @@ func TestScryfallSearchCardsE2E(t *testing.T) {
 		Dir:    scryfall.DirAuto,
 	}
 
-	result, err := client.SearchCards(ctx, "Lightning Bolt", searchOpts)
+	result, err := client.SearchCards(ctx, testLightningBolt, searchOpts)
 	if err != nil {
 		t.Fatalf("SearchCards() failed: %v", err)
 	}
@@ -61,13 +61,13 @@ func TestScryfallGetCardByNameE2E(t *testing.T) {
 	}
 
 	// Get a specific card by name
-	card, err := client.GetCardByName(ctx, "Sol Ring", true, scryfall.GetCardByNameOptions{})
+	card, err := client.GetCardByName(ctx, testSolRing, true, scryfall.GetCardByNameOptions{})
 	if err != nil {
 		t.Fatalf("GetCardByName() failed: %v", err)
 	}
 
 	// Verify card details
-	if card.Name != "Sol Ring" {
+	if card.Name != testSolRing {
 		t.Errorf("Expected card name 'Sol Ring', got %q", card.Name)
 	}
 
@@ -128,13 +128,13 @@ func TestScryfallCommanderLegalityE2E(t *testing.T) {
 	}{
 		{
 			name:           "legal card",
-			cardName:       "Sol Ring",
+			cardName:       testSolRing,
 			expectedLegal:  true,
 			expectedBanned: false,
 		},
 		{
 			name:           "banned card",
-			cardName:       "Mana Crypt",
+			cardName:       testManaCrypt,
 			expectedLegal:  false,
 			expectedBanned: true,
 		},
@@ -150,8 +150,8 @@ func TestScryfallCommanderLegalityE2E(t *testing.T) {
 			// Check commander legality
 			legality := card.Legalities.Commander
 
-			isLegal := legality == "legal"
-			isBanned := legality == "banned"
+			isLegal := legality == testLegal
+			isBanned := legality == testBanned
 
 			if tc.expectedLegal && !isLegal {
 				t.Errorf("Expected %s to be legal in Commander, got: %s", tc.cardName, legality)
@@ -177,7 +177,7 @@ func TestScryfallCardRulingsE2E(t *testing.T) {
 	}
 
 	// Get a card with known rulings
-	card, err := client.GetCardByName(ctx, "Doubling Season", true, scryfall.GetCardByNameOptions{})
+	card, err := client.GetCardByName(ctx, testDoublingSeason, true, scryfall.GetCardByNameOptions{})
 	if err != nil {
 		t.Fatalf("GetCardByName() failed: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestScryfallCardPricingE2E(t *testing.T) {
 	}
 
 	// Get a card with pricing
-	card, err := client.GetCardByName(ctx, "Lightning Bolt", true, scryfall.GetCardByNameOptions{})
+	card, err := client.GetCardByName(ctx, testLightningBolt, true, scryfall.GetCardByNameOptions{})
 	if err != nil {
 		t.Fatalf("GetCardByName() failed: %v", err)
 	}

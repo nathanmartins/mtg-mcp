@@ -19,7 +19,7 @@ func TestExtractPublicID(t *testing.T) {
 		{
 			name:  "full URL",
 			input: "https://www.moxfield.com/decks/abc123",
-			want:  "abc123",
+			want:  testShortID,
 		},
 		{
 			name:  "URL with trailing slash",
@@ -51,26 +51,25 @@ func TestExtractPublicID(t *testing.T) {
 func TestGetDeck(t *testing.T) {
 	mockDeck := Deck{
 		ID:          "test-id",
-		PublicID:    "abc123",
-		Name:        "Test Deck",
-		Format:      "commander",
+		PublicID:    testShortID,
+		Name:        testDeckName,
+		Format:      testFormatCommander,
 		Description: "A test deck",
 		ViewCount:   100,
 		LikeCount:   50,
 		Authors:     []string{"TestAuthor"},
-		Commanders: map[string]CardEntry{
-			"commander": {
-				Quantity: 1,
-				Card: CardInfo{
-					Name: "Test Commander",
-				},
+		Commanders: map[string]CardEntry{testFormatCommander: {
+			Quantity: 1,
+			Card: CardInfo{
+				Name: "Test Commander",
 			},
+		},
 		},
 		Mainboard: map[string]CardEntry{
 			"card1": {
 				Quantity: 1,
 				Card: CardInfo{
-					Name: "Sol Ring",
+					Name: testSolRing,
 				},
 			},
 		},
@@ -86,7 +85,7 @@ func TestGetDeck(t *testing.T) {
 	}{
 		{
 			name:         "successful request",
-			publicID:     "abc123",
+			publicID:     testShortID,
 			mockDeck:     mockDeck,
 			mockStatus:   http.StatusOK,
 			wantErr:      false,
@@ -152,7 +151,7 @@ func TestGetUserDecks(t *testing.T) {
 			{
 				PublicID:  "deck1",
 				Name:      "Deck 1",
-				Format:    "commander",
+				Format:    testFormatCommander,
 				PublicURL: "https://moxfield.com/decks/deck1",
 				ViewCount: 100,
 				LikeCount: 10,
@@ -160,7 +159,7 @@ func TestGetUserDecks(t *testing.T) {
 			{
 				PublicID:  "deck2",
 				Name:      "Deck 2",
-				Format:    "commander",
+				Format:    testFormatCommander,
 				PublicURL: "https://moxfield.com/decks/deck2",
 				ViewCount: 200,
 				LikeCount: 20,
@@ -244,7 +243,7 @@ func TestSearchDecks(t *testing.T) {
 			{
 				PublicID:  "deck1",
 				Name:      "Atraxa Superfriends",
-				Format:    "commander",
+				Format:    testFormatCommander,
 				PublicURL: "https://moxfield.com/decks/deck1",
 				ViewCount: 1000,
 				LikeCount: 100,
@@ -252,7 +251,7 @@ func TestSearchDecks(t *testing.T) {
 			{
 				PublicID:  "deck2",
 				Name:      "Atraxa Infect",
-				Format:    "commander",
+				Format:    testFormatCommander,
 				PublicURL: "https://moxfield.com/decks/deck2",
 				ViewCount: 500,
 				LikeCount: 50,
@@ -272,9 +271,9 @@ func TestSearchDecks(t *testing.T) {
 			name: "search by commander",
 			params: SearchParams{
 				CardName:      "Atraxa",
-				Format:        "commander",
-				SortType:      "updated",
-				SortDirection: "Descending",
+				Format:        testFormatCommander,
+				SortType:      testSortUpdated,
+				SortDirection: DirectionDescending,
 				PageSize:      20,
 				PageNumber:    1,
 			},
@@ -287,9 +286,9 @@ func TestSearchDecks(t *testing.T) {
 			name: "with different sort",
 			params: SearchParams{
 				CardName:      "Atraxa",
-				Format:        "commander",
-				SortType:      "views",
-				SortDirection: "Descending",
+				Format:        testFormatCommander,
+				SortType:      testSortViews,
+				SortDirection: DirectionDescending,
 				PageSize:      10,
 				PageNumber:    1,
 			},
@@ -300,7 +299,7 @@ func TestSearchDecks(t *testing.T) {
 		{
 			name: "server error",
 			params: SearchParams{
-				CardName:   "Test",
+				CardName:   testName,
 				PageSize:   20,
 				PageNumber: 1,
 			},
@@ -421,10 +420,10 @@ func TestSearchDecksSendsVerifiedParams(t *testing.T) {
 
 	client := &Client{SearchURL: server.URL + "/v2/decks/search"}
 	_, err := client.SearchDecks(t.Context(), SearchParams{
-		CardName:      "Atraxa, Praetors' Voice",
-		Format:        "commander",
-		SortType:      "views",
-		SortDirection: "Descending",
+		CardName:      testAtraxa,
+		Format:        testFormatCommander,
+		SortType:      testSortViews,
+		SortDirection: DirectionDescending,
 		PageSize:      50,
 		PageNumber:    2,
 	})
@@ -436,10 +435,10 @@ func TestSearchDecksSendsVerifiedParams(t *testing.T) {
 		t.Errorf("path = %q, want /v2/decks/search", gotPath)
 	}
 	want := map[string]string{
-		"cardName":      "Atraxa, Praetors' Voice",
-		"fmt":           "commander",
-		"sortType":      "views",
-		"sortDirection": "Descending",
+		"cardName":      testAtraxa,
+		"fmt":           testFormatCommander,
+		"sortType":      testSortViews,
+		"sortDirection": DirectionDescending,
 		"pageSize":      "50",
 		"pageNumber":    "2",
 	}
@@ -457,7 +456,7 @@ func TestSearchDecksSendsVerifiedParams(t *testing.T) {
 }
 
 func TestParseSortType(t *testing.T) {
-	for _, valid := range []string{"updated", "created", "views", "likes", "comments", "relevance"} {
+	for _, valid := range []string{testSortUpdated, "created", testSortViews, "likes", "comments", "relevance"} {
 		if got, err := ParseSortType(valid); err != nil || got != valid {
 			t.Errorf("ParseSortType(%q) = (%q, %v), want (%q, nil)", valid, got, err, valid)
 		}
@@ -471,7 +470,7 @@ func TestParseSortType(t *testing.T) {
 }
 
 func TestSortDirection(t *testing.T) {
-	if got := SortDirection(false); got != "Descending" {
+	if got := SortDirection(false); got != DirectionDescending {
 		t.Errorf("descending = %q, want Descending", got)
 	}
 	if got := SortDirection(true); got != "Ascending" {
@@ -499,8 +498,8 @@ func TestMoxfieldSearchURLWiring(t *testing.T) {
 
 func TestFormatDeck(t *testing.T) {
 	deck := &Deck{
-		Name:         "Test Deck",
-		Format:       "commander",
+		Name:         testDeckName,
+		Format:       testFormatCommander,
 		Authors:      []any{"Author1", "Author2"},
 		ViewCount:    1000,
 		LikeCount:    100,
@@ -510,7 +509,7 @@ func TestFormatDeck(t *testing.T) {
 			"cmd": {
 				Quantity: 1,
 				Card: CardInfo{
-					Name: "Atraxa, Praetors' Voice",
+					Name: testAtraxa,
 				},
 			},
 		},
@@ -518,7 +517,7 @@ func TestFormatDeck(t *testing.T) {
 			"card1": {
 				Quantity: 1,
 				Card: CardInfo{
-					Name:     "Sol Ring",
+					Name:     testSolRing,
 					TypeLine: "Artifact",
 				},
 			},
@@ -526,7 +525,7 @@ func TestFormatDeck(t *testing.T) {
 				Quantity: 1,
 				Card: CardInfo{
 					Name:     "Lightning Bolt",
-					TypeLine: "Instant",
+					TypeLine: testInstant,
 				},
 			},
 			"card3": {
@@ -548,17 +547,11 @@ func TestFormatDeck(t *testing.T) {
 			name: "basic formatting",
 			deck: deck,
 			wantContains: []string{
-				"# Test Deck",
-				"commander",
-				"Author1, Author2",
+				"# Test Deck", testFormatCommander, "Author1, Author2",
 				"**Views:** 1000",
 				"**Likes:** 100",
 				"This is a test deck",
-				"Commanders",
-				"Atraxa, Praetors' Voice",
-				"Mainboard",
-				"Sol Ring",
-				"Lightning Bolt",
+				"Commanders", testAtraxa, "Mainboard", testSolRing, "Lightning Bolt",
 				"Birds of Paradise",
 			},
 		},
@@ -579,7 +572,7 @@ func TestFormatDeck(t *testing.T) {
 
 func TestGroupDeckCards(t *testing.T) {
 	mainboard := map[string]CardEntry{
-		"a": {Quantity: 1, Card: CardInfo{Name: "Counterspell", TypeLine: "Instant"}},
+		"a": {Quantity: 1, Card: CardInfo{Name: "Counterspell", TypeLine: testInstant}},
 		"b": {Quantity: 1, Card: CardInfo{Name: "Ponder", TypeLine: "Sorcery"}},
 		"c": {Quantity: 1, Card: CardInfo{Name: "Sylvan Library", TypeLine: "Enchantment"}},
 		"d": {
@@ -617,16 +610,16 @@ func TestGroupDeckCards(t *testing.T) {
 
 func TestFormatDeckSideboardAndMaybeboard(t *testing.T) {
 	deck := &Deck{
-		Name:   "Test Deck",
-		Format: "commander",
+		Name:   testDeckName,
+		Format: testFormatCommander,
 		Mainboard: map[string]CardEntry{
-			"a": {Quantity: 1, Card: CardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
+			"a": {Quantity: 1, Card: CardInfo{Name: testSolRing, TypeLine: "Artifact"}},
 		},
 		Sideboard: map[string]CardEntry{
-			"b": {Quantity: 1, Card: CardInfo{Name: "Swan Song", TypeLine: "Instant"}},
+			"b": {Quantity: 1, Card: CardInfo{Name: "Swan Song", TypeLine: testInstant}},
 		},
 		Maybeboard: map[string]CardEntry{
-			"c": {Quantity: 1, Card: CardInfo{Name: "Cyclonic Rift", TypeLine: "Instant"}},
+			"c": {Quantity: 1, Card: CardInfo{Name: "Cyclonic Rift", TypeLine: testInstant}},
 		},
 	}
 
@@ -648,8 +641,8 @@ func TestFormatDeckSideboardAndMaybeboard(t *testing.T) {
 
 func TestFormatDeckOthers(t *testing.T) {
 	deck := &Deck{
-		Name:   "Test Deck",
-		Format: "commander",
+		Name:   testDeckName,
+		Format: testFormatCommander,
 		Mainboard: map[string]CardEntry{
 			"a": {Quantity: 1, Card: CardInfo{Name: "Treasure Token", TypeLine: "Token"}},
 		},
@@ -669,8 +662,8 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 	// The live API's shape, confirmed against a real deck read.
 	t.Run("user objects show their usernames", func(t *testing.T) {
 		deck := &Deck{
-			Name:   "Test",
-			Format: "commander",
+			Name:   testName,
+			Format: testFormatCommander,
 			Authors: []any{
 				map[string]any{"userName": "fabudl", "displayName": "Fab", "badges": []any{}},
 				map[string]any{"userName": "second", "displayName": "Second"},
@@ -684,8 +677,8 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 
 	t.Run("non-slice authors skipped gracefully", func(t *testing.T) {
 		deck := &Deck{
-			Name:    "Test",
-			Format:  "commander",
+			Name:    testName,
+			Format:  testFormatCommander,
 			Authors: "not-a-slice",
 		}
 		got := formatDeckHeader(deck)
@@ -696,8 +689,8 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 
 	t.Run("slice with non-string values skipped", func(t *testing.T) {
 		deck := &Deck{
-			Name:    "Test",
-			Format:  "commander",
+			Name:    testName,
+			Format:  testFormatCommander,
 			Authors: []any{42, true},
 		}
 		got := formatDeckHeader(deck)

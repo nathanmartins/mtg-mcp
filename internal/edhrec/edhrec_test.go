@@ -17,12 +17,12 @@ func TestSanitizeCardName(t *testing.T) {
 	}{
 		{
 			name:  "simple name",
-			input: "Sol Ring",
+			input: testSolRing,
 			want:  "sol-ring",
 		},
 		{
 			name:  "name with comma",
-			input: "Atraxa, Praetors' Voice",
+			input: testAtraxa,
 			want:  "atraxa-praetors-voice",
 		},
 		{
@@ -85,19 +85,19 @@ func TestGetCommanderPage(t *testing.T) {
 	}{
 		{
 			name:          "successful request",
-			commanderName: "Atraxa, Praetors' Voice",
+			commanderName: testAtraxa,
 			mockResponse: Response{
 				Container: Container{
 					JSONDict: Data{
 						Card: CardInfo{
-							Name:      "Atraxa, Praetors' Voice",
+							Name:      testAtraxa,
 							Sanitized: "atraxa-praetors-voice",
 							ColorID:   []string{"W", "U", "B", "G"},
 							NumDecks:  50000,
 						},
 						CardLists: []CardList{
 							{
-								Header: "High Synergy Cards",
+								Header: testHighSynergyHeader,
 								Tag:    "highsynergy",
 								CardViews: []CardView{
 									{
@@ -131,7 +131,7 @@ func TestGetCommanderPage(t *testing.T) {
 		},
 		{
 			name:          "unfiltered URL",
-			commanderName: "Atraxa, Praetors' Voice",
+			commanderName: testAtraxa,
 			filter:        RecFilter{},
 			mockStatus:    http.StatusOK,
 			checkURL:      true,
@@ -139,24 +139,24 @@ func TestGetCommanderPage(t *testing.T) {
 		},
 		{
 			name:          "theme filter composes URL",
-			commanderName: "Atraxa, Praetors' Voice",
-			filter:        RecFilter{Theme: "infect"},
+			commanderName: testAtraxa,
+			filter:        RecFilter{Theme: testThemeInfect},
 			mockStatus:    http.StatusOK,
 			checkURL:      true,
 			expectedURL:   "/commanders/atraxa-praetors-voice/infect.json",
 		},
 		{
 			name:          "price tier filter composes URL",
-			commanderName: "Atraxa, Praetors' Voice",
-			filter:        RecFilter{PriceTier: "budget"},
+			commanderName: testAtraxa,
+			filter:        RecFilter{PriceTier: PriceTierBudget},
 			mockStatus:    http.StatusOK,
 			checkURL:      true,
 			expectedURL:   "/commanders/atraxa-praetors-voice/budget.json",
 		},
 		{
 			name:          "theme and price tier compose in theme-then-tier order",
-			commanderName: "Atraxa, Praetors' Voice",
-			filter:        RecFilter{Theme: "infect", PriceTier: "budget"},
+			commanderName: testAtraxa,
+			filter:        RecFilter{Theme: testThemeInfect, PriceTier: PriceTierBudget},
 			mockStatus:    http.StatusOK,
 			checkURL:      true,
 			expectedURL:   "/commanders/atraxa-praetors-voice/infect/budget.json",
@@ -207,19 +207,19 @@ func TestGetSetCards(t *testing.T) {
 			name:        "lowercase code",
 			setCode:     "rna",
 			mockStatus:  http.StatusOK,
-			expectedURL: "/sets/rna.json",
+			expectedURL: testRNAPath,
 		},
 		{
 			name:        "uppercase code is lowercased",
 			setCode:     "RNA",
 			mockStatus:  http.StatusOK,
-			expectedURL: "/sets/rna.json",
+			expectedURL: testRNAPath,
 		},
 		{
 			name:        "whitespace is trimmed",
 			setCode:     " rna ",
 			mockStatus:  http.StatusOK,
-			expectedURL: "/sets/rna.json",
+			expectedURL: testRNAPath,
 		},
 		{
 			name:       "403 forbidden yields an error",
@@ -238,7 +238,7 @@ func TestGetSetCards(t *testing.T) {
 
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
-					_ = json.NewEncoder(w).Encode(Response{Header: "Ravnica Allegiance"})
+					_ = json.NewEncoder(w).Encode(Response{Header: testRNAName})
 				}
 			}))
 			defer server.Close()
@@ -261,7 +261,7 @@ func TestGetCombosForColors(t *testing.T) {
 	}{
 		{
 			name:   "colorless combos",
-			colors: "colorless",
+			colors: testColorless,
 			mockResponse: ComboResponse{
 				Container: ComboContainer{
 					JSONDict: ComboData{
@@ -325,16 +325,16 @@ func TestFormatCommanderRecs(t *testing.T) {
 		Container: Container{
 			JSONDict: Data{
 				Card: CardInfo{
-					Name:     "Test Commander",
+					Name:     testCommander,
 					ColorID:  []string{"W", "U"},
 					NumDecks: 1000,
 				},
 				CardLists: []CardList{
 					{
-						Header: "High Synergy Cards",
+						Header: testHighSynergyHeader,
 						CardViews: []CardView{
 							{
-								Name:     "Card 1",
+								Name:     testCard1,
 								NumDecks: 500,
 								Synergy:  0.35,
 								Salt:     1.5,
@@ -362,24 +362,16 @@ func TestFormatCommanderRecs(t *testing.T) {
 			name:  "with limit",
 			page:  page,
 			limit: 1,
-			wantContains: []string{
-				"Test Commander",
-				"High Synergy Cards",
-				"Card 1",
-				"Synergy:",
+			wantContains: []string{testCommander, testHighSynergyHeader, testCard1, "Synergy:",
 				"Salt Score:",
 			},
 			wantCardCount: 1,
 		},
 		{
-			name:  "without limit",
-			page:  page,
-			limit: 0,
-			wantContains: []string{
-				"Test Commander",
-				"Card 1",
-				"Card 2",
-			},
+			name:          "without limit",
+			page:          page,
+			limit:         0,
+			wantContains:  []string{testCommander, testCard1, "Card 2"},
 			wantCardCount: 2,
 		},
 	}
@@ -410,9 +402,9 @@ func TestFormatCommanderRecsDeckStats(t *testing.T) {
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
-					Card: CardInfo{Name: "Test Commander", NumDecks: 1000},
+					Card: CardInfo{Name: testCommander, NumDecks: 1000},
 					CardLists: []CardList{
-						{Header: "Top Cards", CardViews: []CardView{{Name: "Sol Ring", NumDecks: 500}}},
+						{Header: testTopCardsHeader, CardViews: []CardView{{Name: testSolRing, NumDecks: 500}}},
 					},
 				},
 			},
@@ -430,9 +422,9 @@ func TestFormatCommanderRecsDeckStats(t *testing.T) {
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
-					Card: CardInfo{Name: "Test Commander", NumDecks: 0},
+					Card: CardInfo{Name: testCommander, NumDecks: 0},
 					CardLists: []CardList{
-						{Header: "Top Cards", CardViews: []CardView{{Name: "Sol Ring", NumDecks: 500}}},
+						{Header: testTopCardsHeader, CardViews: []CardView{{Name: testSolRing, NumDecks: 500}}},
 					},
 				},
 			},
@@ -459,7 +451,7 @@ func TestFormatCommanderRecsThemes(t *testing.T) {
 		Header:    "Test Commander (Commander)",
 		TagCounts: tags,
 		Container: Container{
-			JSONDict: Data{Card: CardInfo{Name: "Test Commander"}},
+			JSONDict: Data{Card: CardInfo{Name: testCommander}},
 		},
 	}
 
@@ -480,7 +472,7 @@ func TestFormatCommanderRecsThemes(t *testing.T) {
 	})
 
 	t.Run("filtered suppresses available themes", func(t *testing.T) {
-		got := FormatCommanderRecs(page, RecFilter{Theme: "infect"}, 10)
+		got := FormatCommanderRecs(page, RecFilter{Theme: testThemeInfect}, 10)
 		if strings.Contains(got, "## Available Themes") {
 			t.Error("Available Themes section should be suppressed when a filter is active")
 		}
@@ -495,7 +487,7 @@ func TestFormatCommanderRecsHeader(t *testing.T) {
 				JSONDict: Data{Card: CardInfo{Name: "X"}},
 			},
 		}
-		got := FormatCommanderRecs(page, RecFilter{Theme: "infect", PriceTier: "budget"}, 10)
+		got := FormatCommanderRecs(page, RecFilter{Theme: testThemeInfect, PriceTier: PriceTierBudget}, 10)
 		if !strings.Contains(got, "X (Commander) - Budget Infect") {
 			t.Errorf("expected page header in title, got:\n%s", got)
 		}
@@ -517,7 +509,7 @@ func TestFormatCommanderRecsHeader(t *testing.T) {
 func TestFormatSetCards(t *testing.T) {
 	t.Run("commander and card views", func(t *testing.T) {
 		page := &Response{
-			Header: "Ravnica Allegiance",
+			Header: testRNAName,
 			Container: Container{
 				JSONDict: Data{
 					CardLists: []CardList{
@@ -661,11 +653,11 @@ func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
-					Card: CardInfo{Name: "Test Commander", NumDecks: 100},
+					Card: CardInfo{Name: testCommander, NumDecks: 100},
 					CardLists: []CardList{
 						{Header: "Skipped Section", CardViews: []CardView{}},
 						{Header: "Non-Empty Section", CardViews: []CardView{
-							{Name: "Sol Ring", NumDecks: 90},
+							{Name: testSolRing, NumDecks: 90},
 						}},
 					},
 				},
@@ -684,10 +676,10 @@ func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
-					Card: CardInfo{Name: "Test Commander", NumDecks: 100},
+					Card: CardInfo{Name: testCommander, NumDecks: 100},
 					CardLists: []CardList{
-						{Header: "Top Cards", CardViews: []CardView{
-							{Name: "Sol Ring", NumDecks: 90, Synergy: 0, Salt: 0},
+						{Header: testTopCardsHeader, CardViews: []CardView{
+							{Name: testSolRing, NumDecks: 90, Synergy: 0, Salt: 0},
 						}},
 					},
 				},
@@ -706,10 +698,10 @@ func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
-					Card: CardInfo{Name: "Test Commander", NumDecks: 100},
+					Card: CardInfo{Name: testCommander, NumDecks: 100},
 					CardLists: []CardList{
-						{Header: "Top Cards", CardViews: []CardView{
-							{Name: "Sol Ring", NumDecks: 90},
+						{Header: testTopCardsHeader, CardViews: []CardView{
+							{Name: testSolRing, NumDecks: 90},
 							{Name: "Arcane Signet", NumDecks: 80},
 							{Name: "Command Tower", NumDecks: 70},
 						}},
@@ -730,18 +722,18 @@ func TestComboPageName(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{colors: "wu", want: "azorius"},
-		{colors: "UW", want: "azorius"},
+		{colors: "wu", want: testAzorius},
+		{colors: "UW", want: testAzorius},
 		{colors: " gw ", want: "selesnya"},
 		{colors: "rbu", want: "grixis"},
 		{colors: "gbrw", want: "dune-brood"},
 		{colors: "wubrg", want: "five-color"},
 		{colors: "w", want: "mono-white"},
-		{colors: "c", want: "colorless"},
-		{colors: "colorless", want: "colorless"},
-		{colors: "Azorius", want: "azorius"},
+		{colors: "c", want: testColorless},
+		{colors: testColorless, want: testColorless},
+		{colors: "Azorius", want: testAzorius},
 		{colors: "yore-tiller", want: "yore-tiller"},
-		{colors: "wuu", want: "azorius"},
+		{colors: "wuu", want: testAzorius},
 		{colors: "", wantErr: true},
 		{colors: "zz", wantErr: true},
 		{colors: "wc", wantErr: true},

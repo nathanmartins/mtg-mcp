@@ -15,7 +15,7 @@ func TestEDHRECCommanderRecommendationsE2E(t *testing.T) {
 	defer cancel()
 
 	// Test with a popular commander
-	page, err := NewClient().GetCommanderPage(ctx, "Atraxa, Praetors' Voice", RecFilter{})
+	page, err := NewClient().GetCommanderPage(ctx, testAtraxa, RecFilter{})
 	if err != nil {
 		t.Fatalf("GetCommanderPage() failed: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestEDHRECCombosE2E(t *testing.T) {
 	defer cancel()
 
 	// Test with colorless which typically has well-known combos
-	data, err := NewClient().GetCombosForColors(ctx, "colorless")
+	data, err := NewClient().GetCombosForColors(ctx, testColorless)
 	if err != nil {
 		t.Fatalf("GetCombosForColors() failed: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestEDHRECFormatOutputE2E(t *testing.T) {
 	defer cancel()
 
 	// Fetch real data
-	page, err := NewClient().GetCommanderPage(ctx, "Atraxa, Praetors' Voice", RecFilter{})
+	page, err := NewClient().GetCommanderPage(ctx, testAtraxa, RecFilter{})
 	if err != nil {
 		t.Fatalf("GetCommanderPageWithURL() failed: %v", err)
 	}
@@ -174,13 +174,13 @@ func TestEDHRECThemeAndBudgetFilterE2E(t *testing.T) {
 		t.Fatalf("unfiltered GetCommanderPage() failed: %v", err)
 	}
 
-	themeOnly, err := NewClient().GetCommanderPage(ctx, commander, RecFilter{Theme: "infect"})
+	themeOnly, err := NewClient().GetCommanderPage(ctx, commander, RecFilter{Theme: testThemeInfect})
 	if err != nil {
 		t.Fatalf("theme-only GetCommanderPage() failed: %v", err)
 	}
 
 	combined, err := NewClient().GetCommanderPage(
-		ctx, commander, RecFilter{Theme: "infect", PriceTier: "budget"},
+		ctx, commander, RecFilter{Theme: testThemeInfect, PriceTier: PriceTierBudget},
 	)
 	if err != nil {
 		t.Fatalf("combined GetCommanderPage() failed: %v", err)
@@ -208,7 +208,7 @@ func TestEDHRECInvalidThemeE2E(t *testing.T) {
 	defer cancel()
 
 	_, err := NewClient().GetCommanderPage(
-		ctx, "Atraxa, Praetors' Voice", RecFilter{Theme: "not-a-real-theme"},
+		ctx, testAtraxa, RecFilter{Theme: "not-a-real-theme"},
 	)
 	if err == nil {
 		t.Fatal("expected an error for an invalid theme slug")
@@ -225,8 +225,8 @@ func TestEDHRECSetCardsE2E(t *testing.T) {
 		t.Fatalf("GetSetCards() failed: %v", err)
 	}
 
-	if page.Header != "Ravnica Allegiance" {
-		t.Errorf("expected header %q, got %q", "Ravnica Allegiance", page.Header)
+	if page.Header != testRNAName {
+		t.Errorf("expected header %q, got %q", testRNAName, page.Header)
 	}
 
 	if len(page.Container.JSONDict.CardLists) == 0 {

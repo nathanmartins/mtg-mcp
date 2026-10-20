@@ -15,7 +15,7 @@ func TestSearchDecksE2E(t *testing.T) {
 	defer cancel()
 
 	result, err := NewClient().SearchDecks(ctx, SearchParams{
-		Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 1, Limit: 5,
+		Commander: testAtraxa, Sort: archidektSortViews, Page: 1, Limit: 5,
 	})
 	if err != nil {
 		t.Fatalf("SearchDecks() failed: %v", err)
@@ -49,7 +49,7 @@ func TestSearchDecksByBracketE2E(t *testing.T) {
 	defer cancel()
 
 	result, err := NewClient().SearchDecks(ctx, SearchParams{
-		Commander: "Atraxa, Praetors' Voice", Bracket: 4, Sort: archidektSortViews, Page: 1, Limit: 5,
+		Commander: testAtraxa, Bracket: 4, Sort: archidektSortViews, Page: 1, Limit: 5,
 	})
 	if err != nil {
 		t.Fatalf("SearchDecks() with bracket=4 failed: %v", err)

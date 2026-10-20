@@ -450,10 +450,6 @@ linters:
       - common-false-positives
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
-      - path: '_test\.go'
-        linters:
-          - goconst
-
       - path: cmd
         linters:
           - gochecknoglobals

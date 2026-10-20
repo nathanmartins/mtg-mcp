@@ -45,7 +45,7 @@ func TestArchidektHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("get deck invalid id", func(t *testing.T) {
-		res, _ := s.handleGetArchidektDeck(ctx, toolRequest(map[string]any{"deck_id": "not-a-number"}))
+		res, _ := s.handleGetArchidektDeck(ctx, toolRequest(map[string]any{argDeckID: "not-a-number"}))
 		if !res.IsError {
 			t.Error("expected error for invalid deck_id")
 		}

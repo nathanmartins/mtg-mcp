@@ -23,7 +23,7 @@ func syntheticArchidektPage(apiPage, count int) UserDecksResponse {
 			DeckFormat: 3,
 			ViewCount:  1000 - (base + i),
 			UpdatedAt:  "2026-01-01T00:00:00Z",
-			Owner:      Owner{Username: "owner"},
+			Owner:      Owner{Username: testOwner},
 		})
 	}
 	next := ""
@@ -45,7 +45,7 @@ func archidektPageSlice(total, apiPage int) UserDecksResponse {
 			Name:       fmt.Sprintf("deck-%d", i+1),
 			DeckFormat: 3,
 			UpdatedAt:  "2026-01-01T00:00:00Z",
-			Owner:      Owner{Username: "owner"},
+			Owner:      Owner{Username: testOwner},
 		})
 	}
 	next := ""
@@ -79,7 +79,7 @@ func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 		t.Cleanup(server.Close)
 
 		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa", Sort: archidektSortViews, Page: page, Limit: limit,
+			Commander: testAtraxaShort, Sort: archidektSortViews, Page: page, Limit: limit,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -173,7 +173,7 @@ func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 	t.Run("limit is exact", func(t *testing.T) {
 		requestedPages = nil
 		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 1, Limit: 10,
+			Commander: testAtraxa, Sort: archidektSortViews, Page: 1, Limit: 10,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -192,7 +192,7 @@ func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 	t.Run("logical page 2 slices inside the same api page", func(t *testing.T) {
 		requestedPages = nil
 		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 2, Limit: 10,
+			Commander: testAtraxa, Sort: archidektSortViews, Page: 2, Limit: 10,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -208,7 +208,7 @@ func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 	t.Run("straddling window fetches two api pages", func(t *testing.T) {
 		requestedPages = nil
 		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 2, Limit: 50,
+			Commander: testAtraxa, Sort: archidektSortViews, Page: 2, Limit: 50,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -232,12 +232,12 @@ func TestOrderBy(t *testing.T) {
 		want      string
 		wantErr   bool
 	}{
-		{sort: "views", want: "-viewCount"},
-		{sort: "views", ascending: true, want: "viewCount"},
+		{sort: archidektSortViews, want: "-viewCount"},
+		{sort: archidektSortViews, ascending: true, want: "viewCount"},
 		{sort: "updated", want: "-updatedAt"},
 		{sort: "created", want: "-createdAt"},
 		{sort: "price", want: "-price"},
-		{sort: "size", want: "-size"},
+		{sort: testSortSize, want: "-size"},
 		{sort: "popularity", wantErr: true},
 		{sort: "", wantErr: true},
 	}
@@ -270,7 +270,7 @@ func TestSearchDecksSendsOrderByAndBracket(t *testing.T) {
 	defer server.Close()
 
 	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-		Commander: "Atraxa", Bracket: 4, Sort: "updated", Ascending: true, Page: 1, Limit: 5,
+		Commander: testAtraxaShort, Bracket: 4, Sort: "updated", Ascending: true, Page: 1, Limit: 5,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -289,7 +289,7 @@ func TestSearchDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
 	defer server.Close()
 
 	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-		Commander: "Atraxa", Sort: "trending", Page: 1, Limit: 10,
+		Commander: testAtraxaShort, Sort: "trending", Page: 1, Limit: 10,
 	})
 	if err == nil {
 		t.Fatal("expected an error for an unsupported sort key")
@@ -326,17 +326,16 @@ func TestFormatSearchResults(t *testing.T) {
 	result := &SearchResult{
 		Decks: []DeckSummary{{
 			ID: 42, Name: "Toxic Love", ViewCount: 1234, EdhBracket: &bracket,
-			UpdatedAt: "2026-01-02T00:00:00Z", Owner: Owner{Username: "player"},
+			UpdatedAt: "2026-01-02T00:00:00Z", Owner: Owner{Username: testPlayer},
 		}},
 		Page: 3, Limit: 10, Total: 671, TotalKnown: true,
 	}
 
 	t.Run("reports the window and exact total", func(t *testing.T) {
 		got := FormatSearchResults(SearchParams{
-			Commander: "Atraxa", Bracket: 4, Sort: "views", Page: 3, Limit: 10,
+			Commander: testAtraxaShort, Bracket: 4, Sort: archidektSortViews, Page: 3, Limit: 10,
 		}, result)
-		for _, want := range []string{
-			"Atraxa", "Bracket 4", "**Sort:** views (desc)",
+		for _, want := range []string{testAtraxaShort, "Bracket 4", "**Sort:** views (desc)",
 			"**Total Results:** 671", "showing decks 21–21", "## 21. Toxic Love",
 			"https://archidekt.com/decks/42",
 		} {
@@ -356,7 +355,7 @@ func TestFormatSearchResults(t *testing.T) {
 			TotalKnown:  true,
 		}
 		got := FormatSearchResults(
-			SearchParams{Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10},
+			SearchParams{Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 10},
 			capped,
 		)
 		if !strings.Contains(got, "1000+") {
@@ -367,7 +366,7 @@ func TestFormatSearchResults(t *testing.T) {
 	t.Run("marks an unknown total", func(t *testing.T) {
 		unknown := &SearchResult{Decks: result.Decks, Page: 1, Limit: 10}
 		got := FormatSearchResults(
-			SearchParams{Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10},
+			SearchParams{Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 10},
 			unknown,
 		)
 		if !strings.Contains(got, "unknown") {
@@ -381,7 +380,7 @@ func TestFormatSearchResults(t *testing.T) {
 			Page:  2, Limit: 10, Total: 20, TotalKnown: true,
 		}
 		got := FormatSearchResults(SearchParams{
-			Commander: "Atraxa", Sort: "views", Page: 2, Limit: 10,
+			Commander: testAtraxaShort, Sort: archidektSortViews, Page: 2, Limit: 10,
 		}, full)
 		if strings.Contains(got, "request page 3") {
 			t.Errorf("must not advertise a page beyond the known total\n%s", got)
@@ -394,7 +393,7 @@ func TestFormatSearchResults(t *testing.T) {
 			Page:  2, Limit: 10, Total: 25, TotalKnown: true,
 		}
 		got := FormatSearchResults(SearchParams{
-			Commander: "Atraxa", Sort: "views", Page: 2, Limit: 10,
+			Commander: testAtraxaShort, Sort: archidektSortViews, Page: 2, Limit: 10,
 		}, more)
 		if !strings.Contains(got, "request page 3") {
 			t.Errorf("expected a next-page hint while decks remain\n%s", got)
@@ -407,7 +406,7 @@ func TestFormatSearchResults(t *testing.T) {
 			Page:  1, Limit: 10,
 		}
 		got := FormatSearchResults(SearchParams{
-			Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10,
+			Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 10,
 		}, unknownTotal)
 		if !strings.Contains(got, "request page 2") {
 			t.Errorf("expected a next-page hint when the total is unknown\n%s", got)
@@ -425,7 +424,7 @@ func TestFormatSearchResults(t *testing.T) {
 			TotalKnown:  true,
 		}
 		got := FormatSearchResults(SearchParams{
-			Commander: "Atraxa", Sort: "views", Page: 100, Limit: 10,
+			Commander: testAtraxaShort, Sort: archidektSortViews, Page: 100, Limit: 10,
 		}, capped)
 		if !strings.Contains(got, "request page 101") {
 			t.Errorf("a capped total must keep the next-page hint\n%s", got)
@@ -436,7 +435,7 @@ func TestFormatSearchResults(t *testing.T) {
 			Decks: capped.Decks, Page: 100, Limit: 10, Total: archidektCountCap, TotalKnown: true,
 		}
 		got = FormatSearchResults(SearchParams{
-			Commander: "Atraxa", Sort: "views", Page: 100, Limit: 10,
+			Commander: testAtraxaShort, Sort: archidektSortViews, Page: 100, Limit: 10,
 		}, exact)
 		if strings.Contains(got, "request page 101") {
 			t.Errorf("an exhausted exact total must not advertise another page\n%s", got)
@@ -446,7 +445,7 @@ func TestFormatSearchResults(t *testing.T) {
 	t.Run("empty page", func(t *testing.T) {
 		empty := &SearchResult{Page: 9, Limit: 10, TotalKnown: true}
 		got := FormatSearchResults(
-			SearchParams{Commander: "Nobody", Sort: "views", Page: 9, Limit: 10},
+			SearchParams{Commander: "Nobody", Sort: archidektSortViews, Page: 9, Limit: 10},
 			empty,
 		)
 		if !strings.Contains(got, "No public decks found") {
@@ -463,9 +462,9 @@ func TestNormalizeColors(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "single colour", input: "W", want: "W"},
-		{name: "two colours", input: "WU", want: "W,U"},
-		{name: "lowercase is accepted", input: "wu", want: "W,U"},
-		{name: "already separated", input: "W,U", want: "W,U"},
+		{name: "two colours", input: "WU", want: testColorsWU},
+		{name: "lowercase is accepted", input: "wu", want: testColorsWU},
+		{name: "already separated", input: testColorsWU, want: testColorsWU},
 		{name: "five colours", input: "WUBRG", want: "W,U,B,R,G"},
 		{name: "duplicates are rejected", input: "WW", wantErr: true},
 		{name: "unknown letter is rejected", input: "WX", wantErr: true},
@@ -495,18 +494,16 @@ func TestSearchDecksSendsFilters(t *testing.T) {
 	defer server.Close()
 
 	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5,
-		Colors: "WU", DeckSize: 99, Author: "NorwegianWhaler", DeckName: "budget",
+		Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 5,
+		Colors: "WU", DeckSize: 99, Author: testOwnerName, DeckName: testDeckNameFilter,
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	want := map[string]string{
-		"colors":        "W,U",
-		"size":          "99",
-		"ownerUsername": "NorwegianWhaler",
-		"name":          "budget",
+		"colors": testColorsWU, testSortSize: "99", "ownerUsername": testOwnerName,
+		"name": testDeckNameFilter,
 	}
 	for key, value := range want {
 		if gotQuery.Get(key) != value {
@@ -514,7 +511,7 @@ func TestSearchDecksSendsFilters(t *testing.T) {
 		}
 	}
 	// Upstream ignores these, so sending them would be misleading noise.
-	for _, forbidden := range []string{"cardName", "tagName", "tags", "owner", "pageSize"} {
+	for _, forbidden := range []string{"cardName", "tagName", "tags", testOwner, "pageSize"} {
 		if gotQuery.Get(forbidden) != "" {
 			t.Errorf("must not send %s (ignored or broken upstream)", forbidden)
 		}
@@ -529,14 +526,14 @@ func TestSearchDecksOmitsUnsetFilters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	params := SearchParams{Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5}
+	params := SearchParams{Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 5}
 	result, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	// An empty filter must be absent, not empty: size=0 would filter for zero-card decks.
-	for _, key := range []string{"colors", "size", "ownerUsername", "name"} {
+	for _, key := range []string{"colors", testSortSize, "ownerUsername", "name"} {
 		if _, present := gotQuery[key]; present {
 			t.Errorf("%s must be omitted when unset, got %q", key, gotQuery.Get(key))
 		}
@@ -553,7 +550,7 @@ func TestSearchDecksRejectsInvalidColors(t *testing.T) {
 	defer server.Close()
 
 	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5, Colors: "WX",
+		Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 5, Colors: "WX",
 	})
 	if err == nil {
 		t.Fatal("expected an error for an invalid colors value")
@@ -562,15 +559,15 @@ func TestSearchDecksRejectsInvalidColors(t *testing.T) {
 
 func TestFormatSearchResultsShowsActiveFilters(t *testing.T) {
 	result := &SearchResult{
-		Decks:      []DeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: Owner{Username: "player"}}},
+		Decks:      []DeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: Owner{Username: testPlayer}}},
 		Page:       1,
 		Limit:      10,
 		Total:      12,
 		TotalKnown: true,
 	}
 	got := FormatSearchResults(SearchParams{
-		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 10,
-		Colors: "WU", DeckSize: 99, Author: "player", DeckName: "budget",
+		Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 10,
+		Colors: "WU", DeckSize: 99, Author: testPlayer, DeckName: testDeckNameFilter,
 	}, result)
 
 	for _, want := range []string{"**Filters:**", "colors WU", "size 99", "author player", "name budget"} {
