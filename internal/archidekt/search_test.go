@@ -71,18 +71,24 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(archidektPageSlice(total, apiPage))
 		}))
 	}
-
-	t.Run("window inside a short page", func(t *testing.T) {
+	// search runs one logical-page search against a fixture holding total decks.
+	search := func(t *testing.T, total, page, limit int) *SearchResult {
+		t.Helper()
 		requestedPages = nil
-		server := fixtureServer(25)
-		defer server.Close()
+		server := fixtureServer(total)
+		t.Cleanup(server.Close)
 
 		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 10,
+			Commander: "Atraxa", Sort: archidektSortViews, Page: page, Limit: limit,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
+		return got
+	}
+
+	t.Run("window inside a short page", func(t *testing.T) {
+		got := search(t, 25, 2, 10)
 		if len(got.Decks) != 10 {
 			t.Fatalf("returned %d decks, want 10", len(got.Decks))
 		}
@@ -95,16 +101,7 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 	})
 
 	t.Run("page past the end returns no decks", func(t *testing.T) {
-		requestedPages = nil
-		server := fixtureServer(25)
-		defer server.Close()
-
-		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa", Sort: archidektSortViews, Page: 9, Limit: 10,
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		got := search(t, 25, 9, 10)
 		if len(got.Decks) != 0 {
 			t.Errorf("returned %d decks, want 0", len(got.Decks))
 		}
@@ -117,16 +114,7 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 	})
 
 	t.Run("straddling window stops at a short first page", func(t *testing.T) {
-		requestedPages = nil
-		server := fixtureServer(55)
-		defer server.Close()
-
-		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
-			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 50,
-		})
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
+		got := search(t, 55, 2, 50)
 		if len(got.Decks) != 5 {
 			t.Fatalf("returned %d decks, want 5", len(got.Decks))
 		}

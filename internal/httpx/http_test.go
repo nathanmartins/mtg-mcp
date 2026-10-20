@@ -92,8 +92,9 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel() // Cancel immediately
 
-	_, err := GetWithClient(ctx, server.URL, server.Client())
+	resp, err := GetWithClient(ctx, server.URL, server.Client())
 	if err == nil {
+		_ = resp.Body.Close()
 		t.Error("Get() expected error with cancelled context, got nil")
 	}
 }
@@ -114,18 +115,20 @@ func TestHTTPGet_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := GetWithClient(ctx, server.URL, server.Client())
+	resp, err := GetWithClient(ctx, server.URL, server.Client())
 
 	// Should timeout due to context deadline
 	if err == nil {
+		_ = resp.Body.Close()
 		t.Error("Get() expected timeout error, got nil")
 	}
 }
 
 func TestHTTPGet_InvalidURL(t *testing.T) {
 	ctx := t.Context()
-	_, err := Get(ctx, "://invalid-url")
+	resp, err := Get(ctx, "://invalid-url")
 	if err == nil {
+		_ = resp.Body.Close()
 		t.Error("Get() expected error with invalid URL, got nil")
 	}
 }

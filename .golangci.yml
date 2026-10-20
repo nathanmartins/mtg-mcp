@@ -446,9 +446,6 @@ linters:
     rules:
       - path: '_test\.go'
         linters:
-          - bodyclose
-          - dupl
-          - errcheck
           - goconst
 
       - path: cmd
