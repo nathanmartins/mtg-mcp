@@ -1,4 +1,4 @@
-package main
+package edhrec
 
 import (
 	"context"
@@ -138,9 +138,9 @@ func TestEDHRECFormatOutputE2E(t *testing.T) {
 	defer cancel()
 
 	// Fetch real data
-	page, err := getCommanderPageWithURL(ctx, "Atraxa, Praetors' Voice", EDHRECRecFilter{}, defaultEDHRECBaseURL)
+	page, err := GetCommanderPageWithURL(ctx, "Atraxa, Praetors' Voice", RecFilter{}, DefaultBaseURL)
 	if err != nil {
-		t.Fatalf("getCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("GetCommanderPageWithURL() failed: %v", err)
 	}
 
 	data := page.Container.JSONDict
@@ -152,7 +152,7 @@ func TestEDHRECFormatOutputE2E(t *testing.T) {
 	}
 
 	// Test formatting with limit
-	output := FormatCommanderRecsForDisplay(page, EDHRECRecFilter{}, 5)
+	output := FormatCommanderRecs(page, RecFilter{}, 5)
 	if output == "" {
 		t.Error("Expected non-empty formatted output")
 	}
@@ -185,21 +185,21 @@ func TestEDHRECThemeAndBudgetFilterE2E(t *testing.T) {
 
 	const commander = "Atraxa, Praetors' Voice"
 
-	unfiltered, err := getCommanderPageWithURL(ctx, commander, EDHRECRecFilter{}, defaultEDHRECBaseURL)
+	unfiltered, err := GetCommanderPageWithURL(ctx, commander, RecFilter{}, DefaultBaseURL)
 	if err != nil {
-		t.Fatalf("unfiltered getCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("unfiltered GetCommanderPageWithURL() failed: %v", err)
 	}
 
-	themeOnly, err := getCommanderPageWithURL(ctx, commander, EDHRECRecFilter{Theme: "infect"}, defaultEDHRECBaseURL)
+	themeOnly, err := GetCommanderPageWithURL(ctx, commander, RecFilter{Theme: "infect"}, DefaultBaseURL)
 	if err != nil {
-		t.Fatalf("theme-only getCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("theme-only GetCommanderPageWithURL() failed: %v", err)
 	}
 
-	combined, err := getCommanderPageWithURL(
-		ctx, commander, EDHRECRecFilter{Theme: "infect", PriceTier: "budget"}, defaultEDHRECBaseURL,
+	combined, err := GetCommanderPageWithURL(
+		ctx, commander, RecFilter{Theme: "infect", PriceTier: "budget"}, DefaultBaseURL,
 	)
 	if err != nil {
-		t.Fatalf("combined getCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("combined GetCommanderPageWithURL() failed: %v", err)
 	}
 
 	unfilteredDecks := unfiltered.Container.JSONDict.Card.NumDecks
@@ -227,8 +227,8 @@ func TestEDHRECInvalidThemeE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, err := getCommanderPageWithURL(
-		ctx, "Atraxa, Praetors' Voice", EDHRECRecFilter{Theme: "not-a-real-theme"}, defaultEDHRECBaseURL,
+	_, err := GetCommanderPageWithURL(
+		ctx, "Atraxa, Praetors' Voice", RecFilter{Theme: "not-a-real-theme"}, DefaultBaseURL,
 	)
 	if err == nil {
 		t.Fatal("expected an error for an invalid theme slug")
@@ -269,7 +269,7 @@ func TestEDHRECSetCardsE2E(t *testing.T) {
 		t.Error("expected at least one cardview with PotentialDecks > 0")
 	}
 
-	output := FormatSetCardsForDisplay(page, "rna", 5)
+	output := FormatSetCards(page, "rna", 5)
 	if output == "" {
 		t.Error("expected non-empty formatted set output")
 	}

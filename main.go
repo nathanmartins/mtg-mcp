@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/nathanmartins/mtg-mcp/internal/archidekt"
+	"github.com/nathanmartins/mtg-mcp/internal/edhrec"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
@@ -44,8 +45,6 @@ const (
 	defaultCardImageLanguage     = "en"
 	defaultCardImageSize         = imageSizeNormal
 	mimeTypeTextPlain            = "text/plain"
-
-	defaultEDHRECBaseURL = "https://json.edhrec.com/pages"
 )
 
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
@@ -74,7 +73,7 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 		moxfieldBaseURL:   moxfield.DefaultBaseURL,
 		moxfieldSearchURL: moxfield.DefaultSearchURL,
 		archidektBaseURL:  archidekt.DefaultBaseURL,
-		edhrecBaseURL:     defaultEDHRECBaseURL,
+		edhrecBaseURL:     edhrec.DefaultBaseURL,
 		verifyDelay:       moxfield.VerifyDelay,
 		rules:             &rulesCache{},
 	}, nil
@@ -493,7 +492,7 @@ func (s *MTGCommanderServer) registerEDHRECTools(mcpServer *server.MCPServer) {
 			),
 		),
 		mcp.WithString(paramPriceTier,
-			mcp.Enum(priceTierBudget, priceTierExpensive),
+			mcp.Enum(edhrec.PriceTierBudget, edhrec.PriceTierExpensive),
 			mcp.Description("Restrict recommendations to a price tier: 'budget' or 'expensive'"),
 		),
 		mcp.WithNumber("limit",

@@ -1,4 +1,6 @@
-package main
+// Package edhrec is a client for EDHREC's undocumented JSON pages: commander recommendations,
+// color-combination combos and set cards, plus the Markdown rendering of each.
+package edhrec
 
 import (
 	"context"
@@ -11,56 +13,58 @@ import (
 )
 
 const (
+	// DefaultBaseURL is the live EDHREC JSON pages endpoint.
+	DefaultBaseURL       = "https://json.edhrec.com/pages"
 	percentageMultiplier = 100.0
-	priceTierBudget      = "budget"
-	priceTierExpensive   = "expensive"
+	PriceTierBudget      = "budget"
+	PriceTierExpensive   = "expensive"
 	maxThemesListed      = 15
-	defaultEDHRECLimit   = 10
-	defaultSetCardsLimit = 25
+	DefaultLimit         = 10
+	DefaultSetCardsLimit = 25
 )
 
-// EDHRECResponse represents the top-level response structure.
-type EDHRECResponse struct {
-	Header    string           `json:"header"`
-	Container EDHRECContainer  `json:"container"`
-	TagCounts []EDHRECTagCount `json:"tag_counts"`
+// Response represents the top-level response structure.
+type Response struct {
+	Header    string     `json:"header"`
+	Container Container  `json:"container"`
+	TagCounts []TagCount `json:"tag_counts"`
 }
 
-// EDHRECTagCount is one theme EDHREC tracks for a commander, as listed on the commander page.
-type EDHRECTagCount struct {
+// TagCount is one theme EDHREC tracks for a commander, as listed on the commander page.
+type TagCount struct {
 	Slug  string `json:"slug"`
 	Value string `json:"value"`
 	Count int    `json:"count"`
 }
 
-// EDHRECContainer wraps the JSON dictionary.
-type EDHRECContainer struct {
-	JSONDict EDHRECData `json:"json_dict"`
+// Container wraps the JSON dictionary.
+type Container struct {
+	JSONDict Data `json:"json_dict"`
 }
 
-// EDHRECData contains the main data structure.
-type EDHRECData struct {
-	Card      EDHRECCardInfo   `json:"card"`
-	CardLists []EDHRECCardList `json:"cardlists"`
+// Data contains the main data structure.
+type Data struct {
+	Card      CardInfo   `json:"card"`
+	CardLists []CardList `json:"cardlists"`
 }
 
-// EDHRECCardInfo represents commander information.
-type EDHRECCardInfo struct {
+// CardInfo represents commander information.
+type CardInfo struct {
 	Name      string   `json:"name"`
 	Sanitized string   `json:"sanitized"`
 	ColorID   []string `json:"color_id"`
 	NumDecks  int      `json:"num_decks"`
 }
 
-// EDHRECCardList represents a category of cards.
-type EDHRECCardList struct {
-	Header    string           `json:"header"`
-	Tag       string           `json:"tag"`
-	CardViews []EDHRECCardView `json:"cardviews"`
+// CardList represents a category of cards.
+type CardList struct {
+	Header    string     `json:"header"`
+	Tag       string     `json:"tag"`
+	CardViews []CardView `json:"cardviews"`
 }
 
-// EDHRECCardView represents a card with statistics.
-type EDHRECCardView struct {
+// CardView represents a card with statistics.
+type CardView struct {
 	Name           string  `json:"name"`
 	Sanitized      string  `json:"sanitized"`
 	NumDecks       int     `json:"num_decks"`
@@ -69,45 +73,45 @@ type EDHRECCardView struct {
 	Salt           float64 `json:"salt"`
 }
 
-// EDHRECComboResponse represents combo data.
-type EDHRECComboResponse struct {
-	Container EDHRECComboContainer `json:"container"`
+// ComboResponse represents combo data.
+type ComboResponse struct {
+	Container ComboContainer `json:"container"`
 }
 
-// EDHRECComboContainer wraps combo data.
-type EDHRECComboContainer struct {
-	JSONDict EDHRECComboData `json:"json_dict"`
+// ComboContainer wraps combo data.
+type ComboContainer struct {
+	JSONDict ComboData `json:"json_dict"`
 }
 
-// EDHRECComboData contains combo information.
-type EDHRECComboData struct {
-	CardLists []EDHRECComboList `json:"cardlists"`
+// ComboData contains combo information.
+type ComboData struct {
+	CardLists []ComboList `json:"cardlists"`
 }
 
-// EDHRECComboList represents a combo entry in the new format.
-type EDHRECComboList struct {
-	Header    string           `json:"header"`
-	CardViews []EDHRECCardView `json:"cardviews"`
-	Combo     *EDHRECCombo     `json:"combo,omitempty"`
+// ComboList represents a combo entry in the new format.
+type ComboList struct {
+	Header    string     `json:"header"`
+	CardViews []CardView `json:"cardviews"`
+	Combo     *Combo     `json:"combo,omitempty"`
 }
 
-// EDHRECCombo represents a card combo.
-type EDHRECCombo struct {
+// Combo represents a card combo.
+type Combo struct {
 	ComboID string   `json:"comboId"`
 	Cards   []string `json:"cards"`
 	Results []string `json:"results"`
 }
 
-// EDHRECRecFilter narrows a commander recommendation request. An empty field means "no filter".
+// RecFilter narrows a commander recommendation request. An empty field means "no filter".
 // EDHREC serves the theme segment before the price tier: commanders/<slug>/<theme>/<tier>.json.
 // The reverse order answers 403.
-type EDHRECRecFilter struct {
+type RecFilter struct {
 	Theme     string
 	PriceTier string
 }
 
 // segments renders the filter as URL path segments in EDHREC's required order.
-func (f EDHRECRecFilter) segments() string {
+func (f RecFilter) segments() string {
 	var path strings.Builder
 	if f.Theme != "" {
 		path.WriteString("/")
@@ -152,17 +156,17 @@ func fetchEDHRECPage(ctx context.Context, reqURL, pageKind string, target any) e
 	return httpx.GetJSON(ctx, httpx.APIClient(), reqURL, "EDHREC "+pageKind, target)
 }
 
-// getCommanderPageWithURL fetches a commander page from baseURL, optionally narrowed by filter.
-func getCommanderPageWithURL(
+// GetCommanderPageWithURL fetches a commander page from baseURL, optionally narrowed by filter.
+func GetCommanderPageWithURL(
 	ctx context.Context,
 	commanderName string,
-	filter EDHRECRecFilter,
+	filter RecFilter,
 	baseURL string,
-) (*EDHRECResponse, error) {
+) (*Response, error) {
 	sanitized := SanitizeCardName(commanderName)
 	reqURL := fmt.Sprintf("%s/commanders/%s%s.json", baseURL, url.PathEscape(sanitized), filter.segments())
 
-	var page EDHRECResponse
+	var page Response
 	if err := fetchEDHRECPage(ctx, reqURL, "commander page", &page); err != nil {
 		return nil, err
 	}
@@ -171,8 +175,8 @@ func getCommanderPageWithURL(
 }
 
 // GetCommanderRecommendations fetches unfiltered EDHREC recommendations for a commander.
-func GetCommanderRecommendations(ctx context.Context, commanderName string) (*EDHRECData, error) {
-	page, err := getCommanderPageWithURL(ctx, commanderName, EDHRECRecFilter{}, defaultEDHRECBaseURL)
+func GetCommanderRecommendations(ctx context.Context, commanderName string) (*Data, error) {
+	page, err := GetCommanderPageWithURL(ctx, commanderName, RecFilter{}, DefaultBaseURL)
 	if err != nil {
 		return nil, err
 	}
@@ -181,17 +185,17 @@ func GetCommanderRecommendations(ctx context.Context, commanderName string) (*ED
 }
 
 // GetCombosForColors fetches combos for a color combination.
-func GetCombosForColors(ctx context.Context, colors string) (*EDHRECComboData, error) {
-	return getCombosForColorsWithURL(ctx, colors, defaultEDHRECBaseURL)
+func GetCombosForColors(ctx context.Context, colors string) (*ComboData, error) {
+	return GetCombosForColorsWithURL(ctx, colors, DefaultBaseURL)
 }
 
-// getCombosForColorsWithURL fetches combos with a custom base URL.
-func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*EDHRECComboData, error) {
+// GetCombosForColorsWithURL fetches combos with a custom base URL.
+func GetCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ComboData, error) {
 	// Color codes: w (white), u (blue), b (black), r (red), g (green)
 	// Examples: "wu" (azorius), "ubr" (grixis), "wubrg" (5-color)
 	reqURL := fmt.Sprintf("%s/combos/%s.json", baseURL, url.PathEscape(strings.ToLower(colors)))
 
-	var comboResp EDHRECComboResponse
+	var comboResp ComboResponse
 	if err := fetchEDHRECPage(ctx, reqURL, "combos", &comboResp); err != nil {
 		return nil, err
 	}
@@ -200,17 +204,17 @@ func getCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ED
 }
 
 // GetSetCards fetches the EDHREC page for a Magic set code.
-func GetSetCards(ctx context.Context, setCode string) (*EDHRECResponse, error) {
-	return getSetCardsWithURL(ctx, setCode, defaultEDHRECBaseURL)
+func GetSetCards(ctx context.Context, setCode string) (*Response, error) {
+	return GetSetCardsWithURL(ctx, setCode, DefaultBaseURL)
 }
 
-// getSetCardsWithURL fetches a set page with a custom base URL. EDHREC keys set pages by the
+// GetSetCardsWithURL fetches a set page with a custom base URL. EDHREC keys set pages by the
 // lowercase short set code ("rna", "c21"); any other casing answers 403.
-func getSetCardsWithURL(ctx context.Context, setCode, baseURL string) (*EDHRECResponse, error) {
+func GetSetCardsWithURL(ctx context.Context, setCode, baseURL string) (*Response, error) {
 	code := strings.ToLower(strings.TrimSpace(setCode))
 	reqURL := fmt.Sprintf("%s/sets/%s.json", baseURL, url.PathEscape(code))
 
-	var page EDHRECResponse
+	var page Response
 	if err := fetchEDHRECPage(ctx, reqURL, "set page", &page); err != nil {
 		return nil, err
 	}
@@ -220,7 +224,7 @@ func getSetCardsWithURL(ctx context.Context, setCode, baseURL string) (*EDHRECRe
 
 // topThemes returns the highest-count themes, capped at maxThemesListed, plus the number
 // omitted. tag_counts arrives sorted by count descending.
-func topThemes(tags []EDHRECTagCount) ([]EDHRECTagCount, int) {
+func topThemes(tags []TagCount) ([]TagCount, int) {
 	count := len(tags)
 	if count > maxThemesListed {
 		count = maxThemesListed
@@ -229,12 +233,12 @@ func topThemes(tags []EDHRECTagCount) ([]EDHRECTagCount, int) {
 	return tags[:count], len(tags) - count
 }
 
-// commanderThemeHint returns a caller-facing message naming the themes EDHREC lists for a
+// CommanderThemeHint returns a caller-facing message naming the themes EDHREC lists for a
 // commander. It returns "" when the unfiltered page is unreachable, lists no themes, or already
 // contains the requested slug — in those cases the failure is not the theme and the caller must
 // surface the underlying EDHREC error instead.
-func commanderThemeHint(ctx context.Context, commanderName, theme, baseURL string) string {
-	page, err := getCommanderPageWithURL(ctx, commanderName, EDHRECRecFilter{}, baseURL)
+func CommanderThemeHint(ctx context.Context, commanderName, theme, baseURL string) string {
+	page, err := GetCommanderPageWithURL(ctx, commanderName, RecFilter{}, baseURL)
 	if err != nil || len(page.TagCounts) == 0 {
 		return ""
 	}
@@ -285,7 +289,7 @@ func writeCardDeckStats(output *strings.Builder, numDecks, denominator int) {
 
 // writeRecommendationCard writes one recommendation card's body, including its deck stats and
 // the optional synergy/salt lines.
-func writeRecommendationCard(output *strings.Builder, index int, card EDHRECCardView, denominator int) {
+func writeRecommendationCard(output *strings.Builder, index int, card CardView, denominator int) {
 	_, _ = fmt.Fprintf(output, "%d. **%s**\n", index+1, card.Name)
 	writeCardDeckStats(output, card.NumDecks, denominator)
 
@@ -300,9 +304,9 @@ func writeRecommendationCard(output *strings.Builder, index int, card EDHRECCard
 	output.WriteString("\n")
 }
 
-// FormatCommanderRecsForDisplay formats EDHREC recommendations for text display. filter is used
+// FormatCommanderRecs formats EDHREC recommendations for text display. filter is used
 // only to decide whether to advertise the commander's other themes.
-func FormatCommanderRecsForDisplay(page *EDHRECResponse, filter EDHRECRecFilter, limit int) string {
+func FormatCommanderRecs(page *Response, filter RecFilter, limit int) string {
 	data := &page.Container.JSONDict
 
 	var output strings.Builder
@@ -358,8 +362,8 @@ func FormatCommanderRecsForDisplay(page *EDHRECResponse, filter EDHRECRecFilter,
 	return output.String()
 }
 
-// FormatCombosForDisplay formats combo data for text display.
-func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
+// FormatCombos formats combo data for text display.
+func FormatCombos(data *ComboData, limit int) string {
 	var output strings.Builder
 
 	output.WriteString("# Popular Combos\n\n")
@@ -397,9 +401,9 @@ func FormatCombosForDisplay(data *EDHRECComboData, limit int) string {
 	return output.String()
 }
 
-// FormatSetCardsForDisplay formats an EDHREC set page for text display. setCode is echoed so the
+// FormatSetCards formats an EDHREC set page for text display. setCode is echoed so the
 // caller can see which code was resolved. limit caps each cardlist; limit <= 0 shows everything.
-func FormatSetCardsForDisplay(page *EDHRECResponse, setCode string, limit int) string {
+func FormatSetCards(page *Response, setCode string, limit int) string {
 	var output strings.Builder
 
 	title := page.Header
@@ -442,17 +446,17 @@ func getTopCardsForCategoryWithURL(
 	category string,
 	page int,
 	baseURL string,
-) ([]EDHRECCardView, error) {
+) ([]CardView, error) {
 	// Categories: salt, commanders, themes, etc.
 	reqURL := fmt.Sprintf("%s/top/%s--%d.json", baseURL, url.PathEscape(category), page)
 
-	var edhrecResp EDHRECResponse
+	var edhrecResp Response
 	if err := fetchEDHRECPage(ctx, reqURL, "top cards", &edhrecResp); err != nil {
 		return nil, err
 	}
 
 	// Extract cards from all card lists
-	var allCards []EDHRECCardView
+	var allCards []CardView
 	for _, cardList := range edhrecResp.Container.JSONDict.CardLists {
 		allCards = append(allCards, cardList.CardViews...)
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/edhrec"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
@@ -27,26 +28,30 @@ func optionalStringArg(args map[string]any, key string) (string, error) {
 
 // recFilterFromArgs builds a recommendation filter from raw MCP arguments, rejecting wrong-typed
 // values and unknown price tiers instead of silently ignoring them.
-func recFilterFromArgs(args map[string]any) (EDHRECRecFilter, error) {
+func recFilterFromArgs(args map[string]any) (edhrec.RecFilter, error) {
 	theme, err := optionalStringArg(args, paramTheme)
 	if err != nil {
-		return EDHRECRecFilter{}, err
+		return edhrec.RecFilter{}, err
 	}
 	theme = strings.ToLower(theme)
 
 	tier, err := optionalStringArg(args, paramPriceTier)
 	if err != nil {
-		return EDHRECRecFilter{}, err
+		return edhrec.RecFilter{}, err
 	}
 	tier = strings.ToLower(tier)
 
-	if tier != "" && tier != priceTierBudget && tier != priceTierExpensive {
-		return EDHRECRecFilter{}, fmt.Errorf(
-			"argument %q must be %q or %q, got %q", paramPriceTier, priceTierBudget, priceTierExpensive, tier,
+	if tier != "" && tier != edhrec.PriceTierBudget && tier != edhrec.PriceTierExpensive {
+		return edhrec.RecFilter{}, fmt.Errorf(
+			"argument %q must be %q or %q, got %q",
+			paramPriceTier,
+			edhrec.PriceTierBudget,
+			edhrec.PriceTierExpensive,
+			tier,
 		)
 	}
 
-	return EDHRECRecFilter{Theme: theme, PriceTier: tier}, nil
+	return edhrec.RecFilter{Theme: theme, PriceTier: tier}, nil
 }
 
 func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
@@ -65,7 +70,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	limit := request.GetInt("limit", defaultEDHRECLimit)
+	limit := request.GetInt("limit", edhrec.DefaultLimit)
 	if limit < 0 {
 		return mcp.NewToolResultError("argument \"limit\" must be zero or greater"), nil
 	}
@@ -78,7 +83,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		Int("limit", limit).
 		Msg("Fetching EDHREC recommendations")
 
-	page, err := getCommanderPageWithURL(ctx, commander, filter, s.edhrecBaseURL)
+	page, err := edhrec.GetCommanderPageWithURL(ctx, commander, filter, s.edhrecBaseURL)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -89,7 +94,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 			Msg("Failed to fetch EDHREC recommendations")
 
 		if filter.Theme != "" {
-			if hint := commanderThemeHint(ctx, commander, filter.Theme, s.edhrecBaseURL); hint != "" {
+			if hint := edhrec.CommanderThemeHint(ctx, commander, filter.Theme, s.edhrecBaseURL); hint != "" {
 				return mcp.NewToolResultError(hint), nil
 			}
 		}
@@ -106,7 +111,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		Int("card_lists", len(page.Container.JSONDict.CardLists)).
 		Msg("Successfully fetched EDHREC recommendations")
 
-	output := FormatCommanderRecsForDisplay(page, filter, limit)
+	output := edhrec.FormatCommanderRecs(page, filter, limit)
 	return mcp.NewToolResultText(output), nil
 }
 
@@ -119,14 +124,14 @@ func (s *MTGCommanderServer) handleGetEDHRECCombos(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	limit := request.GetInt("limit", defaultEDHRECLimit)
+	limit := request.GetInt("limit", edhrec.DefaultLimit)
 
-	data, err := getCombosForColorsWithURL(ctx, colors, s.edhrecBaseURL)
+	data, err := edhrec.GetCombosForColorsWithURL(ctx, colors, s.edhrecBaseURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC combos: %v", err)), nil
 	}
 
-	output := FormatCombosForDisplay(data, limit)
+	output := edhrec.FormatCombos(data, limit)
 	return mcp.NewToolResultText(output), nil
 }
 
@@ -145,7 +150,7 @@ func (s *MTGCommanderServer) handleGetEDHRECSetCards(
 		return mcp.NewToolResultError(fmt.Sprintf("argument %q must not be empty", paramSet)), nil
 	}
 
-	limit := request.GetInt("limit", defaultSetCardsLimit)
+	limit := request.GetInt("limit", edhrec.DefaultSetCardsLimit)
 	if limit < 0 {
 		return mcp.NewToolResultError("argument \"limit\" must be zero or greater"), nil
 	}
@@ -156,7 +161,7 @@ func (s *MTGCommanderServer) handleGetEDHRECSetCards(
 		Int("limit", limit).
 		Msg("Fetching EDHREC set cards")
 
-	page, err := getSetCardsWithURL(ctx, code, s.edhrecBaseURL)
+	page, err := edhrec.GetSetCardsWithURL(ctx, code, s.edhrecBaseURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to fetch EDHREC data for set %q: %v. "+
@@ -171,5 +176,5 @@ func (s *MTGCommanderServer) handleGetEDHRECSetCards(
 		Int("card_lists", len(page.Container.JSONDict.CardLists)).
 		Msg("Successfully fetched EDHREC set cards")
 
-	return mcp.NewToolResultText(FormatSetCardsForDisplay(page, code, limit)), nil
+	return mcp.NewToolResultText(edhrec.FormatSetCards(page, code, limit)), nil
 }

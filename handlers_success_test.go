@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/nathanmartins/mtg-mcp/internal/archidekt"
+	"github.com/nathanmartins/mtg-mcp/internal/edhrec"
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
@@ -645,16 +646,16 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 
 func TestHandleGetEDHRECRecommendations(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resp := EDHRECResponse{
-			Container: EDHRECContainer{
-				JSONDict: EDHRECData{
-					Card: EDHRECCardInfo{
+		resp := edhrec.Response{
+			Container: edhrec.Container{
+				JSONDict: edhrec.Data{
+					Card: edhrec.CardInfo{
 						Name: "Atraxa, Praetors' Voice", ColorID: []string{"W", "U", "B", "G"}, NumDecks: 1000,
 					},
-					CardLists: []EDHRECCardList{
+					CardLists: []edhrec.CardList{
 						{
 							Header:    "High Synergy Cards",
-							CardViews: []EDHRECCardView{{Name: "Doubling Season", NumDecks: 500}},
+							CardViews: []edhrec.CardView{{Name: "Doubling Season", NumDecks: 500}},
 						},
 					},
 				},
@@ -687,14 +688,14 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 
 func TestHandleGetEDHRECCombos(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resp := EDHRECComboResponse{
-			Container: EDHRECComboContainer{
-				JSONDict: EDHRECComboData{
-					CardLists: []EDHRECComboList{
+		resp := edhrec.ComboResponse{
+			Container: edhrec.ComboContainer{
+				JSONDict: edhrec.ComboData{
+					CardLists: []edhrec.ComboList{
 						{
 							Header:    "Basalt Monolith + Forsaken Monument",
-							CardViews: []EDHRECCardView{{Name: "Basalt Monolith"}, {Name: "Forsaken Monument"}},
-							Combo:     &EDHRECCombo{ComboID: "c1", Results: []string{"Infinite mana"}},
+							CardViews: []edhrec.CardView{{Name: "Basalt Monolith"}, {Name: "Forsaken Monument"}},
+							Combo:     &edhrec.Combo{ComboID: "c1", Results: []string{"Infinite mana"}},
 						},
 					},
 				},
@@ -724,14 +725,14 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 
 func TestHandleGetEDHRECSetCards(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resp := EDHRECResponse{
+		resp := edhrec.Response{
 			Header: "Ravnica Allegiance",
-			Container: EDHRECContainer{
-				JSONDict: EDHRECData{
-					CardLists: []EDHRECCardList{
+			Container: edhrec.Container{
+				JSONDict: edhrec.Data{
+					CardLists: []edhrec.CardList{
 						{
 							Header:    "Commanders",
-							CardViews: []EDHRECCardView{{Name: "Teysa Karlov", NumDecks: 21469}},
+							CardViews: []edhrec.CardView{{Name: "Teysa Karlov", NumDecks: 21469}},
 						},
 					},
 				},
@@ -767,8 +768,8 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 				w.WriteHeader(http.StatusForbidden)
 			case strings.HasSuffix(r.URL.Path, "/commanders/atraxa-praetors-voice.json"):
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(EDHRECResponse{
-					TagCounts: []EDHRECTagCount{{Slug: "infect", Value: "Infect", Count: 4066}},
+				_ = json.NewEncoder(w).Encode(edhrec.Response{
+					TagCounts: []edhrec.TagCount{{Slug: "infect", Value: "Infect", Count: 4066}},
 				})
 			default:
 				w.WriteHeader(http.StatusForbidden)
