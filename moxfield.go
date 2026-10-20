@@ -297,6 +297,22 @@ func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
 	return groups
 }
 
+// moxfieldAuthors returns the deck's author names. The field is a list of names on most
+// decks but an object on some, and anything that is not a list of strings is ignored.
+func moxfieldAuthors(raw any) []string {
+	list, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	names := make([]string, 0, len(list))
+	for _, author := range list {
+		if name, isString := author.(string); isString {
+			names = append(names, name)
+		}
+	}
+	return names
+}
+
 // formatDeckHeader formats deck metadata and commander information.
 func formatDeckHeader(deck *MoxfieldDeck) string {
 	var output strings.Builder
@@ -304,25 +320,9 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 	_, _ = fmt.Fprintf(&output, "# %s\n\n", deck.Name)
 	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", deck.Format)
 
-	// Authors field can be either []string or an object, handle gracefully
-	if deck.Authors != nil {
-		authors, ok := deck.Authors.([]any)
-		if !ok || len(authors) == 0 {
-			goto skipAuthors
-		}
-
-		authorStrs := make([]string, 0, len(authors))
-		for _, author := range authors {
-			if authorStr, isString := author.(string); isString {
-				authorStrs = append(authorStrs, authorStr)
-			}
-		}
-
-		if len(authorStrs) > 0 {
-			_, _ = fmt.Fprintf(&output, "**Author:** %s\n", strings.Join(authorStrs, ", "))
-		}
+	if authors := moxfieldAuthors(deck.Authors); len(authors) > 0 {
+		_, _ = fmt.Fprintf(&output, "**Author:** %s\n", strings.Join(authors, ", "))
 	}
-skipAuthors:
 
 	_, _ = fmt.Fprintf(&output, "**Views:** %d | **Likes:** %d | **Comments:** %d\n",
 		deck.ViewCount, deck.LikeCount, deck.CommentCount)
