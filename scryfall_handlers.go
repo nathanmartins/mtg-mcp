@@ -727,6 +727,10 @@ func getExchangeRate(ctx context.Context, rawURL string, get httpGetter) (float6
 		_ = resp.Body.Close()
 	}()
 
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("exchange rate request failed with status %d", resp.StatusCode)
+	}
+
 	var result struct {
 		Rates struct {
 			BRL float64 `json:"BRL"`
