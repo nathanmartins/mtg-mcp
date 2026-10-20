@@ -492,7 +492,6 @@ make ci
 | `make test-coverage`         | Generate HTML coverage report                      |
 | `make test-coverage-cli`     | Show coverage in terminal                          |
 | `make update-coverage-badge` | Update coverage badge in README with proper colors |
-| `make test-race`             | Run tests with race detector                       |
 | `make bench`                 | Run benchmarks                                     |
 | `make fmt`                   | Format Go code                                     |
 | `make lint`                  | Run all linters                                    |
@@ -514,7 +513,7 @@ The project includes comprehensive unit tests with good coverage:
 go test -v ./...
 
 # Run tests with coverage
-go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+go test -v -coverprofile=coverage.out -covermode=atomic ./...
 
 # View coverage report
 go tool cover -html=coverage.out

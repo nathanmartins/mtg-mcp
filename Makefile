@@ -81,11 +81,6 @@ update-coverage-badge:
 	@echo "Updating coverage badge..."
 	@./scripts/update-coverage-badge.sh
 
-## test-race: Run tests with race detector
-test-race:
-	@echo "Running tests with race detector..."
-	$(GOTEST) -race -v ./...
-
 ## bench: Run benchmarks
 bench:
 	@echo "Running benchmarks..."
