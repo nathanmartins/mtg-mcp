@@ -659,6 +659,22 @@ func TestFormatDeckOthers(t *testing.T) {
 }
 
 func TestFormatDeckHeaderAuthors(t *testing.T) {
+	// The live API's shape, confirmed against a real deck read.
+	t.Run("user objects show their usernames", func(t *testing.T) {
+		deck := &Deck{
+			Name:   "Test",
+			Format: "commander",
+			Authors: []any{
+				map[string]any{"userName": "fabudl", "displayName": "Fab", "badges": []any{}},
+				map[string]any{"userName": "second", "displayName": "Second"},
+			},
+		}
+		got := formatDeckHeader(deck)
+		if !strings.Contains(got, "**Author:** fabudl, second") {
+			t.Errorf("formatDeckHeader() should list author usernames, got:\n%s", got)
+		}
+	})
+
 	t.Run("non-slice authors skipped gracefully", func(t *testing.T) {
 		deck := &Deck{
 			Name:    "Test",

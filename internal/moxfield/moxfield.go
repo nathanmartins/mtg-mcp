@@ -59,7 +59,7 @@ type Deck struct {
 	ViewCount    int                  `json:"viewCount"`
 	LikeCount    int                  `json:"likeCount"`
 	CommentCount int                  `json:"commentCount"`
-	Authors      any                  `json:"authors,omitempty"` // Can be string slice or object
+	Authors      any                  `json:"authors,omitempty"` // Usually user objects; see authorNames
 }
 
 // CardEntry represents a card in a Moxfield deck.
@@ -260,8 +260,10 @@ func groupDeckCards(mainboard map[string]CardEntry) deckfmt.CardGroups {
 	return groups
 }
 
-// authorNames returns the deck's author names. The field is a list of names on most
-// decks but an object on some, and anything that is not a list of strings is ignored.
+// authorNames returns the deck's author usernames. The live API sends a list of user objects
+// ({"userName": "...", "displayName": "..."}); plain name strings are accepted too. The username
+// is used, not the display name, because it is what get_moxfield_user_decks takes. Anything else
+// is ignored.
 func authorNames(raw any) []string {
 	list, ok := raw.([]any)
 	if !ok {
@@ -269,8 +271,13 @@ func authorNames(raw any) []string {
 	}
 	names := make([]string, 0, len(list))
 	for _, author := range list {
-		if name, isString := author.(string); isString {
-			names = append(names, name)
+		switch author := author.(type) {
+		case string:
+			names = append(names, author)
+		case map[string]any:
+			if name, isString := author["userName"].(string); isString && name != "" {
+				names = append(names, name)
+			}
 		}
 	}
 	return names
