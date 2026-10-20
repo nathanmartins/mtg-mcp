@@ -7,7 +7,7 @@ A Model Context Protocol (MCP) server for Magic: The Gathering Commander format,
 information, rulings, pricing, deck validation tools, and multi-platform deck importing.
 
 <!-- markdownlint-disable-next-line MD013 -->
-[![Go Report Card](https://goreportcard.com/badge/github.com/nathanmartins/mtg-mcp)](https://goreportcard.com/report/github.com/nathanmartins/mtg-mcp) [![License](https://img.shields.io/github/license/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/releases/latest) [![Go Version](https://img.shields.io/github/go-mod/go-version/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/go.mod)
+[![Go Reference](https://pkg.go.dev/badge/github.com/nathanmartins/mtg-mcp.svg)](https://pkg.go.dev/github.com/nathanmartins/mtg-mcp) [![Go Report Card](https://goreportcard.com/badge/github.com/nathanmartins/mtg-mcp)](https://goreportcard.com/report/github.com/nathanmartins/mtg-mcp) [![License](https://img.shields.io/github/license/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/LICENSE) [![Release](https://img.shields.io/github/v/release/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/releases/latest) [![Go Version](https://img.shields.io/github/go-mod/go-version/nathanmartins/mtg-mcp)](https://github.com/nathanmartins/mtg-mcp/blob/main/go.mod)
 
 ## Features
 
