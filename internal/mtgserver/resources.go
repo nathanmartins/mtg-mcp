@@ -14,37 +14,36 @@ func (s *Server) handleCommanderRules(
 	_ context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
+	// Summarises Comprehensive Rules 903 (Commander) and 103.5 (mulligans). Counts and dates
+	// that go stale, such as the size of the banned list, belong to the live tools instead.
 	rules := `# Commander Format Rules
 
 ## Overview
 Commander is a multiplayer format for Magic: The Gathering, emphasizing social interactions, interesting games, and creative deck-building.
 
 ## Deck Construction
-- **100 cards total**: 1 commander + 99 other cards
-- **Singleton**: No more than 1 copy of any card (except basic lands)
-- **Commander**: Must be a legendary creature or eligible legendary permanent
-- **Color Identity**: All cards must match commander's color identity (mana symbols in cost and rules text)
-- **Banned List**: 85 cards currently banned (use get_banned_list tool for current list)
+- **100 cards total**: exactly 100 cards, including the commander (rule 903.5a)
+- **Singleton**: every card except basic lands must have a different English name (903.5b)
+- **Commander**: a legendary creature, Vehicle, or Spacecraft with power/toughness, or a card whose text says it can be your commander (903.3)
+- **Color Identity**: every card's color identity must be within the commander's color identity (903.5c)
+- **Banned List**: use the get_banned_list tool or the commander://banned-list resource for the current list
 
 ## Gameplay Rules
-- **Starting Life**: 40 life points (instead of 20)
-- **Command Zone**: Commanders start in the Command Zone
-- **Commander Tax**: Pay 2 additional generic mana for each previous casting from command zone
-- **Commander Damage**: 21 combat damage from a single commander causes player loss
-- **Mulligan**: Partial Paris mulligan (draw 7, then any number of mulligans drawing 1 less each time)
+- **Starting Life**: 40 life points (903.7)
+- **Command Zone**: commanders start the game face up in the command zone (903.6)
+- **Commander Tax**: casting a commander from the command zone costs {2} more for each previous time it was cast from there (903.8)
+- **Commander Damage**: a player dealt 21 or more combat damage by the same commander loses the game (903.10a)
+- **Mulligan**: London mulligan; in multiplayer games the first mulligan is free (103.5, 103.5c)
 
 ## Winning Conditions
 - Reduce all opponents to 0 life
-- 21 combat damage from a single commander
-- Opponents deck out (draw from empty library)
+- 21 or more combat damage from a single commander
+- Opponents drawing from an empty library
 - Alternate win conditions (as printed on cards)
 
-## Official Resources
-- Format managed by Wizards of the Coast (as of September 2024)
-- Official website: https://mtgcommander.net
-- Rules updates: Follow WeeklyMTG on Twitch/YouTube
-
-*Last updated: November 2025*
+## Official Rules
+- Commander is defined in section 903 of the Comprehensive Rules.
+- Read the current text with the rules://comprehensive resource or the get_rule tool (e.g. rule "903").
 `
 	return []mcp.ResourceContents{
 		&mcp.TextResourceContents{
