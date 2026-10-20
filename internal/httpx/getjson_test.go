@@ -96,3 +96,13 @@ func TestHasStatus(t *testing.T) {
 		t.Error("HasStatus() should not match a non-status error")
 	}
 }
+
+func TestAPIClientIsShared(t *testing.T) {
+	first, second := APIClient(), APIClient()
+	if first != second {
+		t.Error("APIClient() should return one shared client so connections are reused")
+	}
+	if APIClient().Timeout != APITimeout {
+		t.Errorf("APIClient().Timeout = %v, want %v", APIClient().Timeout, APITimeout)
+	}
+}

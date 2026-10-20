@@ -37,9 +37,16 @@ func HasStatus(err error, code int) bool {
 	return ok && statusErr.StatusCode == code
 }
 
-// APIClient returns a client with the deck-site API timeout.
+// Shared clients: http.Client is safe for concurrent use and pools connections, so one per
+// timeout lets consecutive requests (such as Moxfield verification) reuse connections.
+var (
+	apiClient     = &http.Client{Timeout: APITimeout}     //nolint:gochecknoglobals // shared connection pool
+	defaultClient = &http.Client{Timeout: DefaultTimeout} //nolint:gochecknoglobals // shared connection pool
+)
+
+// APIClient returns the shared client with the deck-site API timeout.
 func APIClient() *http.Client {
-	return &http.Client{Timeout: APITimeout}
+	return apiClient
 }
 
 // Get performs an HTTP GET request with context and timeout.
@@ -50,7 +57,7 @@ func Get(ctx context.Context, rawURL string) (*http.Response, error) {
 		return nil, fmt.Errorf("invalid or non-HTTPS URL: %s", rawURL)
 	}
 
-	return GetWithClient(ctx, parsed.String(), &http.Client{Timeout: DefaultTimeout})
+	return GetWithClient(ctx, parsed.String(), defaultClient)
 }
 
 // GetWithClient performs an HTTP GET request using the provided client (used for testing).
