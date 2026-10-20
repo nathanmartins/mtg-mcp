@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/BlueMonday/go-scryfall"
@@ -492,17 +493,17 @@ func (s *Server) handleGetPrice(
 
 	if card.Prices.USD != "" {
 		_, _ = fmt.Fprintf(&output, "**USD:** $%s\n", card.Prices.USD)
-		_, _ = fmt.Fprintf(&output, "**BRL:** R$ %.2f (converted)\n", convertToBRL(card.Prices.USD, usdToBRL))
+		if brl, ok := convertToBRL(card.Prices.USD, usdToBRL); ok {
+			_, _ = fmt.Fprintf(&output, "**BRL:** R$ %.2f (converted)\n", brl)
+		}
 		hasPricing = true
 	}
 
 	if card.Prices.USDFoil != "" {
 		_, _ = fmt.Fprintf(&output, "**USD (Foil):** $%s\n", card.Prices.USDFoil)
-		_, _ = fmt.Fprintf(
-			&output,
-			"**BRL (Foil):** R$ %.2f (converted)\n",
-			convertToBRL(card.Prices.USDFoil, usdToBRL),
-		)
+		if brl, ok := convertToBRL(card.Prices.USDFoil, usdToBRL); ok {
+			_, _ = fmt.Fprintf(&output, "**BRL (Foil):** R$ %.2f (converted)\n", brl)
+		}
 		hasPricing = true
 	}
 
@@ -731,11 +732,15 @@ func getExchangeRate(ctx context.Context, rawURL string, get httpGetter) (float6
 	return result.Rates.BRL, nil
 }
 
-// convertToBRL converts a USD price string to BRL using the given exchange rate.
-func convertToBRL(priceStr string, rate float64) float64 {
-	var price float64
-	_, _ = fmt.Sscanf(priceStr, "%f", &price)
-	return price * rate
+// convertToBRL converts a USD price string to BRL using the given exchange rate. It reports
+// false when the price is not a number, so the caller can omit the conversion rather than
+// show a misleading R$ 0.00.
+func convertToBRL(priceStr string, rate float64) (float64, bool) {
+	price, err := strconv.ParseFloat(strings.TrimSpace(priceStr), 64)
+	if err != nil {
+		return 0, false
+	}
+	return price * rate, true
 }
 
 const (
