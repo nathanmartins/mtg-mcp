@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 const (
@@ -313,7 +315,7 @@ func (s *MTGCommanderServer) comprehensiveRulesFromURL(
 		stale := s.rules.rules
 		s.rules.mu.Unlock()
 		if stale != nil {
-			GetLogger().Warn().Err(err).Msg("using stale comprehensive rules cache")
+			logging.Get().Warn().Err(err).Msg("using stale comprehensive rules cache")
 			return stale, nil
 		}
 		return nil, err

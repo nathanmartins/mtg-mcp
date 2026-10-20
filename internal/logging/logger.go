@@ -1,4 +1,6 @@
-package main
+// Package logging configures the process-wide zerolog logger. Output goes to stderr and a log
+// file, never stdout, which the MCP stdio transport owns.
+package logging
 
 import (
 	"os"
@@ -8,10 +10,10 @@ import (
 )
 
 const (
-	logLevelDebug = "debug"
-	logLevelInfo  = "info"
-	logLevelWarn  = "warn"
-	logLevelError = "error"
+	LevelDebug = "debug"
+	LevelInfo  = "info"
+	LevelWarn  = "warn"
+	LevelError = "error"
 )
 
 // loggerInstance wraps the zerolog logger for thread-safe access.
@@ -32,8 +34,8 @@ func newLoggerInstance() *loggerInstance {
 
 var loggerHolder = newLoggerInstance() //nolint:gochecknoglobals // logger needs to be accessible throughout the application
 
-// InitLogger initializes the global logger with both console and file output.
-func InitLogger(logFilePath string) error {
+// Init initializes the global logger with both console and file output.
+func Init(logFilePath string) error {
 	// Create log file
 	logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
@@ -64,23 +66,23 @@ func InitLogger(logFilePath string) error {
 	return nil
 }
 
-// SetLogLevel sets the global log level.
-func SetLogLevel(level string) {
+// SetLevel sets the global log level.
+func SetLevel(level string) {
 	switch level {
-	case logLevelDebug:
+	case LevelDebug:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	case logLevelInfo:
+	case LevelInfo:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	case logLevelWarn:
+	case LevelWarn:
 		zerolog.SetGlobalLevel(zerolog.WarnLevel)
-	case logLevelError:
+	case LevelError:
 		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
 	default:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 }
 
-// GetLogger returns the global logger.
-func GetLogger() *zerolog.Logger {
+// Get returns the global logger.
+func Get() *zerolog.Logger {
 	return loggerHolder.get()
 }

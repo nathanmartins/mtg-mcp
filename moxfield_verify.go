@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 const (
@@ -99,7 +101,7 @@ func verifyMoxfieldCommanderDecks(
 			}
 			outcome.Checked++
 			outcome.Failed++
-			GetLogger().Warn().
+			logging.Get().Warn().
 				Err(err).
 				Str("deck_id", candidate.PublicID).
 				Msg("Skipping deck that could not be verified")

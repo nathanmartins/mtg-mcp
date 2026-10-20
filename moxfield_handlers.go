@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 func (s *MTGCommanderServer) handleGetMoxfieldDeck(
@@ -14,20 +15,20 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 ) (*mcp.CallToolResult, error) {
 	deckID, err := request.RequireString("deck_id")
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_moxfield_deck").Msg("Missing deck_id parameter")
+		logging.Get().Error().Err(err).Str("tool", "get_moxfield_deck").Msg("Missing deck_id parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	publicID := ExtractPublicIDFromURL(deckID)
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_moxfield_deck").
 		Str("deck_id", publicID).
 		Msg("Fetching Moxfield deck")
 
 	deck, err := getMoxfieldDeckWithURL(ctx, publicID, s.moxfieldBaseURL)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "get_moxfield_deck").
 			Str("deck_id", publicID).
@@ -35,7 +36,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch Moxfield deck: %v", err)), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_moxfield_deck").
 		Str("deck_id", publicID).
 		Str("deck_name", deck.Name).
@@ -147,14 +148,14 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 ) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString(paramCommander)
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
+		logging.Get().Error().Err(err).Str("tool", "search_moxfield_decks").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	args := request.GetArguments()
 	params, err := moxfieldSearchParamsFromRequest(commander, args)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "search_moxfield_decks").
 			Str(paramCommander, commander).
@@ -166,7 +167,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "search_moxfield_decks").
 		Str(paramCommander, commander).
 		Str("format", params.Format).
@@ -185,7 +186,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 
 	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldSearchURL)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "search_moxfield_decks").
 			Str(paramCommander, commander).
@@ -200,7 +201,7 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		wanted, moxfieldVerifyMaxChecks, s.verifyDelay,
 	)
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "search_moxfield_decks").
 		Str(paramCommander, commander).
 		Int("candidates", outcome.Candidates).

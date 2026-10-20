@@ -1,4 +1,4 @@
-package main
+package logging
 
 import (
 	"os"
@@ -31,24 +31,24 @@ func TestInitLogger(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := InitLogger(tt.logFilePath)
+			err := Init(tt.logFilePath)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("InitLogger() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Init() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr {
 				// Check if log file was created
 				if _, statErr := os.Stat(tt.logFilePath); os.IsNotExist(statErr) {
-					t.Errorf("InitLogger() log file not created at %s", tt.logFilePath)
+					t.Errorf("Init() log file not created at %s", tt.logFilePath)
 				}
 
 				// Test that logger can be used
-				GetLogger().Info().Msg("test log message")
+				Get().Info().Msg("test log message")
 
-				// Check that GetLogger returns a non-nil logger
-				if l := GetLogger(); l == nil {
-					t.Error("GetLogger() returned nil")
+				// Check that Get returns a non-nil logger
+				if l := Get(); l == nil {
+					t.Error("Get() returned nil")
 				}
 			}
 		})
@@ -58,9 +58,9 @@ func TestInitLogger(t *testing.T) {
 func TestInitLogger_InvalidPath(t *testing.T) {
 	// Try to create a log file in a non-existent directory without creating it
 	invalidPath := "/nonexistent/directory/that/does/not/exist/test.log"
-	err := InitLogger(invalidPath)
+	err := Init(invalidPath)
 	if err == nil {
-		t.Error("InitLogger() expected error with invalid path, got nil")
+		t.Error("Init() expected error with invalid path, got nil")
 	}
 }
 
@@ -68,7 +68,7 @@ func TestSetLogLevel(t *testing.T) {
 	// Initialize logger first with a temp file
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "test.log")
-	if err := InitLogger(logPath); err != nil {
+	if err := Init(logPath); err != nil {
 		t.Fatalf("Failed to initialize logger: %v", err)
 	}
 
@@ -111,10 +111,10 @@ func TestSetLogLevel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SetLogLevel(tt.level)
+			SetLevel(tt.level)
 			currentLevel := zerolog.GlobalLevel()
 			if currentLevel != tt.wantLevel {
-				t.Errorf("SetLogLevel(%q) = %v, want %v", tt.level, currentLevel, tt.wantLevel)
+				t.Errorf("SetLevel(%q) = %v, want %v", tt.level, currentLevel, tt.wantLevel)
 			}
 		})
 	}
@@ -124,28 +124,28 @@ func TestGetLogger(t *testing.T) {
 	// Initialize logger first
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "test.log")
-	if err := InitLogger(logPath); err != nil {
+	if err := Init(logPath); err != nil {
 		t.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	l := GetLogger()
+	l := Get()
 	if l == nil {
-		t.Error("GetLogger() returned nil")
+		t.Error("Get() returned nil")
 	}
 
 	// Test that we can use the logger
-	l.Info().Msg("test message from GetLogger")
+	l.Info().Msg("test message from Get")
 }
 
 func TestLogger_MultipleWrites(t *testing.T) {
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "test.log")
-	if err := InitLogger(logPath); err != nil {
+	if err := Init(logPath); err != nil {
 		t.Fatalf("Failed to initialize logger: %v", err)
 	}
 
 	// Write multiple log messages
-	log := GetLogger()
+	log := Get()
 	log.Info().Msg("message 1")
 	log.Debug().Msg("message 2")
 	log.Warn().Msg("message 3")
@@ -165,7 +165,7 @@ func TestLogger_MultipleWrites(t *testing.T) {
 func TestLogger_ConcurrentWrites(t *testing.T) {
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "concurrent.log")
-	if err := InitLogger(logPath); err != nil {
+	if err := Init(logPath); err != nil {
 		t.Fatalf("Failed to initialize logger: %v", err)
 	}
 
@@ -173,7 +173,7 @@ func TestLogger_ConcurrentWrites(t *testing.T) {
 	done := make(chan bool)
 	for i := range 10 {
 		go func(id int) {
-			GetLogger().Info().Int("goroutine", id).Msg("concurrent write")
+			Get().Info().Int("goroutine", id).Msg("concurrent write")
 			done <- true
 		}(i)
 	}

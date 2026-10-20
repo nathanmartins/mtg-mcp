@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 // optionalStringArg returns the trimmed value of an optional string argument. A missing argument
@@ -54,13 +55,13 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 ) (*mcp.CallToolResult, error) {
 	commander, err := request.RequireString(paramCommander)
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
+		logging.Get().Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Missing commander parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	filter, err := recFilterFromArgs(request.GetArguments())
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Invalid filter arguments")
+		logging.Get().Error().Err(err).Str("tool", "get_edhrec_recommendations").Msg("Invalid filter arguments")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -69,7 +70,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		return mcp.NewToolResultError("argument \"limit\" must be zero or greater"), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_edhrec_recommendations").
 		Str(paramCommander, commander).
 		Str(paramTheme, filter.Theme).
@@ -79,7 +80,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 
 	page, err := getCommanderPageWithURL(ctx, commander, filter, s.edhrecBaseURL)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "get_edhrec_recommendations").
 			Str(paramCommander, commander).
@@ -96,7 +97,7 @@ func (s *MTGCommanderServer) handleGetEDHRECRecommendations(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC recommendations: %v", err)), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_edhrec_recommendations").
 		Str(paramCommander, commander).
 		Str(paramTheme, filter.Theme).
@@ -135,7 +136,7 @@ func (s *MTGCommanderServer) handleGetEDHRECSetCards(
 ) (*mcp.CallToolResult, error) {
 	setCode, err := request.RequireString(paramSet)
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_edhrec_set_cards").Msg("Missing set parameter")
+		logging.Get().Error().Err(err).Str("tool", "get_edhrec_set_cards").Msg("Missing set parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -149,7 +150,7 @@ func (s *MTGCommanderServer) handleGetEDHRECSetCards(
 		return mcp.NewToolResultError("argument \"limit\" must be zero or greater"), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_edhrec_set_cards").
 		Str(paramSet, code).
 		Int("limit", limit).
@@ -164,7 +165,7 @@ func (s *MTGCommanderServer) handleGetEDHRECSetCards(
 		)), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_edhrec_set_cards").
 		Str(paramSet, code).
 		Int("card_lists", len(page.Container.JSONDict.CardLists)).

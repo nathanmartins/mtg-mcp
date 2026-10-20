@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 func (s *MTGCommanderServer) handleGetArchidektDeck(
@@ -14,7 +15,7 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 ) (*mcp.CallToolResult, error) {
 	deckIDStr, err := request.RequireString("deck_id")
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_archidekt_deck").Msg("Missing deck_id parameter")
+		logging.Get().Error().Err(err).Str("tool", "get_archidekt_deck").Msg("Missing deck_id parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -23,14 +24,14 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid deck ID: %v", err)), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_archidekt_deck").
 		Int("deck_id", deckID).
 		Msg("Fetching Archidekt deck")
 
 	deck, err := getArchidektDeckWithURL(ctx, deckID, s.archidektBaseURL)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "get_archidekt_deck").
 			Int("deck_id", deckID).
@@ -46,7 +47,7 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 		}
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_archidekt_deck").
 		Int("deck_id", deckID).
 		Str("deck_name", deck.Name).
@@ -80,7 +81,7 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 		}
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_archidekt_user_decks").
 		Str("username", username).
 		Int("page", page).
@@ -88,7 +89,7 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 
 	result, err := getArchidektUserDecksWithURL(ctx, username, page, s.archidektBaseURL)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "get_archidekt_user_decks").
 			Str("username", username).
@@ -215,7 +216,7 @@ func (s *MTGCommanderServer) handleSearchArchidektDecks(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "search_archidekt_decks").
 		Str(paramCommander, params.Commander).
 		Int("bracket", params.Bracket).
@@ -227,7 +228,7 @@ func (s *MTGCommanderServer) handleSearchArchidektDecks(
 
 	result, err := searchArchidektDecksWithURL(ctx, params, s.archidektBaseURL)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "search_archidekt_decks").
 			Str(paramCommander, params.Commander).
@@ -235,7 +236,7 @@ func (s *MTGCommanderServer) handleSearchArchidektDecks(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Archidekt decks: %v", err)), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "search_archidekt_decks").
 		Str(paramCommander, params.Commander).
 		Int("results_count", len(result.Decks)).

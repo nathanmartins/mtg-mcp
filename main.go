@@ -8,6 +8,7 @@ import (
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 // Build-time variables injected via -ldflags.
@@ -95,12 +96,12 @@ func main() {
 
 	// Initialize logger
 	logFilePath := "mtg-commander-server.log"
-	if err := InitLogger(logFilePath); err != nil {
+	if err := logging.Init(logFilePath); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
 		os.Exit(1)
 	}
 
-	log := GetLogger()
+	log := logging.Get()
 	log.Info().
 		Str("version", version).
 		Str("commit", commit).
@@ -109,7 +110,7 @@ func main() {
 
 	// Check for log level flag
 	if len(os.Args) > 1 && os.Args[1] == "--debug" {
-		SetLogLevel(logLevelDebug)
+		logging.SetLevel(logging.LevelDebug)
 		log.Debug().Msg("Debug logging enabled")
 	}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
+	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
 func (s *MTGCommanderServer) handleSearchCards(
@@ -21,7 +22,7 @@ func (s *MTGCommanderServer) handleSearchCards(
 ) (*mcp.CallToolResult, error) {
 	query, err := request.RequireString("query")
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "search_cards").Msg("Missing required query parameter")
+		logging.Get().Error().Err(err).Str("tool", "search_cards").Msg("Missing required query parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -37,7 +38,7 @@ func (s *MTGCommanderServer) handleSearchCards(
 		}
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "search_cards").
 		Str("query", query).
 		Int("limit", limit).
@@ -50,7 +51,7 @@ func (s *MTGCommanderServer) handleSearchCards(
 
 	result, err := s.scryfallClient.SearchCards(ctx, query, searchOpts)
 	if err != nil {
-		GetLogger().Error().
+		logging.Get().Error().
 			Err(err).
 			Str("tool", "search_cards").
 			Str("query", query).
@@ -59,14 +60,14 @@ func (s *MTGCommanderServer) handleSearchCards(
 	}
 
 	if len(result.Cards) == 0 {
-		GetLogger().Info().
+		logging.Get().Info().
 			Str("tool", "search_cards").
 			Str("query", query).
 			Msg("No cards found")
 		return mcp.NewToolResultText("No cards found matching your query."), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "search_cards").
 		Str("query", query).
 		Int("results_found", result.TotalCards).
@@ -181,7 +182,7 @@ func (s *MTGCommanderServer) handleGetCardImage(
 ) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString(paramName)
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_card_image").Msg("Missing required name parameter")
+		logging.Get().Error().Err(err).Str("tool", "get_card_image").Msg("Missing required name parameter")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -207,7 +208,7 @@ func (s *MTGCommanderServer) handleGetCardImage(
 		return mcp.NewToolResultError(validateErr.Error()), nil
 	}
 
-	GetLogger().Info().
+	logging.Get().Info().
 		Str("tool", "get_card_image").
 		Str(paramName, q.name).Str(paramLanguage, q.language).Str(paramSize, q.size).
 		Str(paramSet, q.set).Str(paramCollectorNumber, q.collectorNumber).Str(paramFace, q.face).
@@ -215,7 +216,7 @@ func (s *MTGCommanderServer) handleGetCardImage(
 
 	card, usedLang, err := s.resolveCardForImage(ctx, q)
 	if err != nil {
-		GetLogger().Error().Err(err).Str("tool", "get_card_image").Str(paramName, q.name).Msg("Card not found")
+		logging.Get().Error().Err(err).Str("tool", "get_card_image").Str(paramName, q.name).Msg("Card not found")
 		return mcp.NewToolResultError(fmt.Sprintf("Card not found: %v", err)), nil
 	}
 
@@ -334,7 +335,7 @@ func buildCardImageResult(
 	for _, img := range images {
 		raw, dlErr := cardImageBytesFetcher(ctx, img.url)
 		if dlErr != nil {
-			GetLogger().Error().Err(dlErr).Str("tool", "get_card_image").
+			logging.Get().Error().Err(dlErr).Str("tool", "get_card_image").
 				Str("url", img.url).Msg("Failed to download card image")
 			return mcp.NewToolResultError(fmt.Sprintf("Failed to download image: %v", dlErr)), nil
 		}
@@ -488,7 +489,7 @@ func (s *MTGCommanderServer) handleGetPrice(
 
 	usdToBRL, err := exchangeRateFetcher(ctx)
 	if err != nil {
-		GetLogger().Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
+		logging.Get().Warn().Err(err).Msg("Failed to get exchange rate, using fallback")
 		usdToBRL = 5.40
 	}
 
@@ -909,7 +910,7 @@ func (s *MTGCommanderServer) pinnedPrinting(ctx context.Context, q imageQuery) (
 		card, err = s.scryfallClient.GetCardBySetCodeAndCollectorNumber(ctx, q.set, q.collectorNumber)
 	}
 	if err != nil {
-		GetLogger().Warn().Err(err).Str("tool", "get_card_image").
+		logging.Get().Warn().Err(err).Str("tool", "get_card_image").
 			Str(paramSet, q.set).Str(paramCollectorNumber, q.collectorNumber).
 			Msg("Exact printing not found; falling back to default")
 		return scryfall.Card{}, false
@@ -918,7 +919,7 @@ func (s *MTGCommanderServer) pinnedPrinting(ctx context.Context, q imageQuery) (
 	// A set+collector-number lookup is name-independent, so guard against pinning a
 	// different card than the one requested (e.g. a wrong collector number).
 	if !cardMatchesName(card, q.name) {
-		GetLogger().Warn().Str("tool", "get_card_image").
+		logging.Get().Warn().Str("tool", "get_card_image").
 			Str(paramName, q.name).Str("printing", card.Name).
 			Msg("Pinned printing does not match the requested name; falling back to default")
 		return scryfall.Card{}, false
@@ -939,7 +940,7 @@ func cardMatchesName(card scryfall.Card, name string) bool {
 func (s *MTGCommanderServer) setPrinting(ctx context.Context, q imageQuery) (scryfall.Card, bool) {
 	base, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{Set: q.set})
 	if err != nil {
-		GetLogger().Warn().Err(err).Str("tool", "get_card_image").
+		logging.Get().Warn().Err(err).Str("tool", "get_card_image").
 			Str(paramSet, q.set).Msg("Set printing not found; falling back to default")
 		return scryfall.Card{}, false
 	}
