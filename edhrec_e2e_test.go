@@ -165,7 +165,7 @@ func TestEDHRECFormatOutputE2E(t *testing.T) {
 	}
 
 	for _, expected := range expectedStrings {
-		if !contains(output, expected) {
+		if !strings.Contains(output, expected) {
 			t.Errorf("Expected output to contain %q", expected)
 		}
 	}
@@ -276,19 +276,4 @@ func TestEDHRECSetCardsE2E(t *testing.T) {
 	if strings.Contains(output, "NaN") {
 		t.Errorf("set output must never contain NaN, got:\n%s", output)
 	}
-}
-
-// contains checks if a string contains a substring.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || indexOf(s, substr) >= 0)
-}
-
-// indexOf returns the index of substr in s, or -1 if not found.
-func indexOf(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
 }
