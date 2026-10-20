@@ -15,7 +15,7 @@ func TestScryfallSearchCardsE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestScryfallGetCardByNameE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestScryfallGetRandomCardE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}
@@ -115,7 +115,7 @@ func TestScryfallCommanderLegalityE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}
@@ -171,7 +171,7 @@ func TestScryfallCardRulingsE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}
@@ -206,7 +206,7 @@ func TestScryfallCardPricingE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		t.Fatalf("Failed to create Scryfall client: %v", err)
 	}

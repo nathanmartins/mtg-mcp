@@ -55,7 +55,7 @@ type Server struct {
 
 // New creates a new MTG Commander MCP server.
 func New() (*Server, error) {
-	client, err := scryfall.NewClient()
+	client, err := newScryfallClient()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Scryfall client: %w", err)
 	}
