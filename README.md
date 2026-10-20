@@ -401,47 +401,36 @@ Once connected to Claude Desktop, you can ask questions like:
 
 ## Project Structure
 
+- `cmd/mtg-mcp` holds the binary's entrypoint.
+- `internal/` holds one package per upstream API, plus `mtgserver`, which exposes them as MCP tools and resources.
+- Each package keeps its tests next to the code: `*_test.go` (with `httptest` mocks) and `*_e2e_test.go` (real API calls).
+
 ```text
 mtg-mcp/
-├── main.go                  # Core MCP server, tool/resource registration
-├── logger.go                # Structured logging configuration (zerolog)
-├── http.go                  # HTTP utilities for API calls
-├── resources.go             # MCP resource handlers (rules, banned list)
-├── archidekt.go             # Archidekt API integration
-├── edhrec.go                # EDHREC API integration
-├── moxfield.go              # Moxfield API integration
-├── *_handlers.go            # MCP tool handlers per source
-│   ├── scryfall_handlers.go  # Scryfall tools (search, details, price, …)
-│   ├── archidekt_handlers.go # Archidekt tools
-│   ├── edhrec_handlers.go    # EDHREC tools
-│   └── moxfield_handlers.go  # Moxfield tools
-├── *_test.go                # Unit test files (with httptest mocks)
-│   ├── archidekt_test.go    # Tests for Archidekt functionality
-│   ├── edhrec_test.go       # Tests for EDHREC functionality
-│   ├── moxfield_test.go     # Tests for Moxfield functionality
-│   ├── http_test.go         # Tests for HTTP utilities
-│   ├── logger_test.go       # Tests for logger
-│   ├── server_test.go       # Tests for server construction & registration
-│   ├── resources_test.go    # Tests for MCP resource handlers
-│   ├── scryfall_handlers_test.go          # Tests for decklist parsing helpers
-│   ├── scryfall_handlers_internal_test.go # Tests for Scryfall tool handlers
-│   ├── handlers_success_test.go           # Deck-handler success-path tests
-│   └── handlers_error_test.go             # Handler request-validation tests
-├── *_e2e_test.go            # E2E test files (real API calls)
-│   ├── archidekt_e2e_test.go # E2E tests for Archidekt API
-│   ├── edhrec_e2e_test.go    # E2E tests for EDHREC API
-│   ├── moxfield_e2e_test.go  # E2E tests for Moxfield API
-│   └── scryfall_e2e_test.go  # E2E tests for Scryfall API
-├── .github/                 # GitHub Actions workflows
-│   └── workflows/
-│       ├── ci.yaml          # CI pipeline (unit tests + linting)
-│       ├── e2e.yaml         # Manual E2E tests + coverage workflow
-│       ├── cd.yaml          # Continuous deployment
-│       └── lint.yaml        # Code quality checks
-├── go.mod                   # Go module dependencies
-├── go.sum                   # Dependency checksums
-├── mtg-mcp                  # Compiled MCP server binary
-├── mtg-commander-server.log # Server log file (JSON)
+├── cmd/
+│   └── mtg-mcp/
+│       └── main.go          # Entrypoint: flags, logger, stdio transport
+├── internal/
+│   ├── mtgserver/           # MCP server: tool/resource registration and handlers
+│   │   ├── server.go        # Server type, tool and resource registration
+│   │   ├── toolargs.go      # Typed accessors for MCP tool arguments
+│   │   ├── resources.go     # Resource handlers (Commander rules, banned list)
+│   │   ├── scryfall_handlers.go  # Scryfall tools (search, details, price, image, …)
+│   │   ├── moxfield_handlers.go  # Moxfield tools
+│   │   ├── archidekt_handlers.go # Archidekt tools
+│   │   ├── edhrec_handlers.go    # EDHREC tools
+│   │   └── rules_handlers.go     # Comprehensive Rules tools
+│   ├── moxfield/            # Moxfield API client, commander verification, deck formatting
+│   ├── archidekt/           # Archidekt API client, deck search, deck formatting
+│   ├── edhrec/              # EDHREC JSON pages client and formatting
+│   ├── rules/               # Comprehensive Rules fetcher, parser and cache
+│   ├── deckfmt/             # Decklist grouping shared by the Moxfield and Archidekt formatters
+│   ├── httpx/               # Shared HTTP GET/JSON helpers with timeouts and status errors
+│   └── logging/             # zerolog setup (stderr + log file, never stdout)
+├── docker/Dockerfile        # stdio and mcp-proxy images
+├── .github/workflows/       # CI, E2E, CD and lint workflows
+├── Makefile                 # Build, test, lint and Docker targets
+├── go.mod / go.sum          # Go module dependencies
 └── README.md                # This file
 ```
 
@@ -561,9 +550,11 @@ The workflow:
 
 **E2E Test Files:**
 
-- `edhrec_e2e_test.go` - EDHREC API integration tests
-- `moxfield_e2e_test.go` - Moxfield API integration tests
-- `scryfall_e2e_test.go` - Scryfall API integration tests
+- `internal/archidekt/archidekt_e2e_test.go` - Archidekt API integration tests
+- `internal/edhrec/edhrec_e2e_test.go` - EDHREC API integration tests
+- `internal/moxfield/moxfield_e2e_test.go` - Moxfield API integration tests
+- `internal/rules/rules_e2e_test.go` - Comprehensive Rules fetch integration tests
+- `internal/mtgserver/scryfall_e2e_test.go` and `scryfall_image_e2e_test.go` - Scryfall API integration tests
 
 **Note:** E2E tests make real API calls and are subject to:
 
@@ -586,23 +577,26 @@ golangci-lint run --fix
 
 ### Adding New Tools
 
-1. Define the tool in `registerTools()` using `mcp.NewTool()`
-2. Create a handler function with a signature:
+1. For a new upstream API, add a client package under `internal/` (`internal/edhrec` is a small example).
+   Fetch through `httpx.GetJSON`, which adds a request timeout and typed status errors.
+2. Define the tool with `mcp.NewTool()` in `internal/mtgserver/server.go`.
+   Use `registerTools()` or the matching per-source `register*Tools()` helper.
+3. Create a handler in the matching `internal/mtgserver/*_handlers.go` file, reading arguments with the helpers in `toolargs.go`:
 
    ```go
-   func (s *MTGCommanderServer) handleToolName(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
+   func (s *Server) handleToolName(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
    ```
 
-3. Register with `mcpServer.AddTool()`
-4. Write unit tests in a corresponding `*_test.go` file
+4. Register it with `mcpServer.AddTool()` and bump `totalToolCount`.
+5. Write unit tests next to the code: client tests in the client package, handler tests in `internal/mtgserver`.
 
 ### Adding New Resources
 
-1. Define the resource in `registerResources()` using `mcp.NewResource()`
+1. Define the resource in `registerResources()` in `internal/mtgserver/server.go` using `mcp.NewResource()`
 2. Create a handler function with a signature:
 
    ```go
-   func (s *MTGCommanderServer) handleResourceName(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error)
+   func (s *Server) handleResourceName(ctx context.Context, request mcp.ReadResourceRequest) ([]mcp.ResourceContents, error)
    ```
 
 3. Register with `mcpServer.AddResource()`
