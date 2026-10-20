@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
@@ -288,10 +289,20 @@ func (g *deckCardGroups) writeTo(output *strings.Builder) {
 	output.WriteString(formatCardGroup("Other", g.others))
 }
 
+// sortedEntries returns a Moxfield board's entries ordered by their map key (the card
+// name), so a deck renders the same way every time instead of in map iteration order.
+func sortedEntries(board map[string]MoxfieldCardEntry) []MoxfieldCardEntry {
+	entries := make([]MoxfieldCardEntry, 0, len(board))
+	for _, key := range slices.Sorted(maps.Keys(board)) {
+		entries = append(entries, board[key])
+	}
+	return entries
+}
+
 // groupDeckCards categorizes mainboard cards by type.
 func groupDeckCards(mainboard map[string]MoxfieldCardEntry) deckCardGroups {
 	var groups deckCardGroups
-	for _, entry := range mainboard {
+	for _, entry := range sortedEntries(mainboard) {
 		groups.add(entry.Card.TypeLine, entry.Card.Name, entry.Quantity)
 	}
 	return groups
@@ -311,6 +322,18 @@ func moxfieldAuthors(raw any) []string {
 		}
 	}
 	return names
+}
+
+// writeMoxfieldBoard renders a board as "## Title" followed by its card lines, or
+// nothing when the board is empty.
+func writeMoxfieldBoard(output *strings.Builder, title string, board map[string]MoxfieldCardEntry) {
+	if len(board) == 0 {
+		return
+	}
+	_, _ = fmt.Fprintf(output, "\n## %s\n", title)
+	for _, entry := range sortedEntries(board) {
+		_, _ = fmt.Fprintf(output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
+	}
 }
 
 // formatDeckHeader formats deck metadata and commander information.
@@ -335,12 +358,7 @@ func formatDeckHeader(deck *MoxfieldDeck) string {
 		_, _ = fmt.Fprintf(&output, "\n**Description:**\n%s\n", deck.Description)
 	}
 
-	if len(deck.Commanders) > 0 {
-		output.WriteString("\n## Commanders\n")
-		for _, entry := range deck.Commanders {
-			_, _ = fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
-		}
-	}
+	writeMoxfieldBoard(&output, "Commanders", deck.Commanders)
 
 	return output.String()
 }
@@ -375,21 +393,8 @@ func FormatDeckForDisplay(deck *MoxfieldDeck) string {
 
 	groups.writeTo(&output)
 
-	// Sideboard
-	if len(deck.Sideboard) > 0 {
-		output.WriteString("\n## Sideboard\n")
-		for _, entry := range deck.Sideboard {
-			_, _ = fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
-		}
-	}
-
-	// Maybeboard
-	if len(deck.Maybeboard) > 0 {
-		output.WriteString("\n## Maybeboard\n")
-		for _, entry := range deck.Maybeboard {
-			_, _ = fmt.Fprintf(&output, "- %dx %s\n", entry.Quantity, entry.Card.Name)
-		}
-	}
+	writeMoxfieldBoard(&output, "Sideboard", deck.Sideboard)
+	writeMoxfieldBoard(&output, "Maybeboard", deck.Maybeboard)
 
 	return output.String()
 }
