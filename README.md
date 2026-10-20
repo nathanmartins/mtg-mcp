@@ -175,7 +175,7 @@ information, rulings, pricing, deck validation tools, and multi-platform deck im
 
 ### Prerequisites
 
-- Go 1.27 or later
+- Go 1.27.3 or later
 - Internet connection (for Scryfall API and currency conversion)
 
 ### Building from Source
