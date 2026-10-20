@@ -190,16 +190,7 @@ func interpretArchidektCount(count int) (int, bool, bool) {
 }
 
 // SearchDecks searches public Commander decks on Archidekt.
-func SearchDecks(ctx context.Context, params SearchParams) (*SearchResult, error) {
-	return SearchDecksWithURL(ctx, params, DefaultBaseURL)
-}
-
-// SearchDecksWithURL is the testable variant that accepts a custom base URL.
-func SearchDecksWithURL(
-	ctx context.Context,
-	params SearchParams,
-	baseURL string,
-) (*SearchResult, error) {
+func (c *Client) SearchDecks(ctx context.Context, params SearchParams) (*SearchResult, error) {
 	params = params.normalized()
 
 	// Normalise again here rather than trusting the caller: this is the library entry
@@ -223,7 +214,7 @@ func SearchDecksWithURL(
 	collected := make([]DeckSummary, 0, apiPages*archidektAPIPageSize)
 
 	for i := range apiPages {
-		page, fetchErr := fetchArchidektSearchPage(ctx, params, orderBy, firstAPIPage+i, baseURL)
+		page, fetchErr := c.fetchSearchPage(ctx, params, orderBy, firstAPIPage+i)
 		if fetchErr != nil {
 			return nil, fetchErr
 		}
@@ -253,14 +244,13 @@ func SearchDecksWithURL(
 	return result, nil
 }
 
-// fetchArchidektSearchPage requests a single fixed-size upstream page of results.
-// params.Colors must already be normalised by SearchDecksWithURL.
-func fetchArchidektSearchPage(
+// fetchSearchPage requests a single fixed-size upstream page of results.
+// params.Colors must already be normalised by SearchDecks.
+func (c *Client) fetchSearchPage(
 	ctx context.Context,
 	params SearchParams,
 	orderBy string,
 	apiPage int,
-	baseURL string,
 ) (*UserDecksResponse, error) {
 	queryParams := url.Values{}
 	queryParams.Set("commanderName", params.Commander)
@@ -285,7 +275,7 @@ func fetchArchidektSearchPage(
 		queryParams.Set("page", strconv.Itoa(apiPage))
 	}
 
-	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
+	reqURL := fmt.Sprintf("%s/decks/v3/?%s", c.BaseURL, queryParams.Encode())
 
 	var result UserDecksResponse
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &result); err != nil {

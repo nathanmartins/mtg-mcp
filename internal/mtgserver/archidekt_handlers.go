@@ -30,7 +30,7 @@ func (s *Server) handleGetArchidektDeck(
 		Int("deck_id", deckID).
 		Msg("Fetching Archidekt deck")
 
-	deck, err := archidekt.GetDeckWithURL(ctx, deckID, s.archidektBaseURL)
+	deck, err := s.archidekt.GetDeck(ctx, deckID)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -88,7 +88,7 @@ func (s *Server) handleGetArchidektUserDecks(
 		Int("page", page).
 		Msg("Fetching Archidekt user decks")
 
-	result, err := archidekt.GetUserDecksWithURL(ctx, username, page, s.archidektBaseURL)
+	result, err := s.archidekt.GetUserDecks(ctx, username, page)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -219,7 +219,7 @@ func (s *Server) handleSearchArchidektDecks(
 		Int("limit", params.Limit).
 		Msg("Searching Archidekt decks")
 
-	result, err := archidekt.SearchDecksWithURL(ctx, params, s.archidektBaseURL)
+	result, err := s.archidekt.SearchDecks(ctx, params)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).

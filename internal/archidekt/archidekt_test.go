@@ -170,7 +170,7 @@ func TestGetArchidektDeck(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := GetDeckWithURL(t.Context(), tt.deckID, server.URL)
+			got, err := (&Client{BaseURL: server.URL}).GetDeck(t.Context(), tt.deckID)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetDeck() error = %v, wantErr %v", err, tt.wantErr)
@@ -261,7 +261,7 @@ func TestGetArchidektUserDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := GetUserDecksWithURL(t.Context(), tt.username, tt.page, server.URL)
+			got, err := (&Client{BaseURL: server.URL}).GetUserDecks(t.Context(), tt.username, tt.page)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -756,5 +756,11 @@ func TestFormatArchidektDeckForDisplayWithBracket(t *testing.T) {
 
 	if !strings.Contains(got, "**EDH Bracket:** 3") {
 		t.Errorf("FormatDeck() missing EDH Bracket line, got:\n%s", got)
+	}
+}
+
+func TestNewClient(t *testing.T) {
+	if got := NewClient().BaseURL; got != DefaultBaseURL {
+		t.Errorf("NewClient().BaseURL = %q, want %q", got, DefaultBaseURL)
 	}
 }

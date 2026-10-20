@@ -440,7 +440,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 	url := jsonServer(t, http.StatusOK, sampleArchidektDeck())
 
 	t.Run("full deck", func(t *testing.T) {
-		s := &Server{archidektBaseURL: url}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: url}}
 		res, err := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{"deck_id": "123"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -451,7 +451,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 	})
 
 	t.Run("lands only", func(t *testing.T) {
-		s := &Server{archidektBaseURL: url}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: url}}
 		res, err := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{
 			"deck_id":    "123",
 			"lands_only": true,
@@ -466,7 +466,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 }
 
 func TestHandleGetArchidektDeckFailure(t *testing.T) {
-	s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+	s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{"deck_id": "123"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
@@ -482,7 +482,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 				{ID: 1, Name: "Deck A", DeckFormat: 3, ViewCount: 5, UpdatedAt: "2024-01-01"},
 			},
 		}
-		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, err := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{
 			"username": "tester",
 			"page":     float64(1),
@@ -500,7 +500,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 
 	t.Run("no results", func(t *testing.T) {
 		resp := archidekt.UserDecksResponse{Count: 0, Next: "", Results: nil}
-		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, _ := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 		if !strings.Contains(resultText(t, res), "No public decks found") {
 			t.Error("expected no-decks message")
@@ -508,7 +508,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 		res, _ := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -524,7 +524,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 				{ID: 9, Name: "Atraxa Brew", DeckFormat: 3, ViewCount: 99, UpdatedAt: "2024-02-02"},
 			},
 		}
-		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, err := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"bracket":   float64(4),
@@ -550,7 +550,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &Server{archidektBaseURL: ts.URL}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: ts.URL}}
 		res, err := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "colors": " wu",
 		}))
@@ -566,7 +566,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &Server{archidektBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -574,7 +574,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
-		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: "http://127.0.0.1:1"}}
 		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "trending",
 		}))
@@ -585,7 +585,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("invalid colors are rejected", func(t *testing.T) {
-		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: "http://127.0.0.1:1"}}
 		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "colors": "WX",
 		}))
@@ -595,7 +595,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("wrong-typed limit is rejected", func(t *testing.T) {
-		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: "http://127.0.0.1:1"}}
 		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": "5",
 		}))
@@ -605,7 +605,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("empty sort is rejected", func(t *testing.T) {
-		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: "http://127.0.0.1:1"}}
 		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "",
 		}))
@@ -617,10 +617,12 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	t.Run("page beyond the reachable range is rejected", func(t *testing.T) {
 		// (page-1)*limit used to overflow int here, producing a negative window offset
 		// and panicking on collected[offset:end] after a perfectly successful fetch.
-		s := &Server{archidektBaseURL: jsonServer(t, http.StatusOK, archidekt.UserDecksResponse{
-			Count:   5,
-			Results: []archidekt.DeckSummary{{ID: 1, Name: "Deck"}},
-		})}
+		s := &Server{
+			archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusOK, archidekt.UserDecksResponse{
+				Count:   5,
+				Results: []archidekt.DeckSummary{{ID: 1, Name: "Deck"}},
+			})},
+		}
 		res, err := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "page": float64(200000000000000000), "limit": float64(60),
 		}))
@@ -633,7 +635,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("fractional limit is rejected", func(t *testing.T) {
-		s := &Server{archidektBaseURL: "http://127.0.0.1:1"}
+		s := &Server{archidekt: &archidekt.Client{BaseURL: "http://127.0.0.1:1"}}
 		res, _ := s.handleSearchArchidektDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": 7.9,
 		}))

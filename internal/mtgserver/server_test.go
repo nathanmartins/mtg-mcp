@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/nathanmartins/mtg-mcp/internal/archidekt"
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
@@ -27,6 +28,9 @@ func TestNewWiresProductionClients(t *testing.T) {
 	}
 	if s.moxfield == nil || *s.moxfield != *moxfield.NewClient() {
 		t.Errorf("moxfield client = %+v, want moxfield.NewClient()", s.moxfield)
+	}
+	if s.archidekt == nil || *s.archidekt != *archidekt.NewClient() {
+		t.Errorf("archidekt client = %+v, want archidekt.NewClient()", s.archidekt)
 	}
 }
 

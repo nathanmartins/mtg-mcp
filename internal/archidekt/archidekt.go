@@ -119,14 +119,21 @@ type UserDecksResponse struct {
 	Results []DeckSummary `json:"results"`
 }
 
-// GetDeck fetches a deck by its numeric ID.
-func GetDeck(ctx context.Context, deckID int) (*Deck, error) {
-	return GetDeckWithURL(ctx, deckID, DefaultBaseURL)
+// Client talks to the Archidekt API. The zero value has no base URL and makes no live
+// requests; NewClient returns a client for the production API.
+type Client struct {
+	// BaseURL is the API root (DefaultBaseURL in production).
+	BaseURL string
 }
 
-// GetDeckWithURL fetches a deck with a custom base URL (used for testing).
-func GetDeckWithURL(ctx context.Context, deckID int, baseURL string) (*Deck, error) {
-	reqURL := fmt.Sprintf("%s/decks/%d/", baseURL, deckID)
+// NewClient returns a client for the production Archidekt API.
+func NewClient() *Client {
+	return &Client{BaseURL: DefaultBaseURL}
+}
+
+// GetDeck fetches a deck by its numeric ID.
+func (c *Client) GetDeck(ctx context.Context, deckID int) (*Deck, error) {
+	reqURL := fmt.Sprintf("%s/decks/%d/", c.BaseURL, deckID)
 
 	var deck Deck
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &deck); err != nil {
@@ -139,17 +146,7 @@ func GetDeckWithURL(ctx context.Context, deckID int, baseURL string) (*Deck, err
 }
 
 // GetUserDecks fetches a page of public decks for the given username.
-func GetUserDecks(ctx context.Context, username string, page int) (*UserDecksResponse, error) {
-	return GetUserDecksWithURL(ctx, username, page, DefaultBaseURL)
-}
-
-// GetUserDecksWithURL fetches user decks with a custom base URL (used for testing).
-func GetUserDecksWithURL(
-	ctx context.Context,
-	username string,
-	page int,
-	baseURL string,
-) (*UserDecksResponse, error) {
+func (c *Client) GetUserDecks(ctx context.Context, username string, page int) (*UserDecksResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -159,7 +156,7 @@ func GetUserDecksWithURL(
 	queryParams := url.Values{}
 	queryParams.Set("ownerUsername", username)
 	queryParams.Set("page", strconv.Itoa(page))
-	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
+	reqURL := fmt.Sprintf("%s/decks/v3/?%s", c.BaseURL, queryParams.Encode())
 
 	var result UserDecksResponse
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &result); err != nil {

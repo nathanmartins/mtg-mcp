@@ -14,7 +14,7 @@ func TestSearchArchidektDecksE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	result, err := SearchDecks(ctx, SearchParams{
+	result, err := NewClient().SearchDecks(ctx, SearchParams{
 		Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 1, Limit: 5,
 	})
 	if err != nil {
@@ -48,7 +48,7 @@ func TestSearchArchidektDecksByBracketE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	result, err := SearchDecks(ctx, SearchParams{
+	result, err := NewClient().SearchDecks(ctx, SearchParams{
 		Commander: "Atraxa, Praetors' Voice", Bracket: 4, Sort: archidektSortViews, Page: 1, Limit: 5,
 	})
 	if err != nil {
@@ -69,7 +69,7 @@ func TestGetArchidektUserDecksE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	result, err := GetUserDecks(ctx, "nathanmartins", 1)
+	result, err := NewClient().GetUserDecks(ctx, "nathanmartins", 1)
 	if err != nil {
 		t.Fatalf("GetUserDecks() failed: %v", err)
 	}
@@ -87,7 +87,7 @@ func TestGetArchidektDeckE2E(t *testing.T) {
 	defer cancel()
 
 	// Deathstar Hearthhull — nathanmartins' deck
-	deck, err := GetDeck(ctx, 18257175)
+	deck, err := NewClient().GetDeck(ctx, 18257175)
 	if err != nil {
 		t.Fatalf("GetDeck() failed: %v", err)
 	}

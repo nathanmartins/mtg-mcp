@@ -77,9 +77,9 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 		server := fixtureServer(25)
 		defer server.Close()
 
-		got, err := SearchDecksWithURL(t.Context(), SearchParams{
+		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 10,
-		}, server.URL)
+		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -99,9 +99,9 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 		server := fixtureServer(25)
 		defer server.Close()
 
-		got, err := SearchDecksWithURL(t.Context(), SearchParams{
+		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 			Commander: "Atraxa", Sort: archidektSortViews, Page: 9, Limit: 10,
-		}, server.URL)
+		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -121,9 +121,9 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 		server := fixtureServer(55)
 		defer server.Close()
 
-		got, err := SearchDecksWithURL(t.Context(), SearchParams{
+		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 50,
-		}, server.URL)
+		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -184,9 +184,9 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 
 	t.Run("limit is exact", func(t *testing.T) {
 		requestedPages = nil
-		got, err := SearchDecksWithURL(t.Context(), SearchParams{
+		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 1, Limit: 10,
-		}, server.URL)
+		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -203,9 +203,9 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 
 	t.Run("logical page 2 slices inside the same api page", func(t *testing.T) {
 		requestedPages = nil
-		got, err := SearchDecksWithURL(t.Context(), SearchParams{
+		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 2, Limit: 10,
-		}, server.URL)
+		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -219,9 +219,9 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 
 	t.Run("straddling window fetches two api pages", func(t *testing.T) {
 		requestedPages = nil
-		got, err := SearchDecksWithURL(t.Context(), SearchParams{
+		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 2, Limit: 50,
-		}, server.URL)
+		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -281,9 +281,9 @@ func TestSearchArchidektDecksSendsOrderByAndBracket(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := SearchDecksWithURL(t.Context(), SearchParams{
+	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 		Commander: "Atraxa", Bracket: 4, Sort: "updated", Ascending: true, Page: 1, Limit: 5,
-	}, server.URL)
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -300,9 +300,9 @@ func TestSearchArchidektDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := SearchDecksWithURL(t.Context(), SearchParams{
+	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 		Commander: "Atraxa", Sort: "trending", Page: 1, Limit: 10,
-	}, server.URL)
+	})
 	if err == nil {
 		t.Fatal("expected an error for an unsupported sort key")
 	}
@@ -506,10 +506,10 @@ func TestSearchArchidektDecksSendsFilters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := SearchDecksWithURL(t.Context(), SearchParams{
+	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5,
 		Colors: "WU", DeckSize: 99, Author: "NorwegianWhaler", DeckName: "budget",
-	}, server.URL)
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -542,7 +542,7 @@ func TestSearchArchidektDecksOmitsUnsetFilters(t *testing.T) {
 	defer server.Close()
 
 	params := SearchParams{Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5}
-	result, err := SearchDecksWithURL(t.Context(), params, server.URL)
+	result, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), params)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -564,9 +564,9 @@ func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := SearchDecksWithURL(t.Context(), SearchParams{
+	_, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
 		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5, Colors: "WX",
-	}, server.URL)
+	})
 	if err == nil {
 		t.Fatal("expected an error for an invalid colors value")
 	}

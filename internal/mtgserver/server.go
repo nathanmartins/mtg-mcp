@@ -41,11 +41,11 @@ const (
 // Server wraps the MCP server with MTG-specific functionality.
 // The base URL fields default to the live APIs but can be overridden in tests.
 type Server struct {
-	scryfallClient   *scryfall.Client
-	moxfield         *moxfield.Client
-	archidektBaseURL string
-	edhrecBaseURL    string
-	rules            *rules.Cache
+	scryfallClient *scryfall.Client
+	moxfield       *moxfield.Client
+	archidekt      *archidekt.Client
+	edhrecBaseURL  string
+	rules          *rules.Cache
 }
 
 // New creates a new MTG Commander MCP server.
@@ -56,11 +56,11 @@ func New() (*Server, error) {
 	}
 
 	return &Server{
-		scryfallClient:   client,
-		moxfield:         moxfield.NewClient(),
-		archidektBaseURL: archidekt.DefaultBaseURL,
-		edhrecBaseURL:    edhrec.DefaultBaseURL,
-		rules:            &rules.Cache{},
+		scryfallClient: client,
+		moxfield:       moxfield.NewClient(),
+		archidekt:      archidekt.NewClient(),
+		edhrecBaseURL:  edhrec.DefaultBaseURL,
+		rules:          &rules.Cache{},
 	}, nil
 }
 
