@@ -268,7 +268,7 @@ func registrableSuffix(host string) string {
 func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "text/plain, text/html")
@@ -276,7 +276,7 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	client := &http.Client{Timeout: rulesHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("fetch rules source: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -288,7 +288,7 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	// silently truncate) an oversized response.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, rulesMaxBodyBytes+1))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read rules source: %w", err)
 	}
 	if len(body) > rulesMaxBodyBytes {
 		return "", fmt.Errorf("%w %d bytes", errTooLarge, rulesMaxBodyBytes)

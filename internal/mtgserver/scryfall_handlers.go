@@ -819,7 +819,7 @@ func getExchangeRate(ctx context.Context, rawURL string, get httpGetter) (float6
 	}
 
 	if decodeErr := json.UnmarshalRead(resp.Body, &result); decodeErr != nil {
-		return 0, decodeErr
+		return 0, fmt.Errorf("decode exchange rate: %w", decodeErr)
 	}
 
 	return result.Rates.BRL, nil
@@ -965,7 +965,7 @@ func (s *Server) resolveCardForImage(
 
 	englishCard, err := s.scryfallClient.GetCardByName(ctx, q.name, false, scryfall.GetCardByNameOptions{})
 	if err != nil {
-		return scryfall.Card{}, "", err
+		return scryfall.Card{}, "", fmt.Errorf("look up %q on Scryfall: %w", q.name, err)
 	}
 
 	if q.language == "" || q.language == string(scryfall.LangEnglish) {
@@ -1083,5 +1083,9 @@ func getImageBytes(ctx context.Context, rawURL string, get httpGetter) ([]byte, 
 		return nil, &httpx.StatusError{Source: "card image download", StatusCode: resp.StatusCode}
 	}
 
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read card image: %w", err)
+	}
+	return body, nil
 }

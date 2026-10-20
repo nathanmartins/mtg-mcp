@@ -119,6 +119,7 @@ linters:
     - usetesting # reports uses of functions with replacement inside the testing package
     - wastedassign # finds wasted assignment statements
     - whitespace # detects leading and trailing whitespace
+    - wrapcheck # checks that errors returned from other packages are wrapped with context
     - zerologlint # detects zerolog events that are built but never dispatched
     # - gocognit # computes and checks the cognitive complexity of functions
     # reports that it checks for err != nil, but it returns a different nil value error
@@ -141,7 +142,6 @@ linters:
     # - tagalign # checks that struct tags are well aligned
     # [great idea, but too many false positives]
     # - varnamelen # checks that the length of a variable's name matches its scope
-    # - wrapcheck # checks that errors returned from external packages are wrapped
 
     ## disabled
     # - containedctx # detects struct contained context.Context field
@@ -427,6 +427,12 @@ linters:
         # Omit embedded fields from selector expression.
         # https://staticcheck.dev/docs/checks/#QF1008
         - -QF1008
+
+    wrapcheck:
+      # The module's own packages already return caller-facing, contextual errors (for
+      # example "unsupported sort ..."); wrapping them again only repeats the context.
+      ignore-package-globs:
+        - github.com/nathanmartins/mtg-mcp/*
 
     usetesting:
       # Enable/disable `os.TempDir()` detections.

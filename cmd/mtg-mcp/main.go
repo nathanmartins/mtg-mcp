@@ -50,7 +50,7 @@ func parseOptions(args []string, getenv func(string) string, output io.Writer) (
 	fs.StringVar(&opts.logFile, "log-file", cmp.Or(getenv(logFileEnv), logging.DefaultFilePath()),
 		"path of the log file (env "+logFileEnv+")")
 	if err := fs.Parse(args); err != nil {
-		return opts, err
+		return opts, fmt.Errorf("parse flags: %w", err)
 	}
 	if fs.NArg() > 0 {
 		err := fmt.Errorf("%w: %v", errUnexpectedArgs, fs.Args())

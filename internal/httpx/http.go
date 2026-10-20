@@ -68,13 +68,17 @@ func Get(ctx context.Context, rawURL string) (*http.Response, error) {
 func GetWithClient(ctx context.Context, rawURL string, client *http.Client) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	req.Header.Set("User-Agent", "MTG-Commander-MCP-Server/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	return client.Do(req)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("send request: %w", err)
+	}
+	return resp, nil
 }
 
 // GetJSON GETs reqURL with client and decodes a 200 response body into target with

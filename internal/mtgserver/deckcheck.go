@@ -2,6 +2,7 @@ package mtgserver
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"slices"
 	"strings"
@@ -60,7 +61,7 @@ func (s *Server) lookupCards(ctx context.Context, names []string) (map[string]sc
 		}
 		resp, err := s.scryfallClient.GetCardsByIdentifiers(ctx, identifiers)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("look up %d cards on Scryfall: %w", len(identifiers), err)
 		}
 		for _, card := range resp.Data {
 			found[cardKey(card.Name)] = card

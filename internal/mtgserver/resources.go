@@ -82,7 +82,7 @@ func (s *Server) handleBannedListResource(
 		"last_updated": "real-time",
 	}, json.Deterministic(true), jsontext.WithIndent("  "))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode banned list: %w", err)
 	}
 
 	return []mcp.ResourceContents{

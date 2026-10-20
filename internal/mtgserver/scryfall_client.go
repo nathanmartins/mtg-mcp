@@ -1,6 +1,7 @@
 package mtgserver
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/BlueMonday/go-scryfall"
@@ -29,5 +30,9 @@ func newScryfallLimiter() ratelimit.Limiter {
 
 // newScryfallClient returns a Scryfall client that respects the shared rate limit.
 func newScryfallClient() (*scryfall.Client, error) {
-	return scryfall.NewClient(scryfall.WithLimiter(scryfallLimiter), scryfall.WithUserAgent(scryfallUserAgent))
+	client, err := scryfall.NewClient(scryfall.WithLimiter(scryfallLimiter), scryfall.WithUserAgent(scryfallUserAgent))
+	if err != nil {
+		return nil, fmt.Errorf("create Scryfall client: %w", err)
+	}
+	return client, nil
 }

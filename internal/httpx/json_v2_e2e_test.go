@@ -85,7 +85,11 @@ func fetchBody(t *testing.T, rawURL string) ([]byte, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, &httpx.StatusError{Source: "e2e fetch", StatusCode: resp.StatusCode}
 	}
-	return io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+	return body, nil
 }
 
 // firstDifference renders both values as JSON and shows where they first diverge.
