@@ -662,7 +662,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 				},
 			},
 		}
-		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"limit":     float64(5),
@@ -676,7 +676,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusNotFound, nil)}}
 		res, _ := s.handleGetEDHRECRecommendations(
 			t.Context(),
 			toolRequest(map[string]any{"commander": "Nobody"}),
@@ -702,7 +702,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 				},
 			},
 		}
-		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, err := s.handleGetEDHRECCombos(t.Context(), toolRequest(map[string]any{
 			"colors": "colorless",
 			"limit":  float64(5),
@@ -716,7 +716,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusNotFound, nil)}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusNotFound, nil)}}
 		res, _ := s.handleGetEDHRECCombos(t.Context(), toolRequest(map[string]any{"colors": "zz"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -739,7 +739,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 				},
 			},
 		}
-		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, err := s.handleGetEDHRECSetCards(t.Context(), toolRequest(map[string]any{"set": "rna"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -750,7 +750,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &Server{edhrecBaseURL: jsonServer(t, http.StatusForbidden, nil)}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusForbidden, nil)}}
 		res, _ := s.handleGetEDHRECSetCards(t.Context(), toolRequest(map[string]any{"set": "notaset"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -778,7 +778,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		s := &Server{edhrecBaseURL: ts.URL}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: ts.URL}}
 		res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"theme":     "infekt",
@@ -801,7 +801,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 		}))
 		defer ts.Close()
 
-		s := &Server{edhrecBaseURL: ts.URL}
+		s := &Server{edhrec: &edhrec.Client{BaseURL: ts.URL}}
 		res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa, Praetors' Voice",
 			"theme":     "infect",
@@ -825,7 +825,7 @@ func TestHandleGetEDHRECRecommendationsBadPriceTier(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	s := &Server{edhrecBaseURL: ts.URL}
+	s := &Server{edhrec: &edhrec.Client{BaseURL: ts.URL}}
 	res, err := s.handleGetEDHRECRecommendations(t.Context(), toolRequest(map[string]any{
 		"commander":  "Atraxa, Praetors' Voice",
 		"price_tier": "middle",

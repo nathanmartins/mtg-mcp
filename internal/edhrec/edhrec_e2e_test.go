@@ -15,10 +15,11 @@ func TestEDHRECCommanderRecommendationsE2E(t *testing.T) {
 	defer cancel()
 
 	// Test with a popular commander
-	data, err := GetCommanderRecommendations(ctx, "Atraxa, Praetors' Voice")
+	page, err := NewClient().GetCommanderPage(ctx, "Atraxa, Praetors' Voice", RecFilter{})
 	if err != nil {
-		t.Fatalf("GetCommanderRecommendations() failed: %v", err)
+		t.Fatalf("GetCommanderPage() failed: %v", err)
 	}
+	data := &page.Container.JSONDict
 
 	// Verify response structure
 	if data.Card.Name == "" {
@@ -60,7 +61,7 @@ func TestEDHRECCombosE2E(t *testing.T) {
 	defer cancel()
 
 	// Test with colorless which typically has well-known combos
-	data, err := GetCombosForColors(ctx, "colorless")
+	data, err := NewClient().GetCombosForColors(ctx, "colorless")
 	if err != nil {
 		t.Fatalf("GetCombosForColors() failed: %v", err)
 	}
@@ -104,10 +105,11 @@ func TestEDHRECSanitizationE2E(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			data, err := GetCommanderRecommendations(ctx, tc.name)
+			page, err := NewClient().GetCommanderPage(ctx, tc.name, RecFilter{})
 			if err != nil {
-				t.Fatalf("GetCommanderRecommendations() failed for %s: %v", tc.name, err)
+				t.Fatalf("GetCommanderPage() failed for %s: %v", tc.name, err)
 			}
+			data := &page.Container.JSONDict
 
 			if data.Card.Name == "" {
 				t.Errorf("Expected card name to be populated for %s", tc.name)
@@ -124,7 +126,7 @@ func TestEDHRECFormatOutputE2E(t *testing.T) {
 	defer cancel()
 
 	// Fetch real data
-	page, err := GetCommanderPageWithURL(ctx, "Atraxa, Praetors' Voice", RecFilter{}, DefaultBaseURL)
+	page, err := NewClient().GetCommanderPage(ctx, "Atraxa, Praetors' Voice", RecFilter{})
 	if err != nil {
 		t.Fatalf("GetCommanderPageWithURL() failed: %v", err)
 	}
@@ -167,21 +169,21 @@ func TestEDHRECThemeAndBudgetFilterE2E(t *testing.T) {
 
 	const commander = "Atraxa, Praetors' Voice"
 
-	unfiltered, err := GetCommanderPageWithURL(ctx, commander, RecFilter{}, DefaultBaseURL)
+	unfiltered, err := NewClient().GetCommanderPage(ctx, commander, RecFilter{})
 	if err != nil {
-		t.Fatalf("unfiltered GetCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("unfiltered GetCommanderPage() failed: %v", err)
 	}
 
-	themeOnly, err := GetCommanderPageWithURL(ctx, commander, RecFilter{Theme: "infect"}, DefaultBaseURL)
+	themeOnly, err := NewClient().GetCommanderPage(ctx, commander, RecFilter{Theme: "infect"})
 	if err != nil {
-		t.Fatalf("theme-only GetCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("theme-only GetCommanderPage() failed: %v", err)
 	}
 
-	combined, err := GetCommanderPageWithURL(
-		ctx, commander, RecFilter{Theme: "infect", PriceTier: "budget"}, DefaultBaseURL,
+	combined, err := NewClient().GetCommanderPage(
+		ctx, commander, RecFilter{Theme: "infect", PriceTier: "budget"},
 	)
 	if err != nil {
-		t.Fatalf("combined GetCommanderPageWithURL() failed: %v", err)
+		t.Fatalf("combined GetCommanderPage() failed: %v", err)
 	}
 
 	unfilteredDecks := unfiltered.Container.JSONDict.Card.NumDecks
@@ -205,8 +207,8 @@ func TestEDHRECInvalidThemeE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	_, err := GetCommanderPageWithURL(
-		ctx, "Atraxa, Praetors' Voice", RecFilter{Theme: "not-a-real-theme"}, DefaultBaseURL,
+	_, err := NewClient().GetCommanderPage(
+		ctx, "Atraxa, Praetors' Voice", RecFilter{Theme: "not-a-real-theme"},
 	)
 	if err == nil {
 		t.Fatal("expected an error for an invalid theme slug")
@@ -218,7 +220,7 @@ func TestEDHRECSetCardsE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
-	page, err := GetSetCards(ctx, "rna")
+	page, err := NewClient().GetSetCards(ctx, "rna")
 	if err != nil {
 		t.Fatalf("GetSetCards() failed: %v", err)
 	}

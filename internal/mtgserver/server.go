@@ -39,12 +39,12 @@ const (
 )
 
 // Server wraps the MCP server with MTG-specific functionality.
-// The base URL fields default to the live APIs but can be overridden in tests.
+// New wires it to the production API clients; tests swap in clients pointed at httptest servers.
 type Server struct {
 	scryfallClient *scryfall.Client
 	moxfield       *moxfield.Client
 	archidekt      *archidekt.Client
-	edhrecBaseURL  string
+	edhrec         *edhrec.Client
 	rules          *rules.Cache
 }
 
@@ -59,7 +59,7 @@ func New() (*Server, error) {
 		scryfallClient: client,
 		moxfield:       moxfield.NewClient(),
 		archidekt:      archidekt.NewClient(),
-		edhrecBaseURL:  edhrec.DefaultBaseURL,
+		edhrec:         edhrec.NewClient(),
 		rules:          &rules.Cache{},
 	}, nil
 }

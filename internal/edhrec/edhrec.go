@@ -156,15 +156,22 @@ func fetchEDHRECPage(ctx context.Context, reqURL, pageKind string, target any) e
 	return httpx.GetJSON(ctx, httpx.APIClient(), reqURL, "EDHREC "+pageKind, target)
 }
 
-// GetCommanderPageWithURL fetches a commander page from baseURL, optionally narrowed by filter.
-func GetCommanderPageWithURL(
-	ctx context.Context,
-	commanderName string,
-	filter RecFilter,
-	baseURL string,
-) (*Response, error) {
+// Client talks to EDHREC's JSON pages. The zero value has no base URL and makes no live
+// requests; NewClient returns a client for the production site.
+type Client struct {
+	// BaseURL is the JSON pages root (DefaultBaseURL in production).
+	BaseURL string
+}
+
+// NewClient returns a client for the production EDHREC JSON pages.
+func NewClient() *Client {
+	return &Client{BaseURL: DefaultBaseURL}
+}
+
+// GetCommanderPage fetches a commander page, optionally narrowed by filter.
+func (c *Client) GetCommanderPage(ctx context.Context, commanderName string, filter RecFilter) (*Response, error) {
 	sanitized := SanitizeCardName(commanderName)
-	reqURL := fmt.Sprintf("%s/commanders/%s%s.json", baseURL, url.PathEscape(sanitized), filter.segments())
+	reqURL := fmt.Sprintf("%s/commanders/%s%s.json", c.BaseURL, url.PathEscape(sanitized), filter.segments())
 
 	var page Response
 	if err := fetchEDHRECPage(ctx, reqURL, "commander page", &page); err != nil {
@@ -172,21 +179,6 @@ func GetCommanderPageWithURL(
 	}
 
 	return &page, nil
-}
-
-// GetCommanderRecommendations fetches unfiltered EDHREC recommendations for a commander.
-func GetCommanderRecommendations(ctx context.Context, commanderName string) (*Data, error) {
-	page, err := GetCommanderPageWithURL(ctx, commanderName, RecFilter{}, DefaultBaseURL)
-	if err != nil {
-		return nil, err
-	}
-
-	return &page.Container.JSONDict, nil
-}
-
-// GetCombosForColors fetches combos for a color combination.
-func GetCombosForColors(ctx context.Context, colors string) (*ComboData, error) {
-	return GetCombosForColorsWithURL(ctx, colors, DefaultBaseURL)
 }
 
 // wubrgOrder is the canonical color order combo page keys are written in.
@@ -233,13 +225,13 @@ func ComboPageName(colors string) (string, error) {
 	return names[key.String()], nil
 }
 
-// GetCombosForColorsWithURL fetches combos with a custom base URL.
-func GetCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*ComboData, error) {
+// GetCombosForColors fetches the popular combos for a color combination (see ComboPageName).
+func (c *Client) GetCombosForColors(ctx context.Context, colors string) (*ComboData, error) {
 	pageName, err := ComboPageName(colors)
 	if err != nil {
 		return nil, err
 	}
-	reqURL := fmt.Sprintf("%s/combos/%s.json", baseURL, url.PathEscape(pageName))
+	reqURL := fmt.Sprintf("%s/combos/%s.json", c.BaseURL, url.PathEscape(pageName))
 
 	var comboResp ComboResponse
 	if err = fetchEDHRECPage(ctx, reqURL, "combos", &comboResp); err != nil {
@@ -249,16 +241,11 @@ func GetCombosForColorsWithURL(ctx context.Context, colors, baseURL string) (*Co
 	return &comboResp.Container.JSONDict, nil
 }
 
-// GetSetCards fetches the EDHREC page for a Magic set code.
-func GetSetCards(ctx context.Context, setCode string) (*Response, error) {
-	return GetSetCardsWithURL(ctx, setCode, DefaultBaseURL)
-}
-
-// GetSetCardsWithURL fetches a set page with a custom base URL. EDHREC keys set pages by the
-// lowercase short set code ("rna", "c21"); any other casing answers 403.
-func GetSetCardsWithURL(ctx context.Context, setCode, baseURL string) (*Response, error) {
+// GetSetCards fetches the EDHREC page for a Magic set. EDHREC keys set pages by the lowercase
+// short set code ("rna", "c21"); any other casing answers 403.
+func (c *Client) GetSetCards(ctx context.Context, setCode string) (*Response, error) {
 	code := strings.ToLower(strings.TrimSpace(setCode))
-	reqURL := fmt.Sprintf("%s/sets/%s.json", baseURL, url.PathEscape(code))
+	reqURL := fmt.Sprintf("%s/sets/%s.json", c.BaseURL, url.PathEscape(code))
 
 	var page Response
 	if err := fetchEDHRECPage(ctx, reqURL, "set page", &page); err != nil {
@@ -280,8 +267,8 @@ func topThemes(tags []TagCount) ([]TagCount, int) {
 // commander. It returns "" when the unfiltered page is unreachable, lists no themes, or already
 // contains the requested slug — in those cases the failure is not the theme and the caller must
 // surface the underlying EDHREC error instead.
-func CommanderThemeHint(ctx context.Context, commanderName, theme, baseURL string) string {
-	page, err := GetCommanderPageWithURL(ctx, commanderName, RecFilter{}, baseURL)
+func (c *Client) CommanderThemeHint(ctx context.Context, commanderName, theme string) string {
+	page, err := c.GetCommanderPage(ctx, commanderName, RecFilter{})
 	if err != nil || len(page.TagCounts) == 0 {
 		return ""
 	}
@@ -481,28 +468,4 @@ func FormatSetCards(page *Response, setCode string, limit int) string {
 	}
 
 	return output.String()
-}
-
-// getTopCardsForCategoryWithURL fetches top cards with a custom base URL.
-func getTopCardsForCategoryWithURL(
-	ctx context.Context,
-	category string,
-	page int,
-	baseURL string,
-) ([]CardView, error) {
-	// Categories: salt, commanders, themes, etc.
-	reqURL := fmt.Sprintf("%s/top/%s--%d.json", baseURL, url.PathEscape(category), page)
-
-	var edhrecResp Response
-	if err := fetchEDHRECPage(ctx, reqURL, "top cards", &edhrecResp); err != nil {
-		return nil, err
-	}
-
-	// Extract cards from all card lists
-	var allCards []CardView
-	for _, cardList := range edhrecResp.Container.JSONDict.CardLists {
-		allCards = append(allCards, cardList.CardViews...)
-	}
-
-	return allCards, nil
 }

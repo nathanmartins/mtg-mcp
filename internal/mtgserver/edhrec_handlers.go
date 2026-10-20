@@ -83,7 +83,7 @@ func (s *Server) handleGetEDHRECRecommendations(
 		Int("limit", limit).
 		Msg("Fetching EDHREC recommendations")
 
-	page, err := edhrec.GetCommanderPageWithURL(ctx, commander, filter, s.edhrecBaseURL)
+	page, err := s.edhrec.GetCommanderPage(ctx, commander, filter)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -94,7 +94,7 @@ func (s *Server) handleGetEDHRECRecommendations(
 			Msg("Failed to fetch EDHREC recommendations")
 
 		if filter.Theme != "" {
-			if hint := edhrec.CommanderThemeHint(ctx, commander, filter.Theme, s.edhrecBaseURL); hint != "" {
+			if hint := s.edhrec.CommanderThemeHint(ctx, commander, filter.Theme); hint != "" {
 				return mcp.NewToolResultError(hint), nil
 			}
 		}
@@ -126,7 +126,7 @@ func (s *Server) handleGetEDHRECCombos(
 
 	limit := request.GetInt("limit", edhrec.DefaultLimit)
 
-	data, err := edhrec.GetCombosForColorsWithURL(ctx, colors, s.edhrecBaseURL)
+	data, err := s.edhrec.GetCombosForColors(ctx, colors)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch EDHREC combos: %v", err)), nil
 	}
@@ -161,7 +161,7 @@ func (s *Server) handleGetEDHRECSetCards(
 		Int("limit", limit).
 		Msg("Fetching EDHREC set cards")
 
-	page, err := edhrec.GetSetCardsWithURL(ctx, code, s.edhrecBaseURL)
+	page, err := s.edhrec.GetSetCards(ctx, code)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf(
 			"Failed to fetch EDHREC data for set %q: %v. "+

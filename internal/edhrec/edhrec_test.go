@@ -178,7 +178,7 @@ func TestGetCommanderRecommendations(t *testing.T) {
 			defer server.Close()
 
 			ctx := t.Context()
-			got, err := GetCommanderPageWithURL(ctx, tt.commanderName, tt.filter, server.URL)
+			got, err := (&Client{BaseURL: server.URL}).GetCommanderPage(ctx, tt.commanderName, tt.filter)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCommanderPageWithURL() error = %v, wantErr %v", err, tt.wantErr)
@@ -243,7 +243,7 @@ func TestGetSetCardsWithURL(t *testing.T) {
 			}))
 			defer server.Close()
 
-			_, err := GetSetCardsWithURL(t.Context(), tt.setCode, server.URL)
+			_, err := (&Client{BaseURL: server.URL}).GetSetCards(t.Context(), tt.setCode)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetSetCardsWithURL() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -303,7 +303,7 @@ func TestGetCombosForColors(t *testing.T) {
 			defer server.Close()
 
 			ctx := t.Context()
-			got, err := GetCombosForColorsWithURL(ctx, tt.colors, server.URL)
+			got, err := (&Client{BaseURL: server.URL}).GetCombosForColors(ctx, tt.colors)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCombosForColors() error = %v, wantErr %v", err, tt.wantErr)
@@ -656,82 +656,6 @@ func TestFormatCombosForDisplay(t *testing.T) {
 	}
 }
 
-func TestGetTopCardsForCategory(t *testing.T) {
-	tests := []struct {
-		name       string
-		category   string
-		page       int
-		mockStatus int
-		mockResp   Response
-		wantCards  int
-		wantErr    bool
-	}{
-		{
-			name:       "successful request flattens card lists",
-			category:   "salt",
-			page:       0,
-			mockStatus: http.StatusOK,
-			mockResp: Response{
-				Container: Container{
-					JSONDict: Data{
-						CardLists: []CardList{
-							{
-								Header: "Saltiest Cards",
-								CardViews: []CardView{
-									{Name: "Armageddon"},
-									{Name: "Stasis"},
-								},
-							},
-							{
-								Header: "More Salt",
-								CardViews: []CardView{
-									{Name: "Winter Orb"},
-								},
-							},
-						},
-					},
-				},
-			},
-			wantCards: 3,
-			wantErr:   false,
-		},
-		{
-			name:       "404 not found",
-			category:   "missing",
-			page:       1,
-			mockStatus: http.StatusNotFound,
-			wantErr:    true,
-		},
-		{
-			name:       "500 server error",
-			category:   "salt",
-			page:       0,
-			mockStatus: http.StatusInternalServerError,
-			wantErr:    true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				w.WriteHeader(tt.mockStatus)
-				if tt.mockStatus == http.StatusOK {
-					_ = json.NewEncoder(w).Encode(tt.mockResp)
-				}
-			}))
-			defer server.Close()
-
-			got, err := getTopCardsForCategoryWithURL(t.Context(), tt.category, tt.page, server.URL)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("getTopCardsForCategoryWithURL() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if !tt.wantErr && len(got) != tt.wantCards {
-				t.Errorf("got %d cards, want %d", len(got), tt.wantCards)
-			}
-		})
-	}
-}
-
 func TestFormatCommanderRecsForDisplayEdgeCases(t *testing.T) {
 	t.Run("empty card list skipped", func(t *testing.T) {
 		page := &Response{
@@ -843,10 +767,16 @@ func TestGetCombosForColorsRequestsNamedPage(t *testing.T) {
 	}))
 	defer server.Close()
 
-	if _, err := GetCombosForColorsWithURL(t.Context(), "UW", server.URL); err != nil {
+	if _, err := (&Client{BaseURL: server.URL}).GetCombosForColors(t.Context(), "UW"); err != nil {
 		t.Fatalf("GetCombosForColorsWithURL() error = %v", err)
 	}
 	if gotPath != "/combos/azorius.json" {
 		t.Errorf("requested %q, want /combos/azorius.json", gotPath)
+	}
+}
+
+func TestNewClient(t *testing.T) {
+	if got := NewClient().BaseURL; got != DefaultBaseURL {
+		t.Errorf("NewClient().BaseURL = %q, want %q", got, DefaultBaseURL)
 	}
 }
