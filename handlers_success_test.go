@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
 // jsonServer starts a test server that replies to every request with the given value as JSON.
@@ -26,18 +28,18 @@ func jsonServer(t *testing.T, status int, body any) string {
 }
 
 func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
-	deck := MoxfieldDeck{
+	deck := moxfield.Deck{
 		PublicID: "abc123",
 		Name:     "Atraxa Superfriends",
 		Format:   "commander",
-		Commanders: map[string]MoxfieldCardEntry{
+		Commanders: map[string]moxfield.CardEntry{
 			"atraxa": {
 				Quantity: 1,
-				Card:     MoxfieldCardInfo{Name: "Atraxa, Praetors' Voice", TypeLine: "Legendary Creature"},
+				Card:     moxfield.CardInfo{Name: "Atraxa, Praetors' Voice", TypeLine: "Legendary Creature"},
 			},
 		},
-		Mainboard: map[string]MoxfieldCardEntry{
-			"sol": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
+		Mainboard: map[string]moxfield.CardEntry{
+			"sol": {Quantity: 1, Card: moxfield.CardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
 		},
 	}
 	s := &MTGCommanderServer{moxfieldBaseURL: jsonServer(t, http.StatusOK, deck)}
@@ -63,12 +65,12 @@ func TestHandleGetMoxfieldDeckFailure(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
-	resp := MoxfieldUserDecksResponse{
+	resp := moxfield.UserDecksResponse{
 		PageNumber:   1,
 		PageSize:     20,
 		TotalResults: 1,
 		TotalPages:   1,
-		Data: []MoxfieldDeckSummary{
+		Data: []moxfield.DeckSummary{
 			{
 				PublicID:  "d1",
 				Name:      "Deck One",
@@ -106,11 +108,11 @@ func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
 
 func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	t.Run("with results and overrides", func(t *testing.T) {
-		resp := MoxfieldSearchResponse{
+		resp := moxfield.SearchResponse{
 			PageNumber:   3,
 			TotalResults: 1,
 			TotalPages:   3,
-			Data: []MoxfieldDeckSummary{
+			Data: []moxfield.DeckSummary{
 				{PublicID: "s1", Name: "Found Deck", Format: "commander", PublicURL: "https://moxfield.com/s1"},
 			},
 		}
@@ -126,7 +128,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		// Verification fetches every candidate, so the deck read has to confirm the commander.
 		deckServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
-			_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa"))
+			_ = json.NewEncoder(w).Encode(moxfieldCommanderDeck(id, "Atraxa"))
 		}))
 		t.Cleanup(deckServer.Close)
 
@@ -142,8 +144,8 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// pageSize is the over-fetch (limit × moxfieldCandidateFactor) clamped to
-		// moxfieldVerifyMaxChecks: 5 × 5 = 25 candidates, but verification can only read 20,
+		// pageSize is the over-fetch (limit × moxfield.CandidateFactor) clamped to
+		// moxfield.VerifyMaxChecks: 5 × 5 = 25 candidates, but verification can only read 20,
 		// and asking for more would strand the surplus (page 2 resumes past them).
 		want := map[string]string{
 			"cardName":      "Atraxa",
@@ -169,7 +171,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		var gotQuery url.Values
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotQuery = r.URL.Query()
-			_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{PageNumber: 1, TotalPages: 0})
+			_ = json.NewEncoder(w).Encode(moxfield.SearchResponse{PageNumber: 1, TotalPages: 0})
 		}))
 		t.Cleanup(ts.Close)
 
@@ -189,7 +191,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
-		resp := MoxfieldSearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
+		resp := moxfield.SearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
 		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{"commander": "Nobody"}))
 		if !strings.Contains(resultText(t, res), "No decks with this commander were found") {
@@ -207,29 +209,29 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
 		// The stub answers 200 on any path, so only local validation can make this an error.
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, MoxfieldSearchResponse{})}
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "price",
 		}))
 		if !res.IsError {
 			t.Error("expected an error result for a sort Moxfield rejects")
 		}
-		if !strings.Contains(resultText(t, res), moxfieldSortValues()) {
+		if !strings.Contains(resultText(t, res), moxfield.SortValues()) {
 			t.Errorf("error should list the accepted sorts:\n%s", resultText(t, res))
 		}
 	})
 
 	t.Run("limit beyond the verification budget is rejected", func(t *testing.T) {
-		// Verification confirms at most moxfieldVerifyMaxChecks decks per call, so a
+		// Verification confirms at most moxfield.VerifyMaxChecks decks per call, so a
 		// larger limit could never be honoured and must not be silently truncated.
-		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, MoxfieldSearchResponse{})}
+		s := &MTGCommanderServer{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
 		res, _ := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
-			"commander": "Atraxa", "limit": float64(moxfieldVerifyMaxChecks + 1),
+			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks + 1),
 		}))
 		if !res.IsError {
 			t.Fatal("expected an error result for a limit beyond the verification budget")
 		}
-		want := fmt.Sprintf("invalid limit %d (accepted: 1-%d)", moxfieldVerifyMaxChecks+1, moxfieldVerifyMaxChecks)
+		want := fmt.Sprintf("invalid limit %d (accepted: 1-%d)", moxfield.VerifyMaxChecks+1, moxfield.VerifyMaxChecks)
 		if !strings.Contains(resultText(t, res), want) {
 			t.Errorf("error should read %q:\n%s", want, resultText(t, res))
 		}
@@ -239,23 +241,23 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		var gotQuery url.Values
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotQuery = r.URL.Query()
-			_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{PageNumber: 1, TotalPages: 1})
+			_ = json.NewEncoder(w).Encode(moxfield.SearchResponse{PageNumber: 1, TotalPages: 1})
 		}))
 		t.Cleanup(ts.Close)
 
 		s := &MTGCommanderServer{moxfieldSearchURL: ts.URL}
 		res, err := s.handleSearchMoxfieldDecks(context.Background(), toolRequest(map[string]any{
-			"commander": "Atraxa", "limit": float64(moxfieldVerifyMaxChecks),
+			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks),
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if res.IsError {
 			t.Fatalf("limit %d is the documented maximum and must be accepted:\n%s",
-				moxfieldVerifyMaxChecks, resultText(t, res))
+				moxfield.VerifyMaxChecks, resultText(t, res))
 		}
-		if got := gotQuery.Get("pageSize"); got != strconv.Itoa(moxfieldVerifyMaxChecks) {
-			t.Errorf("pageSize = %q, want %q", got, strconv.Itoa(moxfieldVerifyMaxChecks))
+		if got := gotQuery.Get("pageSize"); got != strconv.Itoa(moxfield.VerifyMaxChecks) {
+			t.Errorf("pageSize = %q, want %q", got, strconv.Itoa(moxfield.VerifyMaxChecks))
 		}
 	})
 
@@ -275,9 +277,9 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 	// Page 2 resumes after this whole candidate page, so they are not merely deferred:
 	// nothing will ever look at them, and the output must admit it.
 	searchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{
+		_ = json.NewEncoder(w).Encode(moxfield.SearchResponse{
 			PageNumber: 1, TotalResults: 3, TotalPages: 1,
-			Data: []MoxfieldDeckSummary{
+			Data: []moxfield.DeckSummary{
 				{PublicID: "a", Name: "First Atraxa", Format: "commander"},
 				{PublicID: "b", Name: "Second Atraxa", Format: "commander"},
 				{PublicID: "c", Name: "Third Atraxa", Format: "commander"},
@@ -288,7 +290,7 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 
 	deckServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
-		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Atraxa, Praetors' Voice"))
+		_ = json.NewEncoder(w).Encode(moxfieldCommanderDeck(id, "Atraxa, Praetors' Voice"))
 	}))
 	defer deckServer.Close()
 
@@ -313,13 +315,13 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 }
 
 func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
-	matching := MoxfieldDeckSummary{PublicID: "yes1", Name: "Atraxa Superfriends", Format: "commander"}
-	other := MoxfieldDeckSummary{PublicID: "no1", Name: "Winota Blink", Format: "commander"}
+	matching := moxfield.DeckSummary{PublicID: "yes1", Name: "Atraxa Superfriends", Format: "commander"}
+	other := moxfield.DeckSummary{PublicID: "no1", Name: "Winota Blink", Format: "commander"}
 
 	searchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{
+		_ = json.NewEncoder(w).Encode(moxfield.SearchResponse{
 			PageNumber: 1, PageSize: 50, TotalResults: 2, TotalPages: 1,
-			Data: []MoxfieldDeckSummary{matching, other},
+			Data: []moxfield.DeckSummary{matching, other},
 		})
 	}))
 	defer searchServer.Close()
@@ -330,7 +332,7 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 		if id == "yes1" {
 			commander = "Atraxa, Praetors' Voice"
 		}
-		_ = json.NewEncoder(w).Encode(commanderDeck(id, commander))
+		_ = json.NewEncoder(w).Encode(moxfieldCommanderDeck(id, commander))
 	}))
 	defer deckServer.Close()
 
@@ -358,13 +360,13 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T) {
 	// SortDirection holds Moxfield's wire value, which the handler produces; the output
 	// must be rendered back in the asc/desc vocabulary the caller actually passed.
-	params := MoxfieldSearchParams{
-		Format: "commander", SortType: "views", SortDirection: moxfieldDirectionDescending,
+	params := moxfield.SearchParams{
+		Format: "commander", SortType: "views", SortDirection: moxfield.DirectionDescending,
 	}
-	results := &MoxfieldSearchResponse{PageNumber: 1, TotalPages: 1, TotalResults: 3}
+	results := &moxfield.SearchResponse{PageNumber: 1, TotalPages: 1, TotalResults: 3}
 
 	t.Run("unreadable decks are named", func(t *testing.T) {
-		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results, MoxfieldCommanderSearch{
+		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results, moxfield.CommanderSearch{
 			Candidates: 3,
 			Checked:    3,
 			Failed:     2,
@@ -380,7 +382,7 @@ func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T)
 	})
 
 	t.Run("a clean verification says nothing about fetch failures", func(t *testing.T) {
-		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results, MoxfieldCommanderSearch{
+		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results, moxfield.CommanderSearch{
 			Candidates: 3,
 			Checked:    3,
 		})
@@ -394,15 +396,15 @@ func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T)
 
 	t.Run("the sort direction is echoed in the caller's vocabulary", func(t *testing.T) {
 		text := formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", params, results,
-			MoxfieldCommanderSearch{Candidates: 3, Checked: 3})
+			moxfield.CommanderSearch{Candidates: 3, Checked: 3})
 		if !strings.Contains(text, "**Sort:** views (desc)") {
 			t.Errorf("direction must read desc, not Moxfield's wire value\n%s", text)
 		}
 
 		ascending := params
-		ascending.SortDirection = moxfieldDirectionAscending
+		ascending.SortDirection = moxfield.DirectionAscending
 		text = formatMoxfieldCommanderSearch("Atraxa, Praetors' Voice", ascending, results,
-			MoxfieldCommanderSearch{Candidates: 3, Checked: 3})
+			moxfield.CommanderSearch{Candidates: 3, Checked: 3})
 		if !strings.Contains(text, "**Sort:** views (asc)") {
 			t.Errorf("an ascending search must read asc\n%s", text)
 		}
@@ -831,4 +833,13 @@ func TestHandleGetEDHRECRecommendationsBadPriceTier(t *testing.T) {
 	if !res.IsError {
 		t.Error("expected error result")
 	}
+}
+
+// moxfieldCommanderDeck builds a Moxfield deck whose commander zone holds the given names.
+func moxfieldCommanderDeck(publicID string, commanders ...string) moxfield.Deck {
+	zone := make(map[string]moxfield.CardEntry, len(commanders))
+	for _, name := range commanders {
+		zone[name] = moxfield.CardEntry{Quantity: 1, Card: moxfield.CardInfo{Name: name}}
+	}
+	return moxfield.Deck{PublicID: publicID, Name: "deck-" + publicID, Format: "commander", Commanders: zone}
 }

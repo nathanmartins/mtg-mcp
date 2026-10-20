@@ -1,7 +1,8 @@
-package main
+package moxfield
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 )
@@ -16,7 +17,7 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 	defer cancel()
 
 	// First search for a valid deck
-	searchParams := MoxfieldSearchParams{
+	searchParams := SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "updated",
@@ -25,9 +26,9 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	searchResp, err := SearchMoxfieldDecks(ctx, searchParams)
+	searchResp, err := SearchDecks(ctx, searchParams)
 	if err != nil {
-		t.Fatalf("SearchMoxfieldDecks() failed: %v", err)
+		t.Fatalf("SearchDecks() failed: %v", err)
 	}
 
 	if len(searchResp.Data) == 0 {
@@ -37,9 +38,9 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 
 	publicID := searchResp.Data[0].PublicID
 
-	deck, err := GetMoxfieldDeck(ctx, publicID)
+	deck, err := GetDeck(ctx, publicID)
 	if err != nil {
-		t.Fatalf("GetMoxfieldDeck() failed: %v", err)
+		t.Fatalf("GetDeck() failed: %v", err)
 	}
 
 	// Verify deck structure
@@ -80,7 +81,7 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 
 	// Use a known public user with decks
 	// Note: This user might not exist, so we'll search for a deck owner first
-	searchParams := MoxfieldSearchParams{
+	searchParams := SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "updated",
@@ -89,9 +90,9 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	searchResp, searchErr := SearchMoxfieldDecks(ctx, searchParams)
+	searchResp, searchErr := SearchDecks(ctx, searchParams)
 	if searchErr != nil {
-		t.Fatalf("SearchMoxfieldDecks() failed: %v", searchErr)
+		t.Fatalf("SearchDecks() failed: %v", searchErr)
 	}
 
 	if len(searchResp.Data) == 0 {
@@ -114,7 +115,7 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 	defer cancel()
 
 	// Search for a popular commander
-	params := MoxfieldSearchParams{
+	params := SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "updated",
@@ -123,9 +124,9 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	response, err := SearchMoxfieldDecks(ctx, params)
+	response, err := SearchDecks(ctx, params)
 	if err != nil {
-		t.Fatalf("SearchMoxfieldDecks() failed: %v", err)
+		t.Fatalf("SearchDecks() failed: %v", err)
 	}
 
 	// Verify response structure
@@ -181,9 +182,9 @@ func TestMoxfieldExtractPublicIDE2E(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := ExtractPublicIDFromURL(tc.url)
+			got := ExtractPublicID(tc.url)
 			if got != tc.expected {
-				t.Errorf("ExtractPublicIDFromURL(%q) = %q, want %q", tc.url, got, tc.expected)
+				t.Errorf("ExtractPublicID(%q) = %q, want %q", tc.url, got, tc.expected)
 			}
 		})
 	}
@@ -201,7 +202,7 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 	defer cancel()
 
 	// First search for a valid deck
-	searchParams := MoxfieldSearchParams{
+	searchParams := SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "updated",
@@ -210,9 +211,9 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	searchResp, err := SearchMoxfieldDecks(ctx, searchParams)
+	searchResp, err := SearchDecks(ctx, searchParams)
 	if err != nil {
-		t.Fatalf("SearchMoxfieldDecks() failed: %v", err)
+		t.Fatalf("SearchDecks() failed: %v", err)
 	}
 
 	if len(searchResp.Data) == 0 {
@@ -222,13 +223,13 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 
 	publicID := searchResp.Data[0].PublicID
 
-	deck, err := GetMoxfieldDeck(ctx, publicID)
+	deck, err := GetDeck(ctx, publicID)
 	if err != nil {
-		t.Fatalf("GetMoxfieldDeck() failed: %v", err)
+		t.Fatalf("GetDeck() failed: %v", err)
 	}
 
 	// Format the deck
-	output := FormatDeckForDisplay(deck)
+	output := FormatDeck(deck)
 	if output == "" {
 		t.Error("Expected non-empty formatted output")
 	}
@@ -241,7 +242,7 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 	}
 
 	for _, expected := range expectedStrings {
-		if !contains(output, expected) {
+		if !strings.Contains(output, expected) {
 			t.Errorf("Expected output to contain %q", expected)
 		}
 	}

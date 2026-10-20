@@ -1,4 +1,4 @@
-package main
+package moxfield
 
 import (
 	"context"
@@ -10,20 +10,20 @@ import (
 )
 
 const (
-	// moxfieldVerifyMaxChecks bounds how many decks one tool call may fetch while
+	// VerifyMaxChecks bounds how many decks one tool call may fetch while
 	// verifying commanders. Moxfield answers HTTP 429 after roughly a dozen rapid
 	// requests, so this is a politeness cap as much as a latency cap.
-	moxfieldVerifyMaxChecks = 20
-	// moxfieldVerifyDelay spaces verification requests.
-	moxfieldVerifyDelay = 400 * time.Millisecond
-	// moxfieldVerifyBudget bounds the total time spent verifying one page.
-	moxfieldVerifyBudget = 30 * time.Second
-	// moxfieldCandidateFactor decides how many search candidates to request per
+	VerifyMaxChecks = 20
+	// VerifyDelay spaces verification requests.
+	VerifyDelay = 400 * time.Millisecond
+	// VerifyBudget bounds the total time spent verifying one page.
+	VerifyBudget = 30 * time.Second
+	// CandidateFactor decides how many search candidates to request per
 	// wanted deck, since the search filter matches any deck containing the card.
-	moxfieldCandidateFactor = 5
+	CandidateFactor = 5
 )
 
-// MoxfieldCommanderSearch is the outcome of a commander search. Moxfield's search API
+// CommanderSearch is the outcome of a commander search. Moxfield's search API
 // ignores every commander parameter, so Decks holds only candidates whose commander
 // zone was actually fetched and matched. Failed counts candidates whose deck could not
 // be read at all — those are neither matches nor non-matches, merely unknown.
@@ -33,8 +33,8 @@ const (
 // matches was already found. That is an ordinary success rather than an incomplete
 // verification, but the next page resumes after the whole candidate page, so those
 // candidates are skipped for good and the count has to be reported.
-type MoxfieldCommanderSearch struct {
-	Decks      []MoxfieldDeckSummary
+type CommanderSearch struct {
+	Decks      []DeckSummary
 	Candidates int
 	Checked    int
 	Failed     int
@@ -45,7 +45,7 @@ type MoxfieldCommanderSearch struct {
 
 // deckHasCommander reports whether the deck's commander zone contains the named card.
 // A partner or background pairing matches when either commander matches.
-func deckHasCommander(deck *MoxfieldDeck, commander string) bool {
+func deckHasCommander(deck *Deck, commander string) bool {
 	want := strings.ToLower(strings.TrimSpace(commander))
 	for name, entry := range deck.Commanders {
 		if strings.ToLower(strings.TrimSpace(name)) == want {
@@ -58,23 +58,23 @@ func deckHasCommander(deck *MoxfieldDeck, commander string) bool {
 	return false
 }
 
-// verifyMoxfieldCommanderDecks keeps the candidates whose commander is the requested
+// VerifyCommanderDecks keeps the candidates whose commander is the requested
 // card, fetching each deck in sequence. It stops at limit matches, at maxChecks
 // fetches, when ctx expires, or at the first HTTP 429, reporting why. Candidates whose
 // deck read fails are counted in Failed and make the outcome incomplete, because a deck
 // that could not be read cannot be ruled out either. Candidates never reached because
 // limit matches were already found are counted in Unexamined instead: the run
 // succeeded, but those decks are unreachable by paging.
-func verifyMoxfieldCommanderDecks(
+func VerifyCommanderDecks(
 	ctx context.Context,
-	candidates []MoxfieldDeckSummary,
+	candidates []DeckSummary,
 	commander string,
 	deckBaseURL string,
 	limit int,
 	maxChecks int,
 	delay time.Duration,
-) MoxfieldCommanderSearch {
-	outcome := MoxfieldCommanderSearch{Candidates: len(candidates)}
+) CommanderSearch {
+	outcome := CommanderSearch{Candidates: len(candidates)}
 	stopReason := ""
 
 	for i, candidate := range candidates {
@@ -88,7 +88,7 @@ func verifyMoxfieldCommanderDecks(
 		}
 		waitBeforeCheck(ctx, i, delay)
 
-		deck, err := getMoxfieldDeckWithURL(ctx, candidate.PublicID, deckBaseURL)
+		deck, err := GetDeckWithURL(ctx, candidate.PublicID, deckBaseURL)
 		if err != nil {
 			// An expired budget and a rate limit both end verification, and neither says
 			// anything about this candidate, so they are ruled out before the failed read
@@ -143,7 +143,7 @@ func verificationStopReason(ctx context.Context, err error) string {
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return "verification stopped: " + ctxErr.Error()
 	}
-	if isMoxfieldRateLimited(err) {
+	if isRateLimited(err) {
 		return "verification stopped: Moxfield rate limit (HTTP 429)"
 	}
 

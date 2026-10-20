@@ -1,4 +1,4 @@
-package main
+package moxfield
 
 import (
 	"context"
@@ -14,12 +14,12 @@ import (
 )
 
 // commanderDeck builds a deck payload whose commander zone holds the given cards.
-func commanderDeck(publicID string, commanders ...string) MoxfieldDeck {
-	zone := make(map[string]MoxfieldCardEntry, len(commanders))
+func commanderDeck(publicID string, commanders ...string) Deck {
+	zone := make(map[string]CardEntry, len(commanders))
 	for _, name := range commanders {
-		zone[name] = MoxfieldCardEntry{Quantity: 1, Card: MoxfieldCardInfo{Name: name}}
+		zone[name] = CardEntry{Quantity: 1, Card: CardInfo{Name: name}}
 	}
-	return MoxfieldDeck{PublicID: publicID, Name: "deck-" + publicID, Format: "commander", Commanders: zone}
+	return Deck{PublicID: publicID, Name: "deck-" + publicID, Format: "commander", Commanders: zone}
 }
 
 func TestDeckHasCommander(t *testing.T) {
@@ -28,7 +28,7 @@ func TestDeckHasCommander(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		deck      MoxfieldDeck
+		deck      Deck
 		commander string
 		want      bool
 	}{
@@ -36,7 +36,7 @@ func TestDeckHasCommander(t *testing.T) {
 		{"case and space insensitive", deck, "  atraxa, praetors' voice ", true},
 		{"second partner matches", partners, "Tymna the Weaver", true},
 		{"card present but not commander", deck, "Sol Ring", false},
-		{"empty commander zone", MoxfieldDeck{PublicID: "c"}, "Atraxa, Praetors' Voice", false},
+		{"empty commander zone", Deck{PublicID: "c"}, "Atraxa, Praetors' Voice", false},
 	}
 
 	for _, tt := range tests {
@@ -49,7 +49,7 @@ func TestDeckHasCommander(t *testing.T) {
 }
 
 func TestVerifyMoxfieldCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
-	decks := map[string]MoxfieldDeck{
+	decks := map[string]Deck{
 		"yes1": commanderDeck("yes1", "Atraxa, Praetors' Voice"),
 		"no1":  commanderDeck("no1", "Winota, Joiner of Forces"),
 		"yes2": commanderDeck("yes2", "Atraxa, Praetors' Voice"),
@@ -65,8 +65,8 @@ func TestVerifyMoxfieldCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 	}))
 	defer server.Close()
 
-	candidates := []MoxfieldDeckSummary{{PublicID: "yes1"}, {PublicID: "no1"}, {PublicID: "yes2"}}
-	got := verifyMoxfieldCommanderDecks(
+	candidates := []DeckSummary{{PublicID: "yes1"}, {PublicID: "no1"}, {PublicID: "yes2"}}
+	got := VerifyCommanderDecks(
 		context.Background(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
 	)
 
@@ -93,12 +93,12 @@ func TestVerifyMoxfieldCommanderDecksStopsAtLimit(t *testing.T) {
 	}))
 	defer server.Close()
 
-	candidates := make([]MoxfieldDeckSummary, 0, 30)
+	candidates := make([]DeckSummary, 0, 30)
 	for i := range 30 {
-		candidates = append(candidates, MoxfieldDeckSummary{PublicID: fmt.Sprintf("d%d", i)})
+		candidates = append(candidates, DeckSummary{PublicID: fmt.Sprintf("d%d", i)})
 	}
 
-	got := verifyMoxfieldCommanderDecks(
+	got := VerifyCommanderDecks(
 		context.Background(), candidates, "Atraxa, Praetors' Voice", server.URL, 3, 20, 0,
 	)
 	if len(got.Decks) != 3 {
@@ -125,12 +125,12 @@ func TestVerifyMoxfieldCommanderDecksRespectsCheckBudget(t *testing.T) {
 	}))
 	defer server.Close()
 
-	candidates := make([]MoxfieldDeckSummary, 0, 30)
+	candidates := make([]DeckSummary, 0, 30)
 	for i := range 30 {
-		candidates = append(candidates, MoxfieldDeckSummary{PublicID: fmt.Sprintf("d%d", i)})
+		candidates = append(candidates, DeckSummary{PublicID: fmt.Sprintf("d%d", i)})
 	}
 
-	got := verifyMoxfieldCommanderDecks(
+	got := VerifyCommanderDecks(
 		context.Background(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 4, 0,
 	)
 	if got.Checked != 4 {
@@ -153,8 +153,8 @@ func TestVerifyMoxfieldCommanderDecksReportsUnreadableDecks(t *testing.T) {
 	}))
 	defer server.Close()
 
-	candidates := []MoxfieldDeckSummary{{PublicID: "yes1"}, {PublicID: "gone"}}
-	got := verifyMoxfieldCommanderDecks(
+	candidates := []DeckSummary{{PublicID: "yes1"}, {PublicID: "gone"}}
+	got := VerifyCommanderDecks(
 		context.Background(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
 	)
 
@@ -186,8 +186,8 @@ func TestVerifyMoxfieldCommanderDecksStopsOnCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
-	candidates := []MoxfieldDeckSummary{{PublicID: "a"}, {PublicID: "b"}}
-	got := verifyMoxfieldCommanderDecks(ctx, candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0)
+	candidates := []DeckSummary{{PublicID: "a"}, {PublicID: "b"}}
+	got := VerifyCommanderDecks(ctx, candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0)
 
 	if requests != 0 {
 		t.Errorf("made %d requests on a cancelled context, want 0", requests)
@@ -217,8 +217,8 @@ func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 	}))
 	defer server.Close()
 
-	candidates := []MoxfieldDeckSummary{{PublicID: "a"}, {PublicID: "b"}, {PublicID: "c"}}
-	got := verifyMoxfieldCommanderDecks(
+	candidates := []DeckSummary{{PublicID: "a"}, {PublicID: "b"}, {PublicID: "c"}}
+	got := VerifyCommanderDecks(
 		context.Background(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
 	)
 
@@ -234,13 +234,13 @@ func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 }
 
 func TestIsMoxfieldRateLimited(t *testing.T) {
-	if !isMoxfieldRateLimited(&httpx.StatusError{Source: moxfieldSource, StatusCode: http.StatusTooManyRequests}) {
+	if !isRateLimited(&httpx.StatusError{Source: apiSource, StatusCode: http.StatusTooManyRequests}) {
 		t.Error("429 must be detected as a rate limit")
 	}
-	if isMoxfieldRateLimited(&httpx.StatusError{Source: moxfieldSource, StatusCode: http.StatusNotFound}) {
+	if isRateLimited(&httpx.StatusError{Source: apiSource, StatusCode: http.StatusNotFound}) {
 		t.Error("404 must not be detected as a rate limit")
 	}
-	if isMoxfieldRateLimited(errors.New("network down")) {
+	if isRateLimited(errors.New("network down")) {
 		t.Error("a plain error must not be detected as a rate limit")
 	}
 }

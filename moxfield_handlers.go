@@ -7,6 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
+	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
 func (s *MTGCommanderServer) handleGetMoxfieldDeck(
@@ -19,14 +20,14 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	publicID := ExtractPublicIDFromURL(deckID)
+	publicID := moxfield.ExtractPublicID(deckID)
 
 	logging.Get().Info().
 		Str("tool", "get_moxfield_deck").
 		Str("deck_id", publicID).
 		Msg("Fetching Moxfield deck")
 
-	deck, err := getMoxfieldDeckWithURL(ctx, publicID, s.moxfieldBaseURL)
+	deck, err := moxfield.GetDeckWithURL(ctx, publicID, s.moxfieldBaseURL)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -44,7 +45,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldDeck(
 		Int("mainboard_cards", len(deck.Mainboard)).
 		Msg("Successfully fetched Moxfield deck")
 
-	output := FormatDeckForDisplay(deck)
+	output := moxfield.FormatDeck(deck)
 	return mcp.NewToolResultText(output), nil
 }
 
@@ -69,7 +70,7 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 		}
 	}
 
-	decks, err := getUserDecksWithURL(ctx, username, pageSize, s.moxfieldBaseURL)
+	decks, err := moxfield.GetUserDecksWithURL(ctx, username, pageSize, s.moxfieldBaseURL)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch user decks: %v", err)), nil
 	}
@@ -91,8 +92,8 @@ func (s *MTGCommanderServer) handleGetMoxfieldUserDecks(
 }
 
 // moxfieldSearchParamsFromRequest validates MCP arguments into Moxfield search parameters.
-func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (MoxfieldSearchParams, error) {
-	params := MoxfieldSearchParams{
+func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (moxfield.SearchParams, error) {
+	params := moxfield.SearchParams{
 		CardName: commander,
 		Format:   stringArg(args, "format", defaultFormat),
 	}
@@ -103,7 +104,7 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (Mox
 	}
 	params.PageNumber = page
 
-	limit, err := intArg(args, "limit", moxfieldSearchDefaultLimit)
+	limit, err := intArg(args, "limit", moxfield.SearchDefaultLimit)
 	if err != nil {
 		return params, err
 	}
@@ -113,7 +114,7 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (Mox
 	if err != nil {
 		return params, err
 	}
-	sortType, err := moxfieldSortType(sortKey)
+	sortType, err := moxfield.ParseSortType(sortKey)
 	if err != nil {
 		return params, err
 	}
@@ -123,16 +124,16 @@ func moxfieldSearchParamsFromRequest(commander string, args map[string]any) (Mox
 	if err != nil {
 		return params, err
 	}
-	params.SortDirection = moxfieldSortDirection(ascending)
+	params.SortDirection = moxfield.SortDirection(ascending)
 
 	if params.PageNumber < 1 {
 		return params, fmt.Errorf("invalid page %d (must be 1 or greater)", params.PageNumber)
 	}
 	// The limit is bounded by what verification can actually deliver, not by Moxfield's
-	// page size: at most moxfieldVerifyMaxChecks decks are ever fetched and confirmed,
+	// page size: at most moxfield.VerifyMaxChecks decks are ever fetched and confirmed,
 	// so a larger limit could never be honoured.
-	if params.PageSize < 1 || params.PageSize > moxfieldVerifyMaxChecks {
-		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.PageSize, moxfieldVerifyMaxChecks)
+	if params.PageSize < 1 || params.PageSize > moxfield.VerifyMaxChecks {
+		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.PageSize, moxfield.VerifyMaxChecks)
 	}
 
 	return params, nil
@@ -174,13 +175,13 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 
 	wanted := params.PageSize
 	// The over-fetch is capped by the verification budget: candidates beyond
-	// moxfieldVerifyMaxChecks could never be checked. Verification also stops as soon as
+	// moxfield.VerifyMaxChecks could never be checked. Verification also stops as soon as
 	// it has `wanted` matches, so any candidate left over on this page is skipped for
 	// good — page 2 resumes after the whole requested page. The output discloses how
 	// many candidates were left unexamined.
-	params.PageSize = min(wanted*moxfieldCandidateFactor, moxfieldVerifyMaxChecks)
+	params.PageSize = min(wanted*moxfield.CandidateFactor, moxfield.VerifyMaxChecks)
 
-	results, err := searchMoxfieldDecksWithURL(ctx, params, s.moxfieldSearchURL)
+	results, err := moxfield.SearchDecksWithURL(ctx, params, s.moxfieldSearchURL)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -190,11 +191,11 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to search Moxfield decks: %v", err)), nil
 	}
 
-	verifyCtx, cancel := context.WithTimeout(ctx, moxfieldVerifyBudget)
+	verifyCtx, cancel := context.WithTimeout(ctx, moxfield.VerifyBudget)
 	defer cancel()
-	outcome := verifyMoxfieldCommanderDecks(
+	outcome := moxfield.VerifyCommanderDecks(
 		verifyCtx, results.Data, commander, s.moxfieldBaseURL,
-		wanted, moxfieldVerifyMaxChecks, s.verifyDelay,
+		wanted, moxfield.VerifyMaxChecks, s.verifyDelay,
 	)
 
 	logging.Get().Info().
@@ -215,15 +216,15 @@ func (s *MTGCommanderServer) handleSearchMoxfieldDecks(
 // checked, how many were never looked at, and whether verification was cut short.
 func formatMoxfieldCommanderSearch(
 	commander string,
-	params MoxfieldSearchParams,
-	results *MoxfieldSearchResponse,
-	outcome MoxfieldCommanderSearch,
+	params moxfield.SearchParams,
+	results *moxfield.SearchResponse,
+	outcome moxfield.CommanderSearch,
 ) string {
 	var output strings.Builder
 	_, _ = fmt.Fprintf(&output, "# Moxfield Decks for %s\n\n", commander)
 	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", params.Format)
 	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n",
-		params.SortType, sortDirectionLabel(params.SortDirection == moxfieldDirectionAscending))
+		params.SortType, sortDirectionLabel(params.SortDirection == moxfield.DirectionAscending))
 	_, _ = fmt.Fprintf(&output, "**Candidates containing the card:** %d (page %d, %s)\n",
 		outcome.Candidates, results.PageNumber, formatMoxfieldTotal(results))
 	_, _ = fmt.Fprintf(&output, "**Verified as commander:** %d of %d checked%s\n",
@@ -271,12 +272,12 @@ func unfetchableSuffix(failed int) string {
 }
 
 // formatMoxfieldTotal renders Moxfield's search total without presenting a saturated
-// value as a real count. Moxfield answers moxfieldTotalCap for any broad card-name
+// value as a real count. Moxfield answers moxfield.TotalCap for any broad card-name
 // search and derives totalPages from it, so both numbers would otherwise advertise a
 // result depth that does not exist.
-func formatMoxfieldTotal(results *MoxfieldSearchResponse) string {
-	if results.TotalResults >= moxfieldTotalCap {
-		return fmt.Sprintf("%d+ card-name matches — upstream cap, real total unknown", moxfieldTotalCap)
+func formatMoxfieldTotal(results *moxfield.SearchResponse) string {
+	if results.TotalResults >= moxfield.TotalCap {
+		return fmt.Sprintf("%d+ card-name matches — upstream cap, real total unknown", moxfield.TotalCap)
 	}
 
 	return fmt.Sprintf("%d card-name matches over %d page(s)", results.TotalResults, results.TotalPages)

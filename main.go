@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
+	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
 // Build-time variables injected via -ldflags.
@@ -43,11 +44,6 @@ const (
 	defaultCardImageSize         = imageSizeNormal
 	mimeTypeTextPlain            = "text/plain"
 
-	defaultMoxfieldBaseURL = "https://api.moxfield.com/v2"
-	// defaultMoxfieldSearchURL is a different host from defaultMoxfieldBaseURL:
-	// deck reads live on api.moxfield.com, deck search only exists on api2.
-	defaultMoxfieldSearchURL = "https://api2.moxfield.com/v2/decks/search"
-
 	defaultArchidektBaseURL = "https://archidekt.com/api"
 	defaultEDHRECBaseURL    = "https://json.edhrec.com/pages"
 )
@@ -75,11 +71,11 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 
 	return &MTGCommanderServer{
 		scryfallClient:    client,
-		moxfieldBaseURL:   defaultMoxfieldBaseURL,
-		moxfieldSearchURL: defaultMoxfieldSearchURL,
+		moxfieldBaseURL:   moxfield.DefaultBaseURL,
+		moxfieldSearchURL: moxfield.DefaultSearchURL,
 		archidektBaseURL:  defaultArchidektBaseURL,
 		edhrecBaseURL:     defaultEDHRECBaseURL,
-		verifyDelay:       moxfieldVerifyDelay,
+		verifyDelay:       moxfield.VerifyDelay,
 		rules:             &rulesCache{},
 	}, nil
 }
@@ -287,7 +283,7 @@ func (s *MTGCommanderServer) registerTools(mcpServer *server.MCPServer) {
 			mcp.Description("MTG format to filter by (default: 'commander')"),
 		),
 		mcp.WithString("sort",
-			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", moxfieldSortValues(), searchSortDefault)),
+			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", moxfield.SortValues(), searchSortDefault)),
 		),
 		mcp.WithString("sort_direction",
 			mcp.Description("Sort direction: asc or desc (default: desc)"),

@@ -1,4 +1,4 @@
-package main
+package moxfield
 
 import (
 	"context"
@@ -40,16 +40,16 @@ func TestExtractPublicIDFromURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ExtractPublicIDFromURL(tt.input)
+			got := ExtractPublicID(tt.input)
 			if got != tt.want {
-				t.Errorf("ExtractPublicIDFromURL() = %v, want %v", got, tt.want)
+				t.Errorf("ExtractPublicID() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestGetMoxfieldDeck(t *testing.T) {
-	mockDeck := MoxfieldDeck{
+	mockDeck := Deck{
 		ID:          "test-id",
 		PublicID:    "abc123",
 		Name:        "Test Deck",
@@ -58,18 +58,18 @@ func TestGetMoxfieldDeck(t *testing.T) {
 		ViewCount:   100,
 		LikeCount:   50,
 		Authors:     []string{"TestAuthor"},
-		Commanders: map[string]MoxfieldCardEntry{
+		Commanders: map[string]CardEntry{
 			"commander": {
 				Quantity: 1,
-				Card: MoxfieldCardInfo{
+				Card: CardInfo{
 					Name: "Test Commander",
 				},
 			},
 		},
-		Mainboard: map[string]MoxfieldCardEntry{
+		Mainboard: map[string]CardEntry{
 			"card1": {
 				Quantity: 1,
-				Card: MoxfieldCardInfo{
+				Card: CardInfo{
 					Name: "Sol Ring",
 				},
 			},
@@ -79,7 +79,7 @@ func TestGetMoxfieldDeck(t *testing.T) {
 	tests := []struct {
 		name         string
 		publicID     string
-		mockDeck     MoxfieldDeck
+		mockDeck     Deck
 		mockStatus   int
 		wantErr      bool
 		checkHeaders bool
@@ -123,19 +123,19 @@ func TestGetMoxfieldDeck(t *testing.T) {
 			defer server.Close()
 
 			ctx := context.Background()
-			got, err := getMoxfieldDeckWithURL(ctx, tt.publicID, server.URL)
+			got, err := GetDeckWithURL(ctx, tt.publicID, server.URL)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetMoxfieldDeck() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetDeck() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr && got != nil {
 				if got.Name != tt.mockDeck.Name {
-					t.Errorf("GetMoxfieldDeck() name = %v, want %v", got.Name, tt.mockDeck.Name)
+					t.Errorf("GetDeck() name = %v, want %v", got.Name, tt.mockDeck.Name)
 				}
 				if got.PublicID != tt.mockDeck.PublicID {
-					t.Errorf("GetMoxfieldDeck() publicID = %v, want %v", got.PublicID, tt.mockDeck.PublicID)
+					t.Errorf("GetDeck() publicID = %v, want %v", got.PublicID, tt.mockDeck.PublicID)
 				}
 			}
 		})
@@ -143,12 +143,12 @@ func TestGetMoxfieldDeck(t *testing.T) {
 }
 
 func TestGetUserDecks(t *testing.T) {
-	mockResponse := MoxfieldUserDecksResponse{
+	mockResponse := UserDecksResponse{
 		PageNumber:   1,
 		PageSize:     20,
 		TotalResults: 2,
 		TotalPages:   1,
-		Data: []MoxfieldDeckSummary{
+		Data: []DeckSummary{
 			{
 				PublicID:  "deck1",
 				Name:      "Deck 1",
@@ -172,7 +172,7 @@ func TestGetUserDecks(t *testing.T) {
 		name         string
 		username     string
 		pageSize     int
-		mockResponse MoxfieldUserDecksResponse
+		mockResponse UserDecksResponse
 		mockStatus   int
 		wantErr      bool
 	}{
@@ -212,7 +212,7 @@ func TestGetUserDecks(t *testing.T) {
 			defer server.Close()
 
 			ctx := context.Background()
-			got, err := getUserDecksWithURL(ctx, tt.username, tt.pageSize, server.URL)
+			got, err := GetUserDecksWithURL(ctx, tt.username, tt.pageSize, server.URL)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -229,12 +229,12 @@ func TestGetUserDecks(t *testing.T) {
 }
 
 func TestSearchMoxfieldDecks(t *testing.T) {
-	mockResponse := MoxfieldSearchResponse{
+	mockResponse := SearchResponse{
 		PageNumber:   1,
 		PageSize:     20,
 		TotalResults: 50,
 		TotalPages:   3,
-		Data: []MoxfieldDeckSummary{
+		Data: []DeckSummary{
 			{
 				PublicID:  "deck1",
 				Name:      "Atraxa Superfriends",
@@ -256,15 +256,15 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		params       MoxfieldSearchParams
-		mockResponse MoxfieldSearchResponse
+		params       SearchParams
+		mockResponse SearchResponse
 		mockStatus   int
 		wantErr      bool
 		checkQuery   bool
 	}{
 		{
 			name: "search by commander",
-			params: MoxfieldSearchParams{
+			params: SearchParams{
 				CardName:      "Atraxa",
 				Format:        "commander",
 				SortType:      "updated",
@@ -279,7 +279,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 		},
 		{
 			name: "with different sort",
-			params: MoxfieldSearchParams{
+			params: SearchParams{
 				CardName:      "Atraxa",
 				Format:        "commander",
 				SortType:      "views",
@@ -293,7 +293,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 		},
 		{
 			name: "server error",
-			params: MoxfieldSearchParams{
+			params: SearchParams{
 				CardName:   "Test",
 				PageSize:   20,
 				PageNumber: 1,
@@ -321,20 +321,20 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 			defer server.Close()
 
 			ctx := context.Background()
-			got, err := searchMoxfieldDecksWithURL(ctx, tt.params, server.URL)
+			got, err := SearchDecksWithURL(ctx, tt.params, server.URL)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("SearchMoxfieldDecks() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("SearchDecks() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr && got != nil {
 				if len(got.Data) != len(tt.mockResponse.Data) {
-					t.Errorf("SearchMoxfieldDecks() deck count = %v, want %v", len(got.Data), len(tt.mockResponse.Data))
+					t.Errorf("SearchDecks() deck count = %v, want %v", len(got.Data), len(tt.mockResponse.Data))
 				}
 				if got.TotalResults != tt.mockResponse.TotalResults {
 					t.Errorf(
-						"SearchMoxfieldDecks() total results = %v, want %v",
+						"SearchDecks() total results = %v, want %v",
 						got.TotalResults,
 						tt.mockResponse.TotalResults,
 					)
@@ -378,22 +378,22 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPageSize = r.URL.Query().Get("pageSize")
 				w.WriteHeader(http.StatusOK)
-				_ = json.NewEncoder(w).Encode(MoxfieldSearchResponse{
-					Data: []MoxfieldDeckSummary{},
+				_ = json.NewEncoder(w).Encode(SearchResponse{
+					Data: []DeckSummary{},
 				})
 			}))
 			defer server.Close()
 
-			params := MoxfieldSearchParams{
+			params := SearchParams{
 				CardName:   "test",
 				PageSize:   tt.inputPageSize,
 				PageNumber: 1,
 			}
 
 			ctx := context.Background()
-			_, err := searchMoxfieldDecksWithURL(ctx, params, server.URL)
+			_, err := SearchDecksWithURL(ctx, params, server.URL)
 			if err != nil {
-				t.Errorf("SearchMoxfieldDecks() unexpected error = %v", err)
+				t.Errorf("SearchDecks() unexpected error = %v", err)
 			}
 			if gotPageSize != tt.expectPageSize {
 				t.Errorf("pageSize parameter = %q, want %q", gotPageSize, tt.expectPageSize)
@@ -409,11 +409,11 @@ func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
 		gotPath = r.URL.Path
 		gotQuery = r.URL.Query()
 		_ = json.NewEncoder(w).
-			Encode(MoxfieldSearchResponse{PageNumber: 2, PageSize: 50, TotalResults: 120, TotalPages: 3})
+			Encode(SearchResponse{PageNumber: 2, PageSize: 50, TotalResults: 120, TotalPages: 3})
 	}))
 	defer server.Close()
 
-	_, err := searchMoxfieldDecksWithURL(context.Background(), MoxfieldSearchParams{
+	_, err := SearchDecksWithURL(context.Background(), SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "views",
@@ -451,23 +451,23 @@ func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
 
 func TestMoxfieldSortType(t *testing.T) {
 	for _, valid := range []string{"updated", "created", "views", "likes", "comments", "relevance"} {
-		if got, err := moxfieldSortType(valid); err != nil || got != valid {
-			t.Errorf("moxfieldSortType(%q) = (%q, %v), want (%q, nil)", valid, got, err, valid)
+		if got, err := ParseSortType(valid); err != nil || got != valid {
+			t.Errorf("ParseSortType(%q) = (%q, %v), want (%q, nil)", valid, got, err, valid)
 		}
 	}
 	// price is rejected by the Moxfield API with HTTP 400, so reject it locally.
 	for _, invalid := range []string{"price", "", "trending"} {
-		if _, err := moxfieldSortType(invalid); err == nil {
-			t.Errorf("moxfieldSortType(%q) should fail", invalid)
+		if _, err := ParseSortType(invalid); err == nil {
+			t.Errorf("ParseSortType(%q) should fail", invalid)
 		}
 	}
 }
 
 func TestMoxfieldSortDirection(t *testing.T) {
-	if got := moxfieldSortDirection(false); got != "Descending" {
+	if got := SortDirection(false); got != "Descending" {
 		t.Errorf("descending = %q, want Descending", got)
 	}
-	if got := moxfieldSortDirection(true); got != "Ascending" {
+	if got := SortDirection(true); got != "Ascending" {
 		t.Errorf("ascending = %q, want Ascending", got)
 	}
 }
@@ -475,10 +475,10 @@ func TestMoxfieldSortDirection(t *testing.T) {
 // TestMoxfieldSearchURLWiring pins the fix for the production HTTP 404: deck reads and deck
 // search live on different Moxfield hosts, and the server must be built with the search URL.
 func TestMoxfieldSearchURLWiring(t *testing.T) {
-	if defaultMoxfieldSearchURL == defaultMoxfieldBaseURL {
+	if DefaultSearchURL == DefaultBaseURL {
 		t.Fatal("the search URL must differ from the deck-read base URL")
 	}
-	parsed, parseErr := url.Parse(defaultMoxfieldSearchURL)
+	parsed, parseErr := url.Parse(DefaultSearchURL)
 	if parseErr != nil {
 		t.Fatalf("unparseable search URL: %v", parseErr)
 	}
@@ -488,22 +488,10 @@ func TestMoxfieldSearchURLWiring(t *testing.T) {
 	if parsed.Path != "/v2/decks/search" {
 		t.Errorf("search path = %q, want /v2/decks/search", parsed.Path)
 	}
-
-	s, err := NewMTGCommanderServer()
-	if err != nil {
-		t.Fatalf("NewMTGCommanderServer() error = %v", err)
-	}
-	if s.moxfieldSearchURL != defaultMoxfieldSearchURL {
-		t.Errorf("moxfieldSearchURL = %q, want %q", s.moxfieldSearchURL, defaultMoxfieldSearchURL)
-	}
-	if s.verifyDelay != moxfieldVerifyDelay {
-		t.Errorf("verifyDelay = %v, want %v — production must space verification requests",
-			s.verifyDelay, moxfieldVerifyDelay)
-	}
 }
 
 func TestFormatDeckForDisplay(t *testing.T) {
-	deck := &MoxfieldDeck{
+	deck := &Deck{
 		Name:         "Test Deck",
 		Format:       "commander",
 		Authors:      []interface{}{"Author1", "Author2"},
@@ -511,32 +499,32 @@ func TestFormatDeckForDisplay(t *testing.T) {
 		LikeCount:    100,
 		CommentCount: 50,
 		Description:  "This is a test deck",
-		Commanders: map[string]MoxfieldCardEntry{
+		Commanders: map[string]CardEntry{
 			"cmd": {
 				Quantity: 1,
-				Card: MoxfieldCardInfo{
+				Card: CardInfo{
 					Name: "Atraxa, Praetors' Voice",
 				},
 			},
 		},
-		Mainboard: map[string]MoxfieldCardEntry{
+		Mainboard: map[string]CardEntry{
 			"card1": {
 				Quantity: 1,
-				Card: MoxfieldCardInfo{
+				Card: CardInfo{
 					Name:     "Sol Ring",
 					TypeLine: "Artifact",
 				},
 			},
 			"card2": {
 				Quantity: 1,
-				Card: MoxfieldCardInfo{
+				Card: CardInfo{
 					Name:     "Lightning Bolt",
 					TypeLine: "Instant",
 				},
 			},
 			"card3": {
 				Quantity: 1,
-				Card: MoxfieldCardInfo{
+				Card: CardInfo{
 					Name:     "Birds of Paradise",
 					TypeLine: "Creature - Bird",
 				},
@@ -546,7 +534,7 @@ func TestFormatDeckForDisplay(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		deck         *MoxfieldDeck
+		deck         *Deck
 		wantContains []string
 	}{
 		{
@@ -571,11 +559,11 @@ func TestFormatDeckForDisplay(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FormatDeckForDisplay(tt.deck)
+			got := FormatDeck(tt.deck)
 
 			for _, want := range tt.wantContains {
 				if !strings.Contains(got, want) {
-					t.Errorf("FormatDeckForDisplay() missing %q in output", want)
+					t.Errorf("FormatDeck() missing %q in output", want)
 				}
 			}
 		})
@@ -583,16 +571,16 @@ func TestFormatDeckForDisplay(t *testing.T) {
 }
 
 func TestGroupDeckCards(t *testing.T) {
-	mainboard := map[string]MoxfieldCardEntry{
-		"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Counterspell", TypeLine: "Instant"}},
-		"b": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Ponder", TypeLine: "Sorcery"}},
-		"c": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sylvan Library", TypeLine: "Enchantment"}},
+	mainboard := map[string]CardEntry{
+		"a": {Quantity: 1, Card: CardInfo{Name: "Counterspell", TypeLine: "Instant"}},
+		"b": {Quantity: 1, Card: CardInfo{Name: "Ponder", TypeLine: "Sorcery"}},
+		"c": {Quantity: 1, Card: CardInfo{Name: "Sylvan Library", TypeLine: "Enchantment"}},
 		"d": {
 			Quantity: 1,
-			Card:     MoxfieldCardInfo{Name: "Nissa, Who Shakes the World", TypeLine: "Legendary Planeswalker — Nissa"},
+			Card:     CardInfo{Name: "Nissa, Who Shakes the World", TypeLine: "Legendary Planeswalker — Nissa"},
 		},
-		"e": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Island", TypeLine: "Basic Land — Island"}},
-		"f": {Quantity: 2, Card: MoxfieldCardInfo{Name: "Unknown Token", TypeLine: "Token"}},
+		"e": {Quantity: 1, Card: CardInfo{Name: "Island", TypeLine: "Basic Land — Island"}},
+		"f": {Quantity: 2, Card: CardInfo{Name: "Unknown Token", TypeLine: "Token"}},
 	}
 
 	groups := groupDeckCards(mainboard)
@@ -621,58 +609,58 @@ func TestGroupDeckCards(t *testing.T) {
 }
 
 func TestFormatDeckForDisplaySideboardAndMaybeboard(t *testing.T) {
-	deck := &MoxfieldDeck{
+	deck := &Deck{
 		Name:   "Test Deck",
 		Format: "commander",
-		Mainboard: map[string]MoxfieldCardEntry{
-			"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
+		Mainboard: map[string]CardEntry{
+			"a": {Quantity: 1, Card: CardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
 		},
-		Sideboard: map[string]MoxfieldCardEntry{
-			"b": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Swan Song", TypeLine: "Instant"}},
+		Sideboard: map[string]CardEntry{
+			"b": {Quantity: 1, Card: CardInfo{Name: "Swan Song", TypeLine: "Instant"}},
 		},
-		Maybeboard: map[string]MoxfieldCardEntry{
-			"c": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Cyclonic Rift", TypeLine: "Instant"}},
+		Maybeboard: map[string]CardEntry{
+			"c": {Quantity: 1, Card: CardInfo{Name: "Cyclonic Rift", TypeLine: "Instant"}},
 		},
 	}
 
-	got := FormatDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	if !strings.Contains(got, "## Sideboard") {
-		t.Error("FormatDeckForDisplay() missing Sideboard section")
+		t.Error("FormatDeck() missing Sideboard section")
 	}
 	if !strings.Contains(got, "Swan Song") {
-		t.Error("FormatDeckForDisplay() missing sideboard card")
+		t.Error("FormatDeck() missing sideboard card")
 	}
 	if !strings.Contains(got, "## Maybeboard") {
-		t.Error("FormatDeckForDisplay() missing Maybeboard section")
+		t.Error("FormatDeck() missing Maybeboard section")
 	}
 	if !strings.Contains(got, "Cyclonic Rift") {
-		t.Error("FormatDeckForDisplay() missing maybeboard card")
+		t.Error("FormatDeck() missing maybeboard card")
 	}
 }
 
 func TestFormatDeckForDisplayOthers(t *testing.T) {
-	deck := &MoxfieldDeck{
+	deck := &Deck{
 		Name:   "Test Deck",
 		Format: "commander",
-		Mainboard: map[string]MoxfieldCardEntry{
-			"a": {Quantity: 1, Card: MoxfieldCardInfo{Name: "Treasure Token", TypeLine: "Token"}},
+		Mainboard: map[string]CardEntry{
+			"a": {Quantity: 1, Card: CardInfo{Name: "Treasure Token", TypeLine: "Token"}},
 		},
 	}
 
-	got := FormatDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	if !strings.Contains(got, "Other") {
-		t.Error("FormatDeckForDisplay() missing Other section for untyped card")
+		t.Error("FormatDeck() missing Other section for untyped card")
 	}
 	if !strings.Contains(got, "Treasure Token") {
-		t.Error("FormatDeckForDisplay() missing card in Other section")
+		t.Error("FormatDeck() missing card in Other section")
 	}
 }
 
 func TestFormatDeckHeaderAuthors(t *testing.T) {
 	t.Run("non-slice authors skipped gracefully", func(t *testing.T) {
-		deck := &MoxfieldDeck{
+		deck := &Deck{
 			Name:    "Test",
 			Format:  "commander",
 			Authors: "not-a-slice",
@@ -684,7 +672,7 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 	})
 
 	t.Run("slice with non-string values skipped", func(t *testing.T) {
-		deck := &MoxfieldDeck{
+		deck := &Deck{
 			Name:    "Test",
 			Format:  "commander",
 			Authors: []interface{}{42, true},
