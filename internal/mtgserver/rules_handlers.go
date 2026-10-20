@@ -52,14 +52,9 @@ func (s *Server) handleSearchRules(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	limit := rules.SearchDefaultLimit
-	if limitVal, ok := request.GetArguments()["limit"]; ok {
-		if limitFloat, isNum := limitVal.(float64); isNum && limitFloat >= 1 {
-			limit = int(limitFloat)
-		}
-	}
-	if limit > rules.SearchMaxLimit {
-		limit = rules.SearchMaxLimit
+	limit, err := cappedIntArg(request.GetArguments(), "limit", rules.SearchDefaultLimit, 1, rules.SearchMaxLimit)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 	cr, err := s.rules.Get(ctx)
 	if err != nil {

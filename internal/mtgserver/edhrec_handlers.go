@@ -3,6 +3,7 @@ package mtgserver
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -70,9 +71,10 @@ func (s *Server) handleGetEDHRECRecommendations(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	limit := request.GetInt("limit", edhrec.DefaultLimit)
-	if limit < 0 {
-		return mcp.NewToolResultError("argument \"limit\" must be zero or greater"), nil
+	// 0 means no limit for the EDHREC tools.
+	limit, err := cappedIntArg(request.GetArguments(), "limit", edhrec.DefaultLimit, 0, math.MaxInt32)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	logging.Get().Info().
@@ -124,7 +126,11 @@ func (s *Server) handleGetEDHRECCombos(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	limit := request.GetInt("limit", edhrec.DefaultLimit)
+	// 0 means no limit for the EDHREC tools.
+	limit, err := cappedIntArg(request.GetArguments(), "limit", edhrec.DefaultLimit, 0, math.MaxInt32)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 
 	data, err := s.edhrec.GetCombosForColors(ctx, colors)
 	if err != nil {
@@ -150,9 +156,10 @@ func (s *Server) handleGetEDHRECSetCards(
 		return mcp.NewToolResultError(fmt.Sprintf("argument %q must not be empty", paramSet)), nil
 	}
 
-	limit := request.GetInt("limit", edhrec.DefaultSetCardsLimit)
-	if limit < 0 {
-		return mcp.NewToolResultError("argument \"limit\" must be zero or greater"), nil
+	// 0 means no limit for the EDHREC tools.
+	limit, err := cappedIntArg(request.GetArguments(), "limit", edhrec.DefaultSetCardsLimit, 0, math.MaxInt32)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	logging.Get().Info().

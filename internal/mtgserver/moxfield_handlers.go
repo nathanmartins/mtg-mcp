@@ -59,12 +59,9 @@ func (s *Server) handleGetMoxfieldUserDecks(
 	}
 
 	const defaultPageSize = 20
-	pageSize := defaultPageSize
-	args := request.GetArguments()
-	if pageSizeVal, hasPageSize := args["page_size"]; hasPageSize {
-		if pageSizeFloat, ok := pageSizeVal.(float64); ok {
-			pageSize = min(int(pageSizeFloat), maxPageSize)
-		}
+	pageSize, err := cappedIntArg(request.GetArguments(), "page_size", defaultPageSize, 1, maxPageSize)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	decks, err := s.moxfield.GetUserDecks(ctx, username, pageSize)

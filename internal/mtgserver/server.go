@@ -437,7 +437,7 @@ func (s *Server) registerEDHRECTools(mcpServer *server.MCPServer) {
 			),
 		),
 		mcp.WithNumber("limit",
-			mcp.Description("Maximum combos to show (default: 10)"),
+			mcp.Description("Maximum combos to show (default: 10, 0 for no limit)"),
 		),
 	)
 	mcpServer.AddTool(edhrecCombosTool, s.handleGetEDHRECCombos)

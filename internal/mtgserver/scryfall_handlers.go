@@ -28,12 +28,9 @@ func (s *Server) handleSearchCards(
 	}
 
 	const defaultLimit = 10
-	limit := defaultLimit
-	args := request.GetArguments()
-	if limitVal, hasLimit := args["limit"]; hasLimit {
-		if limitFloat, ok := limitVal.(float64); ok {
-			limit = min(int(limitFloat), maxSearchLimit)
-		}
+	limit, err := cappedIntArg(request.GetArguments(), "limit", defaultLimit, 1, maxSearchLimit)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	logging.Get().Info().

@@ -76,6 +76,20 @@ func enumArg(args map[string]any, key, fallback string) (string, error) {
 	return value, nil
 }
 
+// cappedIntArg reads an optional integer argument the way intArg does, then rejects values
+// below minimum and caps values above maximum, matching how the tools document their limits
+// ("max: 50"). An oversized limit still has an obvious meaning; a negative one does not.
+func cappedIntArg(args map[string]any, key string, fallback, minimum, maximum int) (int, error) {
+	value, err := intArg(args, key, fallback)
+	if err != nil {
+		return 0, err
+	}
+	if value < minimum {
+		return 0, fmt.Errorf("invalid %s %d (must be at least %d)", key, value, minimum)
+	}
+	return min(value, maximum), nil
+}
+
 // intArg returns the integer argument stored under key, or fallback when the argument is
 // absent. JSON numbers decode into float64; any other type is a caller mistake and is
 // rejected rather than replaced by the default. A fractional or out-of-range number is

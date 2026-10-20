@@ -3,6 +3,7 @@ package mtgserver
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -74,12 +75,9 @@ func (s *Server) handleGetArchidektUserDecks(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	page := 1
-	args := request.GetArguments()
-	if pageVal, hasPage := args["page"]; hasPage {
-		if pageFloat, ok := pageVal.(float64); ok && pageFloat >= 1 {
-			page = int(pageFloat)
-		}
+	page, err := cappedIntArg(request.GetArguments(), "page", 1, 1, math.MaxInt32)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
 	}
 
 	logging.Get().Info().
