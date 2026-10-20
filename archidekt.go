@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -166,9 +167,7 @@ func getArchidektUserDecksWithURL(
 func ExtractArchidektDeckID(input string) (int, error) {
 	// Strip query string and trailing slash
 	input = strings.TrimRight(input, "/")
-	if idx := strings.Index(input, "?"); idx != -1 {
-		input = input[:idx]
-	}
+	input, _, _ = strings.Cut(input, "?")
 
 	// Try direct numeric parse first
 	if id, err := strconv.Atoi(input); err == nil {
@@ -253,21 +252,22 @@ const (
 	archidektMaybeboardZone = "Maybeboard"
 )
 
+// archidektIsCommander reports whether a card entry sits in a premier category (e.g. "Commander").
+func archidektIsCommander(entry ArchidektCardEntry, premier map[string]bool) bool {
+	return slices.ContainsFunc(entry.Categories, func(cat string) bool { return premier[cat] })
+}
+
 // archidektEntryZone classifies a card entry's out-of-deck zone, returning archidektSideboardZone or
 // archidektMaybeboardZone for cards outside the playable deck, or "" for cards that count toward it.
 // A card belongs to a zone if ANY of its categories matches it, so cards tagged Sideboard alongside a
 // type category (e.g. ["Sideboard", "Creature"]) are still treated as sideboard. excluded holds the
 // category names flagged includedInDeck==false (e.g. Maybeboard).
 func archidektEntryZone(entry ArchidektCardEntry, excluded map[string]bool) string {
-	for _, cat := range entry.Categories {
-		if cat == archidektSideboardZone {
-			return archidektSideboardZone
-		}
+	if slices.Contains(entry.Categories, archidektSideboardZone) {
+		return archidektSideboardZone
 	}
-	for _, cat := range entry.Categories {
-		if excluded[cat] {
-			return archidektMaybeboardZone
-		}
+	if slices.ContainsFunc(entry.Categories, func(cat string) bool { return excluded[cat] }) {
+		return archidektMaybeboardZone
 	}
 	return ""
 }
@@ -315,11 +315,8 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	// Commanders (cards in premier categories)
 	var commanders []string
 	for _, entry := range deck.Cards {
-		for _, cat := range entry.Categories {
-			if premier[cat] {
-				commanders = append(commanders, fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name))
-				break
-			}
+		if archidektIsCommander(entry, premier) {
+			commanders = append(commanders, fmt.Sprintf("%dx %s", entry.Quantity, entry.Card.OracleCard.Name))
 		}
 	}
 	if len(commanders) > 0 {
@@ -380,18 +377,8 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 
 	var lands []string
 	for _, entry := range deck.Cards {
-		isCommander := false
-		for _, cat := range entry.Categories {
-			if premier[cat] {
-				isCommander = true
-				break
-			}
-		}
-		if isCommander {
-			continue
-		}
-		// Skip cards outside the deck (Sideboard / Maybeboard)
-		if !archidektEntryInDeck(entry, excluded) {
+		// Skip commanders and cards outside the deck (Sideboard / Maybeboard)
+		if archidektIsCommander(entry, premier) || !archidektEntryInDeck(entry, excluded) {
 			continue
 		}
 		typeLine := strings.ToLower(strings.Join(entry.Card.OracleCard.Types, " "))
@@ -423,20 +410,8 @@ func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[s
 	}
 
 	for _, entry := range cards {
-		// Skip commander-category cards
-		isCommander := false
-		for _, cat := range entry.Categories {
-			if premier[cat] {
-				isCommander = true
-				break
-			}
-		}
-		if isCommander {
-			continue
-		}
-
-		// Skip cards outside the deck (Sideboard / Maybeboard)
-		if !archidektEntryInDeck(entry, excluded) {
+		// Skip commanders and cards outside the deck (Sideboard / Maybeboard)
+		if archidektIsCommander(entry, premier) || !archidektEntryInDeck(entry, excluded) {
 			continue
 		}
 
