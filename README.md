@@ -578,7 +578,9 @@ golangci-lint run --fix
 ### Adding New Tools
 
 1. For a new upstream API, add a client package under `internal/` (`internal/edhrec` is a small example).
-   Fetch through `httpx.GetJSON`, which adds a request timeout and typed status errors.
+   Give it a `Client` with a `BaseURL` field and a `NewClient()` for production, and hold it on `Server`.
+   Fetch through `httpx.GetJSON`, which adds a request timeout, typed status errors and `encoding/json/v2` decoding.
+   Unit tests point a `&Client{BaseURL: server.URL}` at an `httptest` server, so they never call the real API.
 2. Define the tool with `mcp.NewTool()` in `internal/mtgserver/server.go`.
    Use `registerTools()` or the matching per-source `register*Tools()` helper.
 3. Create a handler in the matching `internal/mtgserver/*_handlers.go` file, reading arguments with the helpers in `toolargs.go`:
