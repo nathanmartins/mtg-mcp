@@ -288,32 +288,29 @@ type rulesCache struct {
 	fetchedAt time.Time
 }
 
-// comprehensiveRules returns the cached rules, fetching from the official site when needed.
-func (s *MTGCommanderServer) comprehensiveRules(ctx context.Context) (*ComprehensiveRules, error) {
-	return s.comprehensiveRulesFromURL(ctx, rulesPageURL)
+// get returns the cached rules, fetching from the official site when needed.
+func (c *rulesCache) get(ctx context.Context) (*ComprehensiveRules, error) {
+	return c.getFromURL(ctx, rulesPageURL)
 }
 
-// comprehensiveRulesFromURL serves the cache (refetching past the TTL); on fetch failure it serves
-// the stale cache if present, otherwise returns the error.
-func (s *MTGCommanderServer) comprehensiveRulesFromURL(
-	ctx context.Context,
-	pageURL string,
-) (*ComprehensiveRules, error) {
+// getFromURL serves the cache (refetching past the TTL); on fetch failure it serves the stale
+// cache if present, otherwise returns the error.
+func (c *rulesCache) getFromURL(ctx context.Context, pageURL string) (*ComprehensiveRules, error) {
 	// Serve a fresh cache under the lock, but never hold the lock across the network fetch —
 	// a slow upstream must not block other callers (or wedge the feature indefinitely).
-	s.rules.mu.Lock()
-	if s.rules.rules != nil && time.Since(s.rules.fetchedAt) < rulesCacheTTL {
-		cached := s.rules.rules
-		s.rules.mu.Unlock()
+	c.mu.Lock()
+	if c.rules != nil && time.Since(c.fetchedAt) < rulesCacheTTL {
+		cached := c.rules
+		c.mu.Unlock()
 		return cached, nil
 	}
-	s.rules.mu.Unlock()
+	c.mu.Unlock()
 
 	fetched, err := getComprehensiveRulesWithURL(ctx, pageURL)
 	if err != nil {
-		s.rules.mu.Lock()
-		stale := s.rules.rules
-		s.rules.mu.Unlock()
+		c.mu.Lock()
+		stale := c.rules
+		c.mu.Unlock()
 		if stale != nil {
 			logging.Get().Warn().Err(err).Msg("using stale comprehensive rules cache")
 			return stale, nil
@@ -321,10 +318,10 @@ func (s *MTGCommanderServer) comprehensiveRulesFromURL(
 		return nil, err
 	}
 
-	s.rules.mu.Lock()
-	s.rules.rules = fetched
-	s.rules.fetchedAt = time.Now()
-	s.rules.mu.Unlock()
+	c.mu.Lock()
+	c.rules = fetched
+	c.fetchedAt = time.Now()
+	c.mu.Unlock()
 	return fetched, nil
 }
 

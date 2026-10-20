@@ -11,7 +11,7 @@ func (s *MTGCommanderServer) handleComprehensiveRulesResource(
 	ctx context.Context,
 	request mcp.ReadResourceRequest,
 ) ([]mcp.ResourceContents, error) {
-	rules, err := s.comprehensiveRules(ctx)
+	rules, err := s.rules.get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load comprehensive rules: %w", err)
 	}
@@ -32,7 +32,7 @@ func (s *MTGCommanderServer) handleGetRule(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	rules, err := s.comprehensiveRules(ctx)
+	rules, err := s.rules.get(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
 	}
@@ -60,7 +60,7 @@ func (s *MTGCommanderServer) handleSearchRules(
 	if limit > rulesSearchMaxLimit {
 		limit = rulesSearchMaxLimit
 	}
-	rules, err := s.comprehensiveRules(ctx)
+	rules, err := s.rules.get(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
 	}
@@ -75,7 +75,7 @@ func (s *MTGCommanderServer) handleGetGlossaryTerm(
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	rules, err := s.comprehensiveRules(ctx)
+	rules, err := s.rules.get(ctx)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to load comprehensive rules: %v", err)), nil
 	}

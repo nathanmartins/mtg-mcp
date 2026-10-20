@@ -151,13 +151,13 @@ func TestComprehensiveRulesCache(t *testing.T) {
 	}))
 	defer server.Close()
 
-	srv := &MTGCommanderServer{rules: &rulesCache{}}
+	cache := &rulesCache{}
 
-	r1, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL)
+	r1, err := cache.getFromURL(context.Background(), server.URL)
 	if err != nil {
 		t.Fatalf("first fetch: %v", err)
 	}
-	r2, err := srv.comprehensiveRulesFromURL(context.Background(), server.URL)
+	r2, err := cache.getFromURL(context.Background(), server.URL)
 	if err != nil {
 		t.Fatalf("second fetch: %v", err)
 	}
@@ -170,17 +170,17 @@ func TestComprehensiveRulesCache(t *testing.T) {
 }
 
 func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
-	srv := &MTGCommanderServer{rules: &rulesCache{
+	cache := &rulesCache{
 		rules:     parseComprehensiveRules(sampleRulesTxt),
 		fetchedAt: time.Now().Add(-2 * rulesCacheTTL), // expired
-	}}
+	}
 
 	dead := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer dead.Close()
 
-	cr, err := srv.comprehensiveRulesFromURL(context.Background(), dead.URL)
+	cr, err := cache.getFromURL(context.Background(), dead.URL)
 	if err != nil {
 		t.Fatalf("should serve stale cache, got error: %v", err)
 	}
