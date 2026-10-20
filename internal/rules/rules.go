@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
@@ -252,7 +253,10 @@ func registrableSuffix(host string) string {
 	return strings.Join(parts[len(parts)-registrableLabels:], ".")
 }
 
-// rulesHTTPGet performs a GET and returns the body as a string (plain client, like archidekt.go).
+// rulesHTTPGet performs a GET and returns the body as a string. It asks for text or HTML
+// rather than JSON, so it cannot use httpx.GetJSON, and it builds its own client because
+// the rules are fetched only when the daily cache expires, so pooling connections would
+// save nothing.
 func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
@@ -269,7 +273,7 @@ func rulesHTTPGet(ctx context.Context, rawURL string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("rules source returned status %d", resp.StatusCode)
+		return "", &httpx.StatusError{Source: "rules source", StatusCode: resp.StatusCode}
 	}
 
 	// Read at most rulesMaxBodyBytes; reading one extra byte lets us detect (rather than

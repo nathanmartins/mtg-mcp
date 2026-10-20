@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 const sampleRulesTxt = `Magic: The Gathering Comprehensive Rules
@@ -253,5 +255,20 @@ func TestGetComprehensiveRulesWithURLRejectsEmptyParse(t *testing.T) {
 
 	if _, err := getWithURL(t.Context(), server.URL); err == nil {
 		t.Error("expected an error when the fetched text contains no parseable rules")
+	}
+}
+
+func TestRulesHTTPGetReportsStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer server.Close()
+
+	_, err := rulesHTTPGet(t.Context(), server.URL)
+	if !httpx.HasStatus(err, http.StatusServiceUnavailable) {
+		t.Errorf("rulesHTTPGet() error = %v, want a 503 httpx.StatusError", err)
+	}
+	if err != nil && err.Error() != "rules source returned status 503" {
+		t.Errorf("error text = %q", err.Error())
 	}
 }
