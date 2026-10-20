@@ -44,7 +44,7 @@ help:
 ## build: Build the binary
 build:
 	@echo "Building binary for $(OS)..."
-	CGO_ENABLED=0 GOOS=$(OS) GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) -v
+	CGO_ENABLED=0 GOOS=$(OS) GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o $(BINARY_NAME) -v ./cmd/mtg-mcp
 
 ## test-unit: Run unit tests only (fast)
 test-unit:

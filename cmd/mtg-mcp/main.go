@@ -13,8 +13,8 @@ import (
 // Build-time variables injected via -ldflags.
 var (
 	version   = "dev"
-	commit    = "none"    //nolint:gochecknoglobals // build-time variable injected via -ldflags
-	buildDate = "unknown" //nolint:gochecknoglobals // build-time variable injected via -ldflags
+	commit    = "none"
+	buildDate = "unknown"
 )
 
 func main() {

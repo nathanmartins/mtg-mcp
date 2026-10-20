@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -buildvcs=false \
       -ldflags="-w -s -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.buildDate=${BUILD_DATE}" \
-      -o /out/mtg-mcp -v . \
+      -o /out/mtg-mcp -v ./cmd/mtg-mcp \
  && mkdir -p /out/data
 
 # ---- Proxy target: stdio -> Streamable HTTP via mcp-proxy (needs Node) -------

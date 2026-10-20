@@ -70,7 +70,7 @@ jobs:
         run: go mod download -x
 
       - name: Go Build
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null
+        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null ./cmd/mtg-mcp
 
       - name: Run tests
         run: |

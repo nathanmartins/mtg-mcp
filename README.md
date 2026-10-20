@@ -188,7 +188,7 @@ cd mtg-mcp
 go mod tidy
 
 # Build the MCP server
-go build -o mtg-mcp
+go build -o mtg-mcp ./cmd/mtg-mcp
 ```
 
 The compiled binary `mtg-mcp` is an MCP server for use with Claude Desktop or other MCP clients.
