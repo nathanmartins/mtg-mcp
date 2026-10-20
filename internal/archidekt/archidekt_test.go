@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestExtractArchidektDeckID(t *testing.T) {
+func TestExtractDeckID(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -66,7 +66,7 @@ func TestExtractArchidektDeckID(t *testing.T) {
 	}
 }
 
-func TestArchidektFormatName(t *testing.T) {
+func TestFormatName(t *testing.T) {
 	tests := []struct {
 		code int
 		want string
@@ -87,7 +87,7 @@ func TestArchidektFormatName(t *testing.T) {
 	}
 }
 
-func TestGetArchidektDeck(t *testing.T) {
+func TestGetDeck(t *testing.T) {
 	mockDeck := Deck{
 		ID:         12345,
 		Name:       "Test Commander Deck",
@@ -189,7 +189,7 @@ func TestGetArchidektDeck(t *testing.T) {
 	}
 }
 
-func TestGetArchidektUserDecks(t *testing.T) {
+func TestGetUserDecks(t *testing.T) {
 	mockResponse := UserDecksResponse{
 		Count: 2,
 		Results: []DeckSummary{
@@ -284,7 +284,7 @@ func TestGetArchidektUserDecks(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektDeckForDisplay(t *testing.T) {
+func TestFormatDeck(t *testing.T) {
 	deck := &Deck{
 		ID:         12345,
 		Name:       "Hylda Control",
@@ -363,7 +363,7 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektLandsForDisplay(t *testing.T) {
+func TestFormatLands(t *testing.T) {
 	deck := &Deck{
 		ID:         12345,
 		Name:       "Hearthhull Lands",
@@ -417,7 +417,7 @@ func TestFormatArchidektLandsForDisplay(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektDeckMaybeboardSeparated(t *testing.T) {
+func TestFormatDeckMaybeboardSeparated(t *testing.T) {
 	deck := &Deck{
 		ID:         555,
 		Name:       "Maybe Deck",
@@ -475,7 +475,7 @@ func TestFormatArchidektDeckMaybeboardSeparated(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektLandsExcludesMaybeboard(t *testing.T) {
+func TestFormatLandsExcludesMaybeboard(t *testing.T) {
 	deck := &Deck{
 		ID:         556,
 		Name:       "Maybe Lands",
@@ -512,7 +512,7 @@ func TestFormatArchidektLandsExcludesMaybeboard(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektDeckSideboardSeparated(t *testing.T) {
+func TestFormatDeckSideboardSeparated(t *testing.T) {
 	deck := &Deck{
 		ID:         557,
 		Name:       "Side Deck",
@@ -585,7 +585,7 @@ func TestFormatArchidektDeckSideboardSeparated(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektLandsExcludesSideboard(t *testing.T) {
+func TestFormatLandsExcludesSideboard(t *testing.T) {
 	deck := &Deck{
 		ID:         558,
 		Name:       "Side Lands",
@@ -623,7 +623,7 @@ func TestFormatArchidektLandsExcludesSideboard(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektZonesMatchMoxfieldStyle(t *testing.T) {
+func TestFormatZonesMatchMoxfieldStyle(t *testing.T) {
 	deck := &Deck{
 		ID:         559,
 		Name:       "Zones Deck",
@@ -686,7 +686,7 @@ func TestFormatArchidektZonesMatchMoxfieldStyle(t *testing.T) {
 	}
 }
 
-func TestGroupArchidektDeckCards(t *testing.T) {
+func TestGroupDeckCards(t *testing.T) {
 	premier := map[string]bool{"Commander": true}
 	excluded := map[string]bool{"Maybeboard": true}
 
@@ -742,7 +742,7 @@ func TestGroupArchidektDeckCards(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektDeckForDisplayWithBracket(t *testing.T) {
+func TestFormatDeckWithBracket(t *testing.T) {
 	deck := &Deck{
 		ID:         99,
 		Name:       "Bracket Deck",

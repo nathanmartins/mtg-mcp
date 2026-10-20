@@ -10,7 +10,7 @@ import (
 )
 
 // TestSearchArchidektDecksE2E tests searching for real decks on Archidekt.
-func TestSearchArchidektDecksE2E(t *testing.T) {
+func TestSearchDecksE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -44,7 +44,7 @@ func TestSearchArchidektDecksE2E(t *testing.T) {
 }
 
 // TestSearchArchidektDecksByBracketE2E tests bracket filtering on the live API.
-func TestSearchArchidektDecksByBracketE2E(t *testing.T) {
+func TestSearchDecksByBracketE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -65,7 +65,7 @@ func TestSearchArchidektDecksByBracketE2E(t *testing.T) {
 }
 
 // TestGetArchidektUserDecksE2E tests fetching a real user's decks from Archidekt.
-func TestGetArchidektUserDecksE2E(t *testing.T) {
+func TestGetUserDecksE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -82,7 +82,7 @@ func TestGetArchidektUserDecksE2E(t *testing.T) {
 }
 
 // TestGetArchidektDeckE2E tests fetching a specific real deck from Archidekt.
-func TestGetArchidektDeckE2E(t *testing.T) {
+func TestGetDeckE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 

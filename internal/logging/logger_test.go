@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func TestInitLogger(t *testing.T) {
+func TestInit(t *testing.T) {
 	// Create a temporary directory for test log files
 	tmpDir := t.TempDir()
 
@@ -55,7 +55,7 @@ func TestInitLogger(t *testing.T) {
 	}
 }
 
-func TestInitLogger_InvalidPath(t *testing.T) {
+func TestInit_InvalidPath(t *testing.T) {
 	// A regular file where the log directory should be makes the path unusable on every OS.
 	blocker := filepath.Join(t.TempDir(), "not-a-dir")
 	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
@@ -70,7 +70,7 @@ func TestInitLogger_InvalidPath(t *testing.T) {
 	Get().Info().Msg("still logging")
 }
 
-func TestInitLogger_CreatesDirectory(t *testing.T) {
+func TestInit_CreatesDirectory(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "nested", "dir", "test.log")
 	if err := Init(path); err != nil {
 		t.Fatalf("Init() error = %v", err)
@@ -91,7 +91,7 @@ func TestDefaultFilePath(t *testing.T) {
 	}
 }
 
-func TestSetLogLevel(t *testing.T) {
+func TestSetLevel(t *testing.T) {
 	// Initialize logger first with a temp file
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "test.log")
@@ -147,7 +147,7 @@ func TestSetLogLevel(t *testing.T) {
 	}
 }
 
-func TestGetLogger(t *testing.T) {
+func TestGet(t *testing.T) {
 	// Initialize logger first
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "test.log")

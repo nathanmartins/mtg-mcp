@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestHTTPGet(t *testing.T) {
+func TestGet(t *testing.T) {
 	tests := []struct {
 		name           string
 		serverResponse string
@@ -79,7 +79,7 @@ func TestHTTPGet(t *testing.T) {
 	}
 }
 
-func TestHTTPGet_ContextCancellation(t *testing.T) {
+func TestGet_ContextCancellation(t *testing.T) {
 	// Create a server that delays response
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
@@ -99,7 +99,7 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 	}
 }
 
-func TestHTTPGet_Timeout(t *testing.T) {
+func TestGet_Timeout(t *testing.T) {
 	// Note: synctest doesn't work well with httptest.NewServer since it uses real TCP connections.
 	// Instead, we use a short real timeout (50ms) to keep the test fast.
 	// See: https://go.dev/blog/synctest (recommends net.Pipe for in-memory testing)
@@ -124,7 +124,7 @@ func TestHTTPGet_Timeout(t *testing.T) {
 	}
 }
 
-func TestHTTPGet_InvalidURL(t *testing.T) {
+func TestGet_InvalidURL(t *testing.T) {
 	ctx := t.Context()
 	resp, err := Get(ctx, "://invalid-url")
 	if err == nil {

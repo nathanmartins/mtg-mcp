@@ -48,7 +48,7 @@ func TestDeckHasCommander(t *testing.T) {
 	}
 }
 
-func TestVerifyMoxfieldCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
+func TestVerifyCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 	decks := map[string]Deck{
 		"yes1": commanderDeck("yes1", "Atraxa, Praetors' Voice"),
 		"no1":  commanderDeck("no1", "Winota, Joiner of Forces"),
@@ -88,7 +88,7 @@ func TestVerifyMoxfieldCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 	}
 }
 
-func TestVerifyMoxfieldCommanderDecksStopsAtLimit(t *testing.T) {
+func TestVerifyCommanderDecksStopsAtLimit(t *testing.T) {
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -126,7 +126,7 @@ func TestVerifyMoxfieldCommanderDecksStopsAtLimit(t *testing.T) {
 	}
 }
 
-func TestVerifyMoxfieldCommanderDecksRespectsCheckBudget(t *testing.T) {
+func TestVerifyCommanderDecksRespectsCheckBudget(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
 		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Winota, Joiner of Forces"))
@@ -153,7 +153,7 @@ func TestVerifyMoxfieldCommanderDecksRespectsCheckBudget(t *testing.T) {
 	}
 }
 
-func TestVerifyMoxfieldCommanderDecksReportsUnreadableDecks(t *testing.T) {
+func TestVerifyCommanderDecksReportsUnreadableDecks(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
 		// "gone" stands for a deck made private between the search and its verification.
@@ -188,7 +188,7 @@ func TestVerifyMoxfieldCommanderDecksReportsUnreadableDecks(t *testing.T) {
 	}
 }
 
-func TestVerifyMoxfieldCommanderDecksStopsOnCancelledContext(t *testing.T) {
+func TestVerifyCommanderDecksStopsOnCancelledContext(t *testing.T) {
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -220,7 +220,7 @@ func TestVerifyMoxfieldCommanderDecksStopsOnCancelledContext(t *testing.T) {
 	}
 }
 
-func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
+func TestVerifyCommanderDecksStopsOnRateLimit(t *testing.T) {
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -253,7 +253,7 @@ func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 	}
 }
 
-func TestIsMoxfieldRateLimited(t *testing.T) {
+func TestIsRateLimited(t *testing.T) {
 	if !isRateLimited(&httpx.StatusError{Source: apiSource, StatusCode: http.StatusTooManyRequests}) {
 		t.Error("429 must be detected as a rate limit")
 	}

@@ -72,7 +72,7 @@ func TestSanitizeCardName(t *testing.T) {
 	}
 }
 
-func TestGetCommanderRecommendations(t *testing.T) {
+func TestGetCommanderPage(t *testing.T) {
 	tests := []struct {
 		name          string
 		commanderName string
@@ -195,7 +195,7 @@ func TestGetCommanderRecommendations(t *testing.T) {
 	}
 }
 
-func TestGetSetCardsWithURL(t *testing.T) {
+func TestGetSetCards(t *testing.T) {
 	tests := []struct {
 		name        string
 		setCode     string
@@ -320,7 +320,7 @@ func TestGetCombosForColors(t *testing.T) {
 	}
 }
 
-func TestFormatCommanderRecsForDisplay(t *testing.T) {
+func TestFormatCommanderRecs(t *testing.T) {
 	page := &Response{
 		Container: Container{
 			JSONDict: Data{
@@ -405,7 +405,7 @@ func TestFormatCommanderRecsForDisplay(t *testing.T) {
 	}
 }
 
-func TestFormatCommanderRecsForDisplayDeckStats(t *testing.T) {
+func TestFormatCommanderRecsDeckStats(t *testing.T) {
 	t.Run("nonzero total decks shows percentage", func(t *testing.T) {
 		page := &Response{
 			Container: Container{
@@ -447,7 +447,7 @@ func TestFormatCommanderRecsForDisplayDeckStats(t *testing.T) {
 	})
 }
 
-func TestFormatCommanderRecsForDisplayThemes(t *testing.T) {
+func TestFormatCommanderRecsThemes(t *testing.T) {
 	tags := make([]TagCount, 20)
 	for i := range tags {
 		tags[i] = TagCount{
@@ -487,7 +487,7 @@ func TestFormatCommanderRecsForDisplayThemes(t *testing.T) {
 	})
 }
 
-func TestFormatCommanderRecsForDisplayHeader(t *testing.T) {
+func TestFormatCommanderRecsHeader(t *testing.T) {
 	t.Run("uses page header when present", func(t *testing.T) {
 		page := &Response{
 			Header: "X (Commander) - Budget Infect",
@@ -514,7 +514,7 @@ func TestFormatCommanderRecsForDisplayHeader(t *testing.T) {
 	})
 }
 
-func TestFormatSetCardsForDisplay(t *testing.T) {
+func TestFormatSetCards(t *testing.T) {
 	t.Run("commander and card views", func(t *testing.T) {
 		page := &Response{
 			Header: "Ravnica Allegiance",
@@ -582,7 +582,7 @@ func TestFormatSetCardsForDisplay(t *testing.T) {
 	})
 }
 
-func TestFormatCombosForDisplay(t *testing.T) {
+func TestFormatCombos(t *testing.T) {
 	data := &ComboData{
 		CardLists: []ComboList{
 			{
@@ -656,7 +656,7 @@ func TestFormatCombosForDisplay(t *testing.T) {
 	}
 }
 
-func TestFormatCommanderRecsForDisplayEdgeCases(t *testing.T) {
+func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 	t.Run("empty card list skipped", func(t *testing.T) {
 		page := &Response{
 			Container: Container{

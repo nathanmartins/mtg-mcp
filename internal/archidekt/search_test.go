@@ -55,7 +55,7 @@ func archidektPageSlice(total, apiPage int) UserDecksResponse {
 	return UserDecksResponse{Count: total, Next: next, Results: results}
 }
 
-func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
+func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 	var requestedPages []string
 	fixtureServer := func(total int) *httptest.Server {
 		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +154,7 @@ func TestArchidektPageWindow(t *testing.T) {
 	}
 }
 
-func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
+func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 	var requestedPages []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
@@ -225,7 +225,7 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 	})
 }
 
-func TestArchidektOrderBy(t *testing.T) {
+func TestOrderBy(t *testing.T) {
 	tests := []struct {
 		sort      string
 		ascending bool
@@ -255,7 +255,7 @@ func TestArchidektOrderBy(t *testing.T) {
 	}
 }
 
-func TestSearchArchidektDecksSendsOrderByAndBracket(t *testing.T) {
+func TestSearchDecksSendsOrderByAndBracket(t *testing.T) {
 	var gotQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
@@ -282,7 +282,7 @@ func TestSearchArchidektDecksSendsOrderByAndBracket(t *testing.T) {
 	}
 }
 
-func TestSearchArchidektDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
+func TestSearchDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Error("upstream must not be called for an invalid sort")
 	}))
@@ -321,7 +321,7 @@ func TestInterpretArchidektCount(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
+func TestFormatSearchResults(t *testing.T) {
 	bracket := 4
 	result := &SearchResult{
 		Decks: []DeckSummary{{
@@ -455,7 +455,7 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 }
 
-func TestNormalizeArchidektColors(t *testing.T) {
+func TestNormalizeColors(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
@@ -486,7 +486,7 @@ func TestNormalizeArchidektColors(t *testing.T) {
 	}
 }
 
-func TestSearchArchidektDecksSendsFilters(t *testing.T) {
+func TestSearchDecksSendsFilters(t *testing.T) {
 	var gotQuery url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -521,7 +521,7 @@ func TestSearchArchidektDecksSendsFilters(t *testing.T) {
 	}
 }
 
-func TestSearchArchidektDecksOmitsUnsetFilters(t *testing.T) {
+func TestSearchDecksOmitsUnsetFilters(t *testing.T) {
 	var gotQuery url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -546,7 +546,7 @@ func TestSearchArchidektDecksOmitsUnsetFilters(t *testing.T) {
 	}
 }
 
-func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
+func TestSearchDecksRejectsInvalidColors(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Error("upstream must not be called for invalid colors")
 	}))
@@ -560,7 +560,7 @@ func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
 	}
 }
 
-func TestFormatArchidektSearchResultsShowsActiveFilters(t *testing.T) {
+func TestFormatSearchResultsShowsActiveFilters(t *testing.T) {
 	result := &SearchResult{
 		Decks:      []DeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: Owner{Username: "player"}}},
 		Page:       1,

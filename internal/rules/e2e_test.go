@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestComprehensiveRulesE2E(t *testing.T) {
+func TestGetE2E(t *testing.T) {
 	rules, err := Get(t.Context())
 	if err != nil {
 		t.Fatalf("failed to fetch comprehensive rules: %v", err)

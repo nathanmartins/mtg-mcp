@@ -11,7 +11,7 @@ import (
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
-func TestNewMTGCommanderServer(t *testing.T) {
+func TestNew(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

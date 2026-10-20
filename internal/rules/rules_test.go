@@ -34,7 +34,7 @@ Deathtouch
 A keyword ability that causes damage dealt by an object to be lethal. See rule 702.2.
 `
 
-func TestParseComprehensiveRules(t *testing.T) {
+func TestParse(t *testing.T) {
 	cr := Parse(sampleRulesTxt)
 
 	for _, num := range []string{"100.1", "702.19", "702.19a", "702.19b"} {
@@ -59,7 +59,7 @@ func TestParseComprehensiveRules(t *testing.T) {
 	}
 }
 
-func TestComprehensiveRulesLookups(t *testing.T) {
+func TestRulesLookups(t *testing.T) {
 	cr := Parse(sampleRulesTxt)
 
 	// Rule with subrules
@@ -102,7 +102,7 @@ func TestComprehensiveRulesLookups(t *testing.T) {
 	}
 }
 
-func TestGetComprehensiveRulesWithURL(t *testing.T) {
+func TestGetWithURL(t *testing.T) {
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ".txt") {
@@ -126,7 +126,7 @@ func TestGetComprehensiveRulesWithURL(t *testing.T) {
 	}
 }
 
-func TestGetComprehensiveRulesWithURL_NoLink(t *testing.T) {
+func TestGetWithURL_NoLink(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `<html><body>no rules link here</body></html>`)
 	}))
@@ -137,7 +137,7 @@ func TestGetComprehensiveRulesWithURL_NoLink(t *testing.T) {
 	}
 }
 
-func TestComprehensiveRulesCache(t *testing.T) {
+func TestCache(t *testing.T) {
 	var pageHits int
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -168,7 +168,7 @@ func TestComprehensiveRulesCache(t *testing.T) {
 	}
 }
 
-func TestComprehensiveRulesCache_StaleOnError(t *testing.T) {
+func TestCache_StaleOnError(t *testing.T) {
 	cache := &Cache{
 		rules:     Parse(sampleRulesTxt),
 		fetchedAt: time.Now().Add(-2 * rulesCacheTTL), // expired
@@ -225,7 +225,7 @@ func TestRulesHTTPGetRejectsOversizedBody(t *testing.T) {
 	}
 }
 
-func TestGetComprehensiveRulesWithURLRejectsForeignHost(t *testing.T) {
+func TestGetWithURLRejectsForeignHost(t *testing.T) {
 	// The page links to a .txt on a host unrelated to the page host — must be rejected, not fetched.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `<html><a href="http://evil.example/MagicCompRules 20260619.txt">r</a></html>`)
@@ -241,7 +241,7 @@ func TestGetComprehensiveRulesWithURLRejectsForeignHost(t *testing.T) {
 	}
 }
 
-func TestGetComprehensiveRulesWithURLRejectsEmptyParse(t *testing.T) {
+func TestGetWithURLRejectsEmptyParse(t *testing.T) {
 	// A 200 response whose body has no parseable rules must be treated as a failure, not cached.
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

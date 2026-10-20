@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestExtractPublicIDFromURL(t *testing.T) {
+func TestExtractPublicID(t *testing.T) {
 	tests := []struct {
 		name  string
 		input string
@@ -47,7 +47,7 @@ func TestExtractPublicIDFromURL(t *testing.T) {
 	}
 }
 
-func TestGetMoxfieldDeck(t *testing.T) {
+func TestGetDeck(t *testing.T) {
 	mockDeck := Deck{
 		ID:          "test-id",
 		PublicID:    "abc123",
@@ -227,7 +227,7 @@ func TestGetUserDecks(t *testing.T) {
 	}
 }
 
-func TestSearchMoxfieldDecks(t *testing.T) {
+func TestSearchDecks(t *testing.T) {
 	mockResponse := SearchResponse{
 		PageNumber:   1,
 		PageSize:     20,
@@ -343,7 +343,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 	}
 }
 
-func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
+func TestSearchDecks_PageSizeValidation(t *testing.T) {
 	tests := []struct {
 		name           string
 		inputPageSize  int
@@ -401,7 +401,7 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 	}
 }
 
-func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
+func TestSearchDecksSendsVerifiedParams(t *testing.T) {
 	var gotQuery url.Values
 	var gotPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -449,7 +449,7 @@ func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
 	}
 }
 
-func TestMoxfieldSortType(t *testing.T) {
+func TestParseSortType(t *testing.T) {
 	for _, valid := range []string{"updated", "created", "views", "likes", "comments", "relevance"} {
 		if got, err := ParseSortType(valid); err != nil || got != valid {
 			t.Errorf("ParseSortType(%q) = (%q, %v), want (%q, nil)", valid, got, err, valid)
@@ -463,7 +463,7 @@ func TestMoxfieldSortType(t *testing.T) {
 	}
 }
 
-func TestMoxfieldSortDirection(t *testing.T) {
+func TestSortDirection(t *testing.T) {
 	if got := SortDirection(false); got != "Descending" {
 		t.Errorf("descending = %q, want Descending", got)
 	}
@@ -490,7 +490,7 @@ func TestMoxfieldSearchURLWiring(t *testing.T) {
 	}
 }
 
-func TestFormatDeckForDisplay(t *testing.T) {
+func TestFormatDeck(t *testing.T) {
 	deck := &Deck{
 		Name:         "Test Deck",
 		Format:       "commander",
@@ -608,7 +608,7 @@ func TestGroupDeckCards(t *testing.T) {
 	}
 }
 
-func TestFormatDeckForDisplaySideboardAndMaybeboard(t *testing.T) {
+func TestFormatDeckSideboardAndMaybeboard(t *testing.T) {
 	deck := &Deck{
 		Name:   "Test Deck",
 		Format: "commander",
@@ -639,7 +639,7 @@ func TestFormatDeckForDisplaySideboardAndMaybeboard(t *testing.T) {
 	}
 }
 
-func TestFormatDeckForDisplayOthers(t *testing.T) {
+func TestFormatDeckOthers(t *testing.T) {
 	deck := &Deck{
 		Name:   "Test Deck",
 		Format: "commander",
