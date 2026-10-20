@@ -1,4 +1,4 @@
-package main
+package archidekt
 
 import (
 	"context"
@@ -16,11 +16,11 @@ func TestSearchArchidektDecksE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result, err := SearchArchidektDecks(ctx, ArchidektSearchParams{
+	result, err := SearchDecks(ctx, SearchParams{
 		Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 1, Limit: 5,
 	})
 	if err != nil {
-		t.Fatalf("SearchArchidektDecks() failed: %v", err)
+		t.Fatalf("SearchDecks() failed: %v", err)
 	}
 
 	if len(result.Decks) == 0 {
@@ -54,11 +54,11 @@ func TestSearchArchidektDecksByBracketE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result, err := SearchArchidektDecks(ctx, ArchidektSearchParams{
+	result, err := SearchDecks(ctx, SearchParams{
 		Commander: "Atraxa, Praetors' Voice", Bracket: 4, Sort: archidektSortViews, Page: 1, Limit: 5,
 	})
 	if err != nil {
-		t.Fatalf("SearchArchidektDecks() with bracket=4 failed: %v", err)
+		t.Fatalf("SearchDecks() with bracket=4 failed: %v", err)
 	}
 
 	for _, deck := range result.Decks {
@@ -79,9 +79,9 @@ func TestGetArchidektUserDecksE2E(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	result, err := GetArchidektUserDecks(ctx, "nathanmartins", 1)
+	result, err := GetUserDecks(ctx, "nathanmartins", 1)
 	if err != nil {
-		t.Fatalf("GetArchidektUserDecks() failed: %v", err)
+		t.Fatalf("GetUserDecks() failed: %v", err)
 	}
 
 	if len(result.Results) == 0 {
@@ -101,9 +101,9 @@ func TestGetArchidektDeckE2E(t *testing.T) {
 	defer cancel()
 
 	// Deathstar Hearthhull — nathanmartins' deck
-	deck, err := GetArchidektDeck(ctx, 18257175)
+	deck, err := GetDeck(ctx, 18257175)
 	if err != nil {
-		t.Fatalf("GetArchidektDeck() failed: %v", err)
+		t.Fatalf("GetDeck() failed: %v", err)
 	}
 
 	if deck.Name == "" {
@@ -113,7 +113,7 @@ func TestGetArchidektDeckE2E(t *testing.T) {
 		t.Error("Expected deck to have cards")
 	}
 
-	output := FormatArchidektDeckForDisplay(deck)
+	output := FormatDeck(deck)
 	if !strings.Contains(output, "https://archidekt.com/decks/18257175") {
 		t.Error("Expected formatted output to contain deck URL")
 	}

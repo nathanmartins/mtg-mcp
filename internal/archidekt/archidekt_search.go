@@ -1,4 +1,4 @@
-package main
+package archidekt
 
 import (
 	"context"
@@ -14,31 +14,31 @@ const (
 	// archidektAPIPageSize is the page size Archidekt hardcodes. The API has no
 	// page-size parameter: pageSize, limit and perPage are all ignored upstream.
 	archidektAPIPageSize = 60
-	// archidektSearchMaxLimit is the largest logical page we serve, bounded by the
+	// SearchMaxLimit is the largest logical page we serve, bounded by the
 	// fixed upstream page size so one request never needs more than two API pages.
-	archidektSearchMaxLimit = 60
-	// archidektSearchDefaultLimit is the default number of decks per logical page.
-	archidektSearchDefaultLimit = 10
+	SearchMaxLimit = 60
+	// SearchDefaultLimit is the default number of decks per logical page.
+	SearchDefaultLimit = 10
 	// archidektCountCap is the saturation value Archidekt reports for broad filters.
 	archidektCountCap = 1000
 	// archidektCountUnknown is what Archidekt reports when it does not compute a total.
 	archidektCountUnknown = -1
 	// archidektCommanderFormat is Archidekt's deckFormat id for Commander/EDH.
 	archidektCommanderFormat = "3"
-	// archidektMinBracket and archidektMaxBracket bound the EDH bracket filter.
-	archidektMinBracket = 1
-	archidektMaxBracket = 4
-	// archidektMaxDeckSize bounds the deck-size filter (Commander decks are 100 cards;
+	// MinBracket and MaxBracket bound the EDH bracket filter.
+	MinBracket = 1
+	MaxBracket = 4
+	// MaxDeckSize bounds the deck-size filter (Commander decks are 100 cards;
 	// the cap only exists to reject nonsense input).
-	archidektMaxDeckSize = 1000
+	MaxDeckSize = 1000
 	// archidektColorLetters lists the colour letters Archidekt's colors filter accepts.
 	archidektColorLetters = "WUBRG"
 	// archidektOptionalFilters is how many optional filters the formatter can list.
 	archidektOptionalFilters = 4
-	// archidektSearchMaxPage bounds logical pagination. Archidekt's count saturates at
+	// SearchMaxPage bounds logical pagination. Archidekt's count saturates at
 	// archidektCountCap, so nothing is reachable beyond that many results; the bound also
 	// keeps (page-1)*limit from overflowing int and producing a negative window offset.
-	archidektSearchMaxPage = archidektCountCap
+	SearchMaxPage = archidektCountCap
 
 	archidektSortViews   = "views"
 	archidektSortUpdated = "updated"
@@ -47,8 +47,8 @@ const (
 	archidektSortSize    = "size"
 )
 
-// ArchidektSearchParams describes one logical page of an Archidekt deck search.
-type ArchidektSearchParams struct {
+// SearchParams describes one logical page of an Archidekt deck search.
+type SearchParams struct {
 	Commander string
 	Bracket   int    // 1-4 filters by EDH bracket; 0 means no filter
 	Sort      string // logical sort key; must be one of archidektSortFields
@@ -61,11 +61,11 @@ type ArchidektSearchParams struct {
 	DeckName  string // deck-name substring; empty means no filter
 }
 
-// ArchidektSearchResult is one logical page of deck search results. Total is only
+// SearchResult is one logical page of deck search results. Total is only
 // meaningful when TotalKnown is true; TotalCapped marks a saturated upstream count,
 // meaning the real total is larger than Total.
-type ArchidektSearchResult struct {
-	Decks       []ArchidektDeckSummary
+type SearchResult struct {
+	Decks       []DeckSummary
 	Page        int
 	Limit       int
 	Total       int
@@ -74,18 +74,18 @@ type ArchidektSearchResult struct {
 }
 
 // normalized clamps parameters to the range the upstream API and formatter can honour.
-func (p ArchidektSearchParams) normalized() ArchidektSearchParams {
+func (p SearchParams) normalized() SearchParams {
 	if p.Page < 1 {
 		p.Page = 1
 	}
-	if p.Page > archidektSearchMaxPage {
-		p.Page = archidektSearchMaxPage
+	if p.Page > SearchMaxPage {
+		p.Page = SearchMaxPage
 	}
 	if p.Limit < 1 {
-		p.Limit = archidektSearchDefaultLimit
+		p.Limit = SearchDefaultLimit
 	}
-	if p.Limit > archidektSearchMaxLimit {
-		p.Limit = archidektSearchMaxLimit
+	if p.Limit > SearchMaxLimit {
+		p.Limit = SearchMaxLimit
 	}
 	return p
 }
@@ -110,8 +110,8 @@ func archidektSortFields() []archidektSortField {
 	}
 }
 
-// archidektSortValues renders the accepted sort keys for error messages and tool docs.
-func archidektSortValues() string {
+// SortValues renders the accepted sort keys for error messages and tool docs.
+func SortValues() string {
 	fields := archidektSortFields()
 	keys := make([]string, 0, len(fields))
 	for _, field := range fields {
@@ -120,9 +120,9 @@ func archidektSortValues() string {
 	return strings.Join(keys, ", ")
 }
 
-// archidektOrderBy renders the upstream orderBy value for a sort key. Archidekt accepts
+// OrderBy renders the upstream orderBy value for a sort key. Archidekt accepts
 // unknown orderBy values and silently ignores them, so validation must happen here.
-func archidektOrderBy(sort string, ascending bool) (string, error) {
+func OrderBy(sort string, ascending bool) (string, error) {
 	for _, field := range archidektSortFields() {
 		if field.Key != sort {
 			continue
@@ -132,13 +132,13 @@ func archidektOrderBy(sort string, ascending bool) (string, error) {
 		}
 		return "-" + field.Field, nil
 	}
-	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, archidektSortValues())
+	return "", fmt.Errorf("unsupported sort %q (accepted: %s)", sort, SortValues())
 }
 
-// normalizeArchidektColors converts a colour string such as "WU" into the
+// NormalizeColors converts a colour string such as "WU" into the
 // comma-separated form Archidekt expects ("W,U"). Duplicate or unknown letters are
 // rejected: Archidekt would accept them and return a silently different result set.
-func normalizeArchidektColors(colors string) (string, error) {
+func NormalizeColors(colors string) (string, error) {
 	trimmed := strings.ToUpper(strings.ReplaceAll(strings.TrimSpace(colors), ",", ""))
 	if trimmed == "" {
 		return "", nil
@@ -189,17 +189,17 @@ func interpretArchidektCount(count int) (int, bool, bool) {
 	}
 }
 
-// SearchArchidektDecks searches public Commander decks on Archidekt.
-func SearchArchidektDecks(ctx context.Context, params ArchidektSearchParams) (*ArchidektSearchResult, error) {
-	return searchArchidektDecksWithURL(ctx, params, defaultArchidektBaseURL)
+// SearchDecks searches public Commander decks on Archidekt.
+func SearchDecks(ctx context.Context, params SearchParams) (*SearchResult, error) {
+	return SearchDecksWithURL(ctx, params, DefaultBaseURL)
 }
 
-// searchArchidektDecksWithURL is the testable variant that accepts a custom base URL.
-func searchArchidektDecksWithURL(
+// SearchDecksWithURL is the testable variant that accepts a custom base URL.
+func SearchDecksWithURL(
 	ctx context.Context,
-	params ArchidektSearchParams,
+	params SearchParams,
 	baseURL string,
-) (*ArchidektSearchResult, error) {
+) (*SearchResult, error) {
 	params = params.normalized()
 
 	// Normalise again here rather than trusting the caller: this is the library entry
@@ -207,20 +207,20 @@ func searchArchidektDecksWithURL(
 	// in the output, and Archidekt would accept a malformed colour string and quietly
 	// return an unfiltered page. Normalisation is idempotent, so the handler's own call
 	// costs nothing.
-	colors, err := normalizeArchidektColors(params.Colors)
+	colors, err := NormalizeColors(params.Colors)
 	if err != nil {
 		return nil, err
 	}
 	params.Colors = colors
 
-	orderBy, err := archidektOrderBy(params.Sort, params.Ascending)
+	orderBy, err := OrderBy(params.Sort, params.Ascending)
 	if err != nil {
 		return nil, err
 	}
 
 	firstAPIPage, offset, apiPages := archidektPageWindow(params.Page, params.Limit)
-	result := &ArchidektSearchResult{Page: params.Page, Limit: params.Limit}
-	collected := make([]ArchidektDeckSummary, 0, apiPages*archidektAPIPageSize)
+	result := &SearchResult{Page: params.Page, Limit: params.Limit}
+	collected := make([]DeckSummary, 0, apiPages*archidektAPIPageSize)
 
 	for i := range apiPages {
 		page, fetchErr := fetchArchidektSearchPage(ctx, params, orderBy, firstAPIPage+i, baseURL)
@@ -254,14 +254,14 @@ func searchArchidektDecksWithURL(
 }
 
 // fetchArchidektSearchPage requests a single fixed-size upstream page of results.
-// params.Colors must already be normalised by searchArchidektDecksWithURL.
+// params.Colors must already be normalised by SearchDecksWithURL.
 func fetchArchidektSearchPage(
 	ctx context.Context,
-	params ArchidektSearchParams,
+	params SearchParams,
 	orderBy string,
 	apiPage int,
 	baseURL string,
-) (*ArchidektUserDecksResponse, error) {
+) (*UserDecksResponse, error) {
 	queryParams := url.Values{}
 	queryParams.Set("commanderName", params.Commander)
 	queryParams.Set("deckFormat", archidektCommanderFormat)
@@ -278,7 +278,7 @@ func fetchArchidektSearchPage(
 	if params.DeckName != "" {
 		queryParams.Set("name", params.DeckName)
 	}
-	if params.Bracket >= archidektMinBracket && params.Bracket <= archidektMaxBracket {
+	if params.Bracket >= MinBracket && params.Bracket <= MaxBracket {
 		queryParams.Set("edhBracket", strconv.Itoa(params.Bracket))
 	}
 	if apiPage > 1 {
@@ -287,24 +287,34 @@ func fetchArchidektSearchPage(
 
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
-	var result ArchidektUserDecksResponse
-	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, archidektSource, &result); err != nil {
+	var result UserDecksResponse
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// FormatArchidektSearchResultsForDisplay renders one logical page of search results.
-func FormatArchidektSearchResultsForDisplay(params ArchidektSearchParams, result *ArchidektSearchResult) string {
+// archidektDirectionLabel renders a sort order as the asc/desc value the search tool accepts.
+// Archidekt's "-" orderBy prefix must never reach the output, or the tool would echo a
+// direction the caller cannot type back.
+func archidektDirectionLabel(ascending bool) string {
+	if ascending {
+		return "asc"
+	}
+	return "desc"
+}
+
+// FormatSearchResults renders one logical page of search results.
+func FormatSearchResults(params SearchParams, result *SearchResult) string {
 	var output strings.Builder
 
-	if params.Bracket >= archidektMinBracket && params.Bracket <= archidektMaxBracket {
+	if params.Bracket >= MinBracket && params.Bracket <= MaxBracket {
 		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s (Bracket %d)\n\n", params.Commander, params.Bracket)
 	} else {
 		_, _ = fmt.Fprintf(&output, "# Archidekt Decks: %s\n\n", params.Commander)
 	}
 
-	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.Sort, sortDirectionLabel(params.Ascending))
+	_, _ = fmt.Fprintf(&output, "**Sort:** %s (%s)\n", params.Sort, archidektDirectionLabel(params.Ascending))
 	if filters := formatArchidektFilters(params); filters != "" {
 		_, _ = fmt.Fprintf(&output, "**Filters:** %s\n", filters)
 	}
@@ -338,7 +348,7 @@ func FormatArchidektSearchResultsForDisplay(params ArchidektSearchParams, result
 }
 
 // formatArchidektTotal renders the total without inventing numbers Archidekt did not report.
-func formatArchidektTotal(result *ArchidektSearchResult) string {
+func formatArchidektTotal(result *SearchResult) string {
 	switch {
 	case !result.TotalKnown:
 		return "unknown (not reported by Archidekt)"
@@ -351,7 +361,7 @@ func formatArchidektTotal(result *ArchidektSearchResult) string {
 
 // archidektHasMorePages reports whether another logical page may exist. A capped total
 // is a lower bound, so it can never prove the result set is exhausted.
-func archidektHasMorePages(result *ArchidektSearchResult) bool {
+func archidektHasMorePages(result *SearchResult) bool {
 	if len(result.Decks) < result.Limit {
 		return false
 	}
@@ -363,7 +373,7 @@ func archidektHasMorePages(result *ArchidektSearchResult) bool {
 
 // formatArchidektFilters lists the active optional filters so the caller can see
 // exactly which constraints produced the page.
-func formatArchidektFilters(params ArchidektSearchParams) string {
+func formatArchidektFilters(params SearchParams) string {
 	filters := make([]string, 0, archidektOptionalFilters)
 	if params.Colors != "" {
 		filters = append(filters, "colors "+strings.ReplaceAll(params.Colors, ",", ""))

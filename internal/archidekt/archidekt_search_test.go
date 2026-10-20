@@ -1,4 +1,4 @@
-package main
+package archidekt
 
 import (
 	"context"
@@ -14,46 +14,46 @@ import (
 
 // syntheticArchidektPage builds a full 60-deck upstream page whose deck names
 // encode their absolute position, so slicing bugs are visible in assertions.
-func syntheticArchidektPage(apiPage, count int) ArchidektUserDecksResponse {
-	results := make([]ArchidektDeckSummary, 0, archidektAPIPageSize)
+func syntheticArchidektPage(apiPage, count int) UserDecksResponse {
+	results := make([]DeckSummary, 0, archidektAPIPageSize)
 	base := (apiPage - 1) * archidektAPIPageSize
 	for i := range archidektAPIPageSize {
-		results = append(results, ArchidektDeckSummary{
+		results = append(results, DeckSummary{
 			ID:         base + i + 1,
 			Name:       fmt.Sprintf("deck-%d", base+i+1),
 			DeckFormat: 3,
 			ViewCount:  1000 - (base + i),
 			UpdatedAt:  "2026-01-01T00:00:00Z",
-			Owner:      ArchidektOwner{Username: "owner"},
+			Owner:      Owner{Username: "owner"},
 		})
 	}
 	next := ""
 	if apiPage*archidektAPIPageSize < count {
 		next = fmt.Sprintf("http://archidekt.com/api/decks/v3/?page=%d", apiPage+1)
 	}
-	return ArchidektUserDecksResponse{Count: count, Next: next, Results: results}
+	return UserDecksResponse{Count: count, Next: next, Results: results}
 }
 
 // archidektPageSlice builds the upstream page apiPage would return for a result set of
 // total decks, so short pages and pages past the end behave like the real API.
-func archidektPageSlice(total, apiPage int) ArchidektUserDecksResponse {
+func archidektPageSlice(total, apiPage int) UserDecksResponse {
 	start := (apiPage - 1) * archidektAPIPageSize
 	end := min(start+archidektAPIPageSize, total)
-	results := make([]ArchidektDeckSummary, 0, archidektAPIPageSize)
+	results := make([]DeckSummary, 0, archidektAPIPageSize)
 	for i := start; i < end; i++ {
-		results = append(results, ArchidektDeckSummary{
+		results = append(results, DeckSummary{
 			ID:         i + 1,
 			Name:       fmt.Sprintf("deck-%d", i+1),
 			DeckFormat: 3,
 			UpdatedAt:  "2026-01-01T00:00:00Z",
-			Owner:      ArchidektOwner{Username: "owner"},
+			Owner:      Owner{Username: "owner"},
 		})
 	}
 	next := ""
 	if end < total {
 		next = fmt.Sprintf("http://archidekt.com/api/decks/v3/?page=%d", apiPage+1)
 	}
-	return ArchidektUserDecksResponse{Count: total, Next: next, Results: results}
+	return UserDecksResponse{Count: total, Next: next, Results: results}
 }
 
 func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
@@ -78,7 +78,7 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 		server := fixtureServer(25)
 		defer server.Close()
 
-		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		got, err := SearchDecksWithURL(context.Background(), SearchParams{
 			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 10,
 		}, server.URL)
 		if err != nil {
@@ -100,7 +100,7 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 		server := fixtureServer(25)
 		defer server.Close()
 
-		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		got, err := SearchDecksWithURL(context.Background(), SearchParams{
 			Commander: "Atraxa", Sort: archidektSortViews, Page: 9, Limit: 10,
 		}, server.URL)
 		if err != nil {
@@ -122,7 +122,7 @@ func TestSearchArchidektDecksHandlesShortUpstreamPages(t *testing.T) {
 		server := fixtureServer(55)
 		defer server.Close()
 
-		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		got, err := SearchDecksWithURL(context.Background(), SearchParams{
 			Commander: "Atraxa", Sort: archidektSortViews, Page: 2, Limit: 50,
 		}, server.URL)
 		if err != nil {
@@ -185,7 +185,7 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 
 	t.Run("limit is exact", func(t *testing.T) {
 		requestedPages = nil
-		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		got, err := SearchDecksWithURL(context.Background(), SearchParams{
 			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 1, Limit: 10,
 		}, server.URL)
 		if err != nil {
@@ -204,7 +204,7 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 
 	t.Run("logical page 2 slices inside the same api page", func(t *testing.T) {
 		requestedPages = nil
-		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		got, err := SearchDecksWithURL(context.Background(), SearchParams{
 			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 2, Limit: 10,
 		}, server.URL)
 		if err != nil {
@@ -220,7 +220,7 @@ func TestSearchArchidektDecksHonoursLimitAndPage(t *testing.T) {
 
 	t.Run("straddling window fetches two api pages", func(t *testing.T) {
 		requestedPages = nil
-		got, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+		got, err := SearchDecksWithURL(context.Background(), SearchParams{
 			Commander: "Atraxa, Praetors' Voice", Sort: archidektSortViews, Page: 2, Limit: 50,
 		}, server.URL)
 		if err != nil {
@@ -257,12 +257,12 @@ func TestArchidektOrderBy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.sort+strconv.FormatBool(tt.ascending), func(t *testing.T) {
-			got, err := archidektOrderBy(tt.sort, tt.ascending)
+			got, err := OrderBy(tt.sort, tt.ascending)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("archidektOrderBy(%q, %v) error = %v, wantErr %v", tt.sort, tt.ascending, err, tt.wantErr)
+				t.Fatalf("OrderBy(%q, %v) error = %v, wantErr %v", tt.sort, tt.ascending, err, tt.wantErr)
 			}
 			if !tt.wantErr && got != tt.want {
-				t.Errorf("archidektOrderBy(%q, %v) = %q, want %q", tt.sort, tt.ascending, got, tt.want)
+				t.Errorf("OrderBy(%q, %v) = %q, want %q", tt.sort, tt.ascending, got, tt.want)
 			}
 		})
 	}
@@ -282,7 +282,7 @@ func TestSearchArchidektDecksSendsOrderByAndBracket(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+	_, err := SearchDecksWithURL(context.Background(), SearchParams{
 		Commander: "Atraxa", Bracket: 4, Sort: "updated", Ascending: true, Page: 1, Limit: 5,
 	}, server.URL)
 	if err != nil {
@@ -301,7 +301,7 @@ func TestSearchArchidektDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+	_, err := SearchDecksWithURL(context.Background(), SearchParams{
 		Commander: "Atraxa", Sort: "trending", Page: 1, Limit: 10,
 	}, server.URL)
 	if err == nil {
@@ -336,16 +336,16 @@ func TestInterpretArchidektCount(t *testing.T) {
 
 func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	bracket := 4
-	result := &ArchidektSearchResult{
-		Decks: []ArchidektDeckSummary{{
+	result := &SearchResult{
+		Decks: []DeckSummary{{
 			ID: 42, Name: "Toxic Love", ViewCount: 1234, EdhBracket: &bracket,
-			UpdatedAt: "2026-01-02T00:00:00Z", Owner: ArchidektOwner{Username: "player"},
+			UpdatedAt: "2026-01-02T00:00:00Z", Owner: Owner{Username: "player"},
 		}},
 		Page: 3, Limit: 10, Total: 671, TotalKnown: true,
 	}
 
 	t.Run("reports the window and exact total", func(t *testing.T) {
-		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		got := FormatSearchResults(SearchParams{
 			Commander: "Atraxa", Bracket: 4, Sort: "views", Page: 3, Limit: 10,
 		}, result)
 		for _, want := range []string{
@@ -360,7 +360,7 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 
 	t.Run("marks a capped total", func(t *testing.T) {
-		capped := &ArchidektSearchResult{
+		capped := &SearchResult{
 			Decks:       result.Decks,
 			Page:        1,
 			Limit:       10,
@@ -368,8 +368,8 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 			TotalCapped: true,
 			TotalKnown:  true,
 		}
-		got := FormatArchidektSearchResultsForDisplay(
-			ArchidektSearchParams{Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10},
+		got := FormatSearchResults(
+			SearchParams{Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10},
 			capped,
 		)
 		if !strings.Contains(got, "1000+") {
@@ -378,9 +378,9 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 
 	t.Run("marks an unknown total", func(t *testing.T) {
-		unknown := &ArchidektSearchResult{Decks: result.Decks, Page: 1, Limit: 10}
-		got := FormatArchidektSearchResultsForDisplay(
-			ArchidektSearchParams{Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10},
+		unknown := &SearchResult{Decks: result.Decks, Page: 1, Limit: 10}
+		got := FormatSearchResults(
+			SearchParams{Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10},
 			unknown,
 		)
 		if !strings.Contains(got, "unknown") {
@@ -389,11 +389,11 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 
 	t.Run("no next-page hint once the known total is exhausted", func(t *testing.T) {
-		full := &ArchidektSearchResult{
+		full := &SearchResult{
 			Decks: archidektPageSlice(20, 1).Results[10:20],
 			Page:  2, Limit: 10, Total: 20, TotalKnown: true,
 		}
-		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		got := FormatSearchResults(SearchParams{
 			Commander: "Atraxa", Sort: "views", Page: 2, Limit: 10,
 		}, full)
 		if strings.Contains(got, "request page 3") {
@@ -402,11 +402,11 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 
 	t.Run("next-page hint when the known total is larger", func(t *testing.T) {
-		more := &ArchidektSearchResult{
+		more := &SearchResult{
 			Decks: archidektPageSlice(25, 1).Results[10:20],
 			Page:  2, Limit: 10, Total: 25, TotalKnown: true,
 		}
-		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		got := FormatSearchResults(SearchParams{
 			Commander: "Atraxa", Sort: "views", Page: 2, Limit: 10,
 		}, more)
 		if !strings.Contains(got, "request page 3") {
@@ -415,11 +415,11 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 
 	t.Run("next-page hint when the total is unknown", func(t *testing.T) {
-		unknownTotal := &ArchidektSearchResult{
+		unknownTotal := &SearchResult{
 			Decks: archidektPageSlice(10, 1).Results,
 			Page:  1, Limit: 10,
 		}
-		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		got := FormatSearchResults(SearchParams{
 			Commander: "Atraxa", Sort: "views", Page: 1, Limit: 10,
 		}, unknownTotal)
 		if !strings.Contains(got, "request page 2") {
@@ -429,7 +429,7 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 
 	t.Run("next-page hint survives a capped total", func(t *testing.T) {
 		// A capped total is a lower bound, so page*limit reaching it proves nothing.
-		capped := &ArchidektSearchResult{
+		capped := &SearchResult{
 			Decks:       archidektPageSlice(archidektCountCap, 1).Results[:10],
 			Page:        100,
 			Limit:       10,
@@ -437,7 +437,7 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 			TotalCapped: true,
 			TotalKnown:  true,
 		}
-		got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		got := FormatSearchResults(SearchParams{
 			Commander: "Atraxa", Sort: "views", Page: 100, Limit: 10,
 		}, capped)
 		if !strings.Contains(got, "request page 101") {
@@ -445,10 +445,10 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 		}
 
 		// The same window with an exact total of the same size is genuinely exhausted.
-		exact := &ArchidektSearchResult{
+		exact := &SearchResult{
 			Decks: capped.Decks, Page: 100, Limit: 10, Total: archidektCountCap, TotalKnown: true,
 		}
-		got = FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+		got = FormatSearchResults(SearchParams{
 			Commander: "Atraxa", Sort: "views", Page: 100, Limit: 10,
 		}, exact)
 		if strings.Contains(got, "request page 101") {
@@ -457,9 +457,9 @@ func TestFormatArchidektSearchResultsForDisplay(t *testing.T) {
 	})
 
 	t.Run("empty page", func(t *testing.T) {
-		empty := &ArchidektSearchResult{Page: 9, Limit: 10, TotalKnown: true}
-		got := FormatArchidektSearchResultsForDisplay(
-			ArchidektSearchParams{Commander: "Nobody", Sort: "views", Page: 9, Limit: 10},
+		empty := &SearchResult{Page: 9, Limit: 10, TotalKnown: true}
+		got := FormatSearchResults(
+			SearchParams{Commander: "Nobody", Sort: "views", Page: 9, Limit: 10},
 			empty,
 		)
 		if !strings.Contains(got, "No public decks found") {
@@ -488,12 +488,12 @@ func TestNormalizeArchidektColors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := normalizeArchidektColors(tt.input)
+			got, err := NormalizeColors(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Fatalf("normalizeArchidektColors(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				t.Fatalf("NormalizeColors(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
 			}
 			if !tt.wantErr && got != tt.want {
-				t.Errorf("normalizeArchidektColors(%q) = %q, want %q", tt.input, got, tt.want)
+				t.Errorf("NormalizeColors(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}
@@ -507,7 +507,7 @@ func TestSearchArchidektDecksSendsFilters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+	_, err := SearchDecksWithURL(context.Background(), SearchParams{
 		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5,
 		Colors: "WU", DeckSize: 99, Author: "NorwegianWhaler", DeckName: "budget",
 	}, server.URL)
@@ -542,8 +542,8 @@ func TestSearchArchidektDecksOmitsUnsetFilters(t *testing.T) {
 	}))
 	defer server.Close()
 
-	params := ArchidektSearchParams{Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5}
-	result, err := searchArchidektDecksWithURL(context.Background(), params, server.URL)
+	params := SearchParams{Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5}
+	result, err := SearchDecksWithURL(context.Background(), params, server.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -554,7 +554,7 @@ func TestSearchArchidektDecksOmitsUnsetFilters(t *testing.T) {
 			t.Errorf("%s must be omitted when unset, got %q", key, gotQuery.Get(key))
 		}
 	}
-	if text := FormatArchidektSearchResultsForDisplay(params, result); strings.Contains(text, "**Filters:**") {
+	if text := FormatSearchResults(params, result); strings.Contains(text, "**Filters:**") {
 		t.Errorf("no filters were set, so no filter line should be printed:\n%s", text)
 	}
 }
@@ -565,7 +565,7 @@ func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := searchArchidektDecksWithURL(context.Background(), ArchidektSearchParams{
+	_, err := SearchDecksWithURL(context.Background(), SearchParams{
 		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 5, Colors: "WX",
 	}, server.URL)
 	if err == nil {
@@ -574,14 +574,14 @@ func TestSearchArchidektDecksRejectsInvalidColors(t *testing.T) {
 }
 
 func TestFormatArchidektSearchResultsShowsActiveFilters(t *testing.T) {
-	result := &ArchidektSearchResult{
-		Decks:      []ArchidektDeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: ArchidektOwner{Username: "player"}}},
+	result := &SearchResult{
+		Decks:      []DeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: Owner{Username: "player"}}},
 		Page:       1,
 		Limit:      10,
 		Total:      12,
 		TotalKnown: true,
 	}
-	got := FormatArchidektSearchResultsForDisplay(ArchidektSearchParams{
+	got := FormatSearchResults(SearchParams{
 		Commander: "Atraxa", Sort: archidektSortViews, Page: 1, Limit: 10,
 		Colors: "WU", DeckSize: 99, Author: "player", DeckName: "budget",
 	}, result)

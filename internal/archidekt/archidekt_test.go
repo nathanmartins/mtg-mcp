@@ -1,4 +1,4 @@
-package main
+package archidekt
 
 import (
 	"context"
@@ -55,13 +55,13 @@ func TestExtractArchidektDeckID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ExtractArchidektDeckID(tt.input)
+			got, err := ExtractDeckID(tt.input)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ExtractArchidektDeckID() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ExtractDeckID() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr && got != tt.want {
-				t.Errorf("ExtractArchidektDeckID() = %v, want %v", got, tt.want)
+				t.Errorf("ExtractDeckID() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -80,34 +80,34 @@ func TestArchidektFormatName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
-			got := archidektFormatName(tt.code)
+			got := FormatName(tt.code)
 			if got != tt.want {
-				t.Errorf("archidektFormatName(%d) = %v, want %v", tt.code, got, tt.want)
+				t.Errorf("FormatName(%d) = %v, want %v", tt.code, got, tt.want)
 			}
 		})
 	}
 }
 
 func TestGetArchidektDeck(t *testing.T) {
-	mockDeck := ArchidektDeck{
+	mockDeck := Deck{
 		ID:         12345,
 		Name:       "Test Commander Deck",
 		DeckFormat: 3,
 		EdhBracket: new(2),
 		ViewCount:  500,
 		UpdatedAt:  "2024-01-01T00:00:00Z",
-		Owner:      ArchidektOwner{ID: 1, Username: "testuser"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{ID: 1, Username: "testuser"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				ID:         1,
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{
+				Card: Card{
+					OracleCard: OracleCard{
 						Name:     "Atraxa, Praetors' Voice",
 						ManaCost: "{G}{W}{U}{B}",
 						Types:    []string{"Creature"},
@@ -118,8 +118,8 @@ func TestGetArchidektDeck(t *testing.T) {
 				ID:         2,
 				Quantity:   1,
 				Categories: []string{"Artifact"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{
+				Card: Card{
+					OracleCard: OracleCard{
 						Name:     "Sol Ring",
 						ManaCost: "{1}",
 						Types:    []string{"Artifact"},
@@ -133,7 +133,7 @@ func TestGetArchidektDeck(t *testing.T) {
 		name       string
 		deckID     int
 		mockStatus int
-		mockDeck   *ArchidektDeck
+		mockDeck   *Deck
 		wantErr    bool
 	}{
 		{
@@ -171,19 +171,19 @@ func TestGetArchidektDeck(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := getArchidektDeckWithURL(context.Background(), tt.deckID, server.URL)
+			got, err := GetDeckWithURL(context.Background(), tt.deckID, server.URL)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetArchidektDeck() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetDeck() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr && got != nil {
 				if got.Name != mockDeck.Name {
-					t.Errorf("GetArchidektDeck() name = %v, want %v", got.Name, mockDeck.Name)
+					t.Errorf("GetDeck() name = %v, want %v", got.Name, mockDeck.Name)
 				}
 				if got.ID != mockDeck.ID {
-					t.Errorf("GetArchidektDeck() id = %v, want %v", got.ID, mockDeck.ID)
+					t.Errorf("GetDeck() id = %v, want %v", got.ID, mockDeck.ID)
 				}
 			}
 		})
@@ -191,16 +191,16 @@ func TestGetArchidektDeck(t *testing.T) {
 }
 
 func TestGetArchidektUserDecks(t *testing.T) {
-	mockResponse := ArchidektUserDecksResponse{
+	mockResponse := UserDecksResponse{
 		Count: 2,
-		Results: []ArchidektDeckSummary{
+		Results: []DeckSummary{
 			{
 				ID:         111,
 				Name:       "Deck One",
 				DeckFormat: 3,
 				ViewCount:  100,
 				UpdatedAt:  "2024-01-01T00:00:00Z",
-				Owner:      ArchidektOwner{Username: "testuser"},
+				Owner:      Owner{Username: "testuser"},
 			},
 			{
 				ID:         222,
@@ -208,7 +208,7 @@ func TestGetArchidektUserDecks(t *testing.T) {
 				DeckFormat: 15,
 				ViewCount:  50,
 				UpdatedAt:  "2024-02-01T00:00:00Z",
-				Owner:      ArchidektOwner{Username: "testuser"},
+				Owner:      Owner{Username: "testuser"},
 			},
 		},
 	}
@@ -262,20 +262,20 @@ func TestGetArchidektUserDecks(t *testing.T) {
 			}))
 			defer server.Close()
 
-			got, err := getArchidektUserDecksWithURL(context.Background(), tt.username, tt.page, server.URL)
+			got, err := GetUserDecksWithURL(context.Background(), tt.username, tt.page, server.URL)
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("GetArchidektUserDecks() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !tt.wantErr && got != nil {
 				if got.Count != mockResponse.Count {
-					t.Errorf("GetArchidektUserDecks() count = %v, want %v", got.Count, mockResponse.Count)
+					t.Errorf("GetUserDecks() count = %v, want %v", got.Count, mockResponse.Count)
 				}
 				if len(got.Results) != len(mockResponse.Results) {
 					t.Errorf(
-						"GetArchidektUserDecks() results len = %v, want %v",
+						"GetUserDecks() results len = %v, want %v",
 						len(got.Results),
 						len(mockResponse.Results),
 					)
@@ -286,23 +286,23 @@ func TestGetArchidektUserDecks(t *testing.T) {
 }
 
 func TestFormatArchidektDeckForDisplay(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         12345,
 		Name:       "Hylda Control",
 		DeckFormat: 3,
 		EdhBracket: new(3),
 		ViewCount:  1000,
 		UpdatedAt:  "2024-01-15T00:00:00Z",
-		Owner:      ArchidektOwner{Username: "NorwegianWhaler"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "NorwegianWhaler"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{
+				Card: Card{
+					OracleCard: OracleCard{
 						Name:  "Hylda of the Icy Crown",
 						Types: []string{"Creature"},
 					},
@@ -311,8 +311,8 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 			{
 				Quantity:   1,
 				Categories: []string{"Artifact"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{
+				Card: Card{
+					OracleCard: OracleCard{
 						Name:  "Sol Ring",
 						Types: []string{"Artifact"},
 					},
@@ -321,8 +321,8 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 			{
 				Quantity:   1,
 				Categories: []string{"Instant"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{
+				Card: Card{
+					OracleCard: OracleCard{
 						Name:  "Counterspell",
 						Types: []string{"Instant"},
 					},
@@ -331,7 +331,7 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 		},
 	}
 
-	got := FormatArchidektDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	wantContains := []string{
 		"# Hylda Control",
@@ -347,7 +347,7 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 
 	for _, want := range wantContains {
 		if !strings.Contains(got, want) {
-			t.Errorf("FormatArchidektDeckForDisplay() missing %q in output", want)
+			t.Errorf("FormatDeck() missing %q in output", want)
 		}
 	}
 
@@ -365,41 +365,41 @@ func TestFormatArchidektDeckForDisplay(t *testing.T) {
 }
 
 func TestFormatArchidektLandsForDisplay(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         12345,
 		Name:       "Hearthhull Lands",
 		DeckFormat: 3,
 		EdhBracket: new(4),
-		Owner:      ArchidektOwner{Username: "testuser"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "testuser"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Hearthhull, the Worldseed", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Hearthhull, the Worldseed", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Land"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Command Tower", Types: []string{"Land"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Artifact"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Sol Ring", Types: []string{"Artifact"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Sol Ring", Types: []string{"Artifact"}},
 				},
 			},
 		},
 	}
 
-	got := FormatArchidektLandsForDisplay(deck)
+	got := FormatLands(deck)
 
 	if !strings.Contains(got, "Command Tower") {
 		t.Error("Expected Command Tower in lands output")
@@ -419,42 +419,42 @@ func TestFormatArchidektLandsForDisplay(t *testing.T) {
 }
 
 func TestFormatArchidektDeckMaybeboardSeparated(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         555,
 		Name:       "Maybe Deck",
 		DeckFormat: 3,
-		Owner:      ArchidektOwner{Username: "tester"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "tester"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
 			{ID: 3, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Creature"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Maybeboard"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Maybe Card", Types: []string{"Sorcery"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Maybe Card", Types: []string{"Sorcery"}},
 				},
 			},
 		},
 	}
 
-	got := FormatArchidektDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	if !strings.Contains(got, "## Maybeboard") {
 		t.Fatalf("expected a Maybeboard section in output:\n%s", got)
@@ -477,33 +477,33 @@ func TestFormatArchidektDeckMaybeboardSeparated(t *testing.T) {
 }
 
 func TestFormatArchidektLandsExcludesMaybeboard(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         556,
 		Name:       "Maybe Lands",
 		DeckFormat: 3,
-		Owner:      ArchidektOwner{Username: "tester"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "tester"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 			{ID: 2, Name: "Land", IsPremier: false, IncludedInDeck: true},
 			{ID: 3, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Land"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Command Tower", Types: []string{"Land"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Maybeboard"},
-				Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Bojuka Bog", Types: []string{"Land"}}},
+				Card:       Card{OracleCard: OracleCard{Name: "Bojuka Bog", Types: []string{"Land"}}},
 			},
 		},
 	}
 
-	got := FormatArchidektLandsForDisplay(deck)
+	got := FormatLands(deck)
 
 	if !strings.Contains(got, "Command Tower") {
 		t.Error("mainboard land should appear in lands-only output")
@@ -514,51 +514,51 @@ func TestFormatArchidektLandsExcludesMaybeboard(t *testing.T) {
 }
 
 func TestFormatArchidektDeckSideboardSeparated(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         557,
 		Name:       "Side Deck",
 		DeckFormat: 3,
-		Owner:      ArchidektOwner{Username: "tester"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "tester"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
 			// Archidekt flags Sideboard as includedInDeck=true, but in Commander it is out of the deck.
 			{ID: 3, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Creature"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Sideboard"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
 				},
 			},
 			{
 				// Mixed category: tagged Sideboard AND a type — must still be treated as sideboard.
 				Quantity:   1,
 				Categories: []string{"Sideboard", "Creature"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Scavenging Ooze", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Scavenging Ooze", Types: []string{"Creature"}},
 				},
 			},
 		},
 	}
 
-	got := FormatArchidektDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	if !strings.Contains(got, "## Sideboard") {
 		t.Fatalf("expected a Sideboard section in output:\n%s", got)
@@ -587,34 +587,34 @@ func TestFormatArchidektDeckSideboardSeparated(t *testing.T) {
 }
 
 func TestFormatArchidektLandsExcludesSideboard(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         558,
 		Name:       "Side Lands",
 		DeckFormat: 3,
-		Owner:      ArchidektOwner{Username: "tester"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "tester"},
+		Categories: []Category{
 			{ID: 1, Name: "Land", IsPremier: false, IncludedInDeck: true},
 			{ID: 2, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Land"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Command Tower", Types: []string{"Land"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Sideboard"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Reliquary Tower", Types: []string{"Land"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Reliquary Tower", Types: []string{"Land"}},
 				},
 			},
 		},
 	}
 
-	got := FormatArchidektLandsForDisplay(deck)
+	got := FormatLands(deck)
 
 	if !strings.Contains(got, "Command Tower") {
 		t.Error("mainboard land should appear in lands-only output")
@@ -625,50 +625,50 @@ func TestFormatArchidektLandsExcludesSideboard(t *testing.T) {
 }
 
 func TestFormatArchidektZonesMatchMoxfieldStyle(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         559,
 		Name:       "Zones Deck",
 		DeckFormat: 3,
-		Owner:      ArchidektOwner{Username: "tester"},
-		Categories: []ArchidektCategory{
+		Owner:      Owner{Username: "tester"},
+		Categories: []Category{
 			{ID: 1, Name: "Commander", IsPremier: true, IncludedInDeck: true},
 			{ID: 2, Name: "Creature", IsPremier: false, IncludedInDeck: true},
 			{ID: 3, Name: "Sideboard", IsPremier: false, IncludedInDeck: true},
 			{ID: 4, Name: "Maybeboard", IsPremier: false, IncludedInDeck: false},
 		},
-		Cards: []ArchidektCardEntry{
+		Cards: []CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Creature"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Llanowar Elves", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Sideboard"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Pithing Needle", Types: []string{"Artifact"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Maybeboard"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Demonic Tutor", Types: []string{"Sorcery"}},
+				Card: Card{
+					OracleCard: OracleCard{Name: "Demonic Tutor", Types: []string{"Sorcery"}},
 				},
 			},
 		},
 	}
 
-	got := FormatArchidektDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	// Moxfield style: plain headers with no "(N)" count.
 	if strings.Contains(got, "## Sideboard (") || strings.Contains(got, "## Maybeboard (") {
@@ -691,41 +691,41 @@ func TestGroupArchidektDeckCards(t *testing.T) {
 	premier := map[string]bool{"Commander": true}
 	excluded := map[string]bool{"Maybeboard": true}
 
-	cards := []ArchidektCardEntry{
+	cards := []CardEntry{
 		// Commander — should be skipped
 		{
 			Quantity:   1,
 			Categories: []string{"Commander"},
-			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Atraxa", Types: []string{"Creature"}}},
+			Card:       Card{OracleCard: OracleCard{Name: "Atraxa", Types: []string{"Creature"}}},
 		},
 		// Sideboard — should be skipped
 		{
 			Quantity:   1,
 			Categories: []string{"Sideboard"},
-			Card:       ArchidektCard{OracleCard: ArchidektOracleCard{Name: "Swansong", Types: []string{"Instant"}}},
+			Card:       Card{OracleCard: OracleCard{Name: "Swansong", Types: []string{"Instant"}}},
 		},
 		// Maybeboard (excluded) — should be skipped
 		{
 			Quantity:   1,
 			Categories: []string{"Maybeboard"},
-			Card: ArchidektCard{
-				OracleCard: ArchidektOracleCard{Name: "Cyclonic Rift", Types: []string{"Instant"}},
+			Card: Card{
+				OracleCard: OracleCard{Name: "Cyclonic Rift", Types: []string{"Instant"}},
 			},
 		},
 		// Unknown type — should go to others
 		{
 			Quantity:   1,
 			Categories: []string{"Mainboard"},
-			Card: ArchidektCard{
-				OracleCard: ArchidektOracleCard{Name: "Treasure Token", Types: []string{"Token"}},
+			Card: Card{
+				OracleCard: OracleCard{Name: "Treasure Token", Types: []string{"Token"}},
 			},
 		},
 		// Normal creature — should be counted
 		{
 			Quantity:   1,
 			Categories: []string{"Mainboard"},
-			Card: ArchidektCard{
-				OracleCard: ArchidektOracleCard{Name: "Birds of Paradise", Types: []string{"Creature"}},
+			Card: Card{
+				OracleCard: OracleCard{Name: "Birds of Paradise", Types: []string{"Creature"}},
 			},
 		},
 	}
@@ -744,18 +744,18 @@ func TestGroupArchidektDeckCards(t *testing.T) {
 }
 
 func TestFormatArchidektDeckForDisplayWithBracket(t *testing.T) {
-	deck := &ArchidektDeck{
+	deck := &Deck{
 		ID:         99,
 		Name:       "Bracket Deck",
 		DeckFormat: 3,
 		EdhBracket: new(3),
-		Owner:      ArchidektOwner{Username: "tester"},
-		Cards:      []ArchidektCardEntry{},
+		Owner:      Owner{Username: "tester"},
+		Cards:      []CardEntry{},
 	}
 
-	got := FormatArchidektDeckForDisplay(deck)
+	got := FormatDeck(deck)
 
 	if !strings.Contains(got, "**EDH Bracket:** 3") {
-		t.Errorf("FormatArchidektDeckForDisplay() missing EDH Bracket line, got:\n%s", got)
+		t.Errorf("FormatDeck() missing EDH Bracket line, got:\n%s", got)
 	}
 }

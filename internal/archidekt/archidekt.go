@@ -1,4 +1,6 @@
-package main
+// Package archidekt is a client for the Archidekt deck API: deck reads, user deck lists and
+// Commander deck search, plus the Markdown rendering of each.
+package archidekt
 
 import (
 	"context"
@@ -14,69 +16,70 @@ import (
 )
 
 const (
+	DefaultBaseURL             = "https://archidekt.com/api"
 	archidektCommanderCategory = "Commander"
-	// archidektSource names Archidekt in upstream status and decode errors.
-	archidektSource = "archidekt API"
+	// apiSource names Archidekt in upstream status and decode errors.
+	apiSource = "archidekt API"
 )
 
-// ArchidektDeck represents a deck from Archidekt.
-type ArchidektDeck struct {
-	ID          int                  `json:"id"`
-	Name        string               `json:"name"`
-	CreatedAt   string               `json:"createdAt"`
-	UpdatedAt   string               `json:"updatedAt"`
-	DeckFormat  int                  `json:"deckFormat"`
-	EdhBracket  *int                 `json:"edhBracket"`
-	Description string               `json:"description"`
-	ViewCount   int                  `json:"viewCount"`
-	Private     bool                 `json:"private"`
-	Unlisted    bool                 `json:"unlisted"`
-	Owner       ArchidektOwner       `json:"owner"`
-	Categories  []ArchidektCategory  `json:"categories"`
-	Cards       []ArchidektCardEntry `json:"cards"`
+// Deck represents a deck from Archidekt.
+type Deck struct {
+	ID          int         `json:"id"`
+	Name        string      `json:"name"`
+	CreatedAt   string      `json:"createdAt"`
+	UpdatedAt   string      `json:"updatedAt"`
+	DeckFormat  int         `json:"deckFormat"`
+	EdhBracket  *int        `json:"edhBracket"`
+	Description string      `json:"description"`
+	ViewCount   int         `json:"viewCount"`
+	Private     bool        `json:"private"`
+	Unlisted    bool        `json:"unlisted"`
+	Owner       Owner       `json:"owner"`
+	Categories  []Category  `json:"categories"`
+	Cards       []CardEntry `json:"cards"`
 }
 
-// ArchidektOwner represents the owner of an Archidekt deck.
-type ArchidektOwner struct {
+// Owner represents the owner of an Archidekt deck.
+type Owner struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 }
 
-// ArchidektCategory represents a card category within an Archidekt deck.
-type ArchidektCategory struct {
+// Category represents a card category within an Archidekt deck.
+type Category struct {
 	ID             int    `json:"id"`
 	Name           string `json:"name"`
 	IsPremier      bool   `json:"isPremier"`
 	IncludedInDeck bool   `json:"includedInDeck"`
 }
 
-// ArchidektCardEntry represents a card entry within an Archidekt deck.
-type ArchidektCardEntry struct {
-	ID         int           `json:"id"`
-	Quantity   int           `json:"quantity"`
-	Modifier   string        `json:"modifier"`
-	Categories []string      `json:"categories"`
-	Card       ArchidektCard `json:"card"`
+// CardEntry represents a card entry within an Archidekt deck.
+type CardEntry struct {
+	ID         int      `json:"id"`
+	Quantity   int      `json:"quantity"`
+	Modifier   string   `json:"modifier"`
+	Categories []string `json:"categories"`
+	Card       Card     `json:"card"`
 }
 
-// ArchidektCard represents the physical card data from Archidekt.
-type ArchidektCard struct {
-	UID             string              `json:"uid"`
-	CollectorNumber string              `json:"collectorNumber"`
-	Rarity          string              `json:"rarity"`
-	Edition         ArchidektEdition    `json:"edition"`
-	OracleCard      ArchidektOracleCard `json:"oracleCard"`
-	Prices          ArchidektPrices     `json:"prices"`
+// Card represents the physical card data from Archidekt.
+type Card struct {
+	UID             string     `json:"uid"`
+	CollectorNumber string     `json:"collectorNumber"`
+	Rarity          string     `json:"rarity"`
+	Edition         Edition    `json:"edition"`
+	OracleCard      OracleCard `json:"oracleCard"`
+	Prices          Prices     `json:"prices"`
 }
 
-// ArchidektEdition represents the set/edition of an Archidekt card.
-type ArchidektEdition struct {
+// Edition represents the set/edition of an Archidekt card.
+type Edition struct {
 	Code string `json:"editioncode"`
 	Name string `json:"editionname"`
 }
 
-// ArchidektOracleCard represents the oracle (canonical) data for an Archidekt card.
-type ArchidektOracleCard struct {
+// OracleCard represents the oracle (canonical) data for an Archidekt card.
+type OracleCard struct {
 	Name          string   `json:"name"`
 	ManaCost      string   `json:"manaCost"`
 	CMC           int      `json:"cmc"`
@@ -89,44 +92,44 @@ type ArchidektOracleCard struct {
 	Toughness     string   `json:"toughness"`
 }
 
-// ArchidektPrices holds TCG and CardKingdom pricing for an Archidekt card.
-type ArchidektPrices struct {
+// Prices holds TCG and CardKingdom pricing for an Archidekt card.
+type Prices struct {
 	TCG     float64 `json:"tcg"`
 	TCGFoil float64 `json:"tcgfoil"`
 	CK      float64 `json:"ck"`
 	CKFoil  float64 `json:"ckfoil"`
 }
 
-// ArchidektDeckSummary is a lightweight deck entry from paginated list responses.
-type ArchidektDeckSummary struct {
-	ID         int            `json:"id"`
-	Name       string         `json:"name"`
-	DeckFormat int            `json:"deckFormat"`
-	EdhBracket *int           `json:"edhBracket"`
-	ViewCount  int            `json:"viewCount"`
-	Private    bool           `json:"private"`
-	UpdatedAt  string         `json:"updatedAt"`
-	Owner      ArchidektOwner `json:"owner"`
+// DeckSummary is a lightweight deck entry from paginated list responses.
+type DeckSummary struct {
+	ID         int    `json:"id"`
+	Name       string `json:"name"`
+	DeckFormat int    `json:"deckFormat"`
+	EdhBracket *int   `json:"edhBracket"`
+	ViewCount  int    `json:"viewCount"`
+	Private    bool   `json:"private"`
+	UpdatedAt  string `json:"updatedAt"`
+	Owner      Owner  `json:"owner"`
 }
 
-// ArchidektUserDecksResponse represents a paginated list of Archidekt decks.
-type ArchidektUserDecksResponse struct {
-	Count   int                    `json:"count"`
-	Next    string                 `json:"next"`
-	Results []ArchidektDeckSummary `json:"results"`
+// UserDecksResponse represents a paginated list of Archidekt decks.
+type UserDecksResponse struct {
+	Count   int           `json:"count"`
+	Next    string        `json:"next"`
+	Results []DeckSummary `json:"results"`
 }
 
-// GetArchidektDeck fetches a deck by its numeric ID.
-func GetArchidektDeck(ctx context.Context, deckID int) (*ArchidektDeck, error) {
-	return getArchidektDeckWithURL(ctx, deckID, defaultArchidektBaseURL)
+// GetDeck fetches a deck by its numeric ID.
+func GetDeck(ctx context.Context, deckID int) (*Deck, error) {
+	return GetDeckWithURL(ctx, deckID, DefaultBaseURL)
 }
 
-// getArchidektDeckWithURL fetches a deck with a custom base URL (used for testing).
-func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*ArchidektDeck, error) {
+// GetDeckWithURL fetches a deck with a custom base URL (used for testing).
+func GetDeckWithURL(ctx context.Context, deckID int, baseURL string) (*Deck, error) {
 	reqURL := fmt.Sprintf("%s/decks/%d/", baseURL, deckID)
 
-	var deck ArchidektDeck
-	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, archidektSource, &deck); err != nil {
+	var deck Deck
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &deck); err != nil {
 		if httpx.HasStatus(err, http.StatusNotFound) {
 			return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
 		}
@@ -135,18 +138,18 @@ func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*
 	return &deck, nil
 }
 
-// GetArchidektUserDecks fetches a page of public decks for the given username.
-func GetArchidektUserDecks(ctx context.Context, username string, page int) (*ArchidektUserDecksResponse, error) {
-	return getArchidektUserDecksWithURL(ctx, username, page, defaultArchidektBaseURL)
+// GetUserDecks fetches a page of public decks for the given username.
+func GetUserDecks(ctx context.Context, username string, page int) (*UserDecksResponse, error) {
+	return GetUserDecksWithURL(ctx, username, page, DefaultBaseURL)
 }
 
-// getArchidektUserDecksWithURL fetches user decks with a custom base URL (used for testing).
-func getArchidektUserDecksWithURL(
+// GetUserDecksWithURL fetches user decks with a custom base URL (used for testing).
+func GetUserDecksWithURL(
 	ctx context.Context,
 	username string,
 	page int,
 	baseURL string,
-) (*ArchidektUserDecksResponse, error) {
+) (*UserDecksResponse, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -158,16 +161,16 @@ func getArchidektUserDecksWithURL(
 	queryParams.Set("page", strconv.Itoa(page))
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
-	var result ArchidektUserDecksResponse
-	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, archidektSource, &result); err != nil {
+	var result UserDecksResponse
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil
 }
 
-// ExtractArchidektDeckID parses a numeric deck ID from an Archidekt URL or raw ID string.
+// ExtractDeckID parses a numeric deck ID from an Archidekt URL or raw ID string.
 // Supports formats like "https://archidekt.com/decks/12345" or just "12345".
-func ExtractArchidektDeckID(input string) (int, error) {
+func ExtractDeckID(input string) (int, error) {
 	// Strip query string and trailing slash
 	input = strings.TrimRight(input, "/")
 	input, _, _ = strings.Cut(input, "?")
@@ -190,8 +193,8 @@ func ExtractArchidektDeckID(input string) (int, error) {
 	return 0, fmt.Errorf("could not extract a numeric deck ID from %q", input)
 }
 
-// archidektFormatName returns a human-readable format name for a numeric format code.
-func archidektFormatName(code int) string {
+// FormatName returns a human-readable format name for a numeric format code.
+func FormatName(code int) string {
 	formatNames := map[int]string{
 		1:  "Standard",
 		2:  "Modern",
@@ -226,7 +229,7 @@ func archidektFormatName(code int) string {
 }
 
 // archidektPremierCategories returns the set of category names marked as premier (e.g. "Commander").
-func archidektPremierCategories(categories []ArchidektCategory) map[string]bool {
+func archidektPremierCategories(categories []Category) map[string]bool {
 	premier := make(map[string]bool)
 	for _, c := range categories {
 		if c.IsPremier {
@@ -238,7 +241,7 @@ func archidektPremierCategories(categories []ArchidektCategory) map[string]bool 
 
 // archidektExcludedCategories returns the set of category names explicitly NOT included in the deck
 // (includedInDeck == false), e.g. "Maybeboard".
-func archidektExcludedCategories(categories []ArchidektCategory) map[string]bool {
+func archidektExcludedCategories(categories []Category) map[string]bool {
 	excluded := make(map[string]bool)
 	for _, c := range categories {
 		if !c.IncludedInDeck {
@@ -256,7 +259,7 @@ const (
 )
 
 // archidektIsCommander reports whether a card entry sits in a premier category (e.g. "Commander").
-func archidektIsCommander(entry ArchidektCardEntry, premier map[string]bool) bool {
+func archidektIsCommander(entry CardEntry, premier map[string]bool) bool {
 	return slices.ContainsFunc(entry.Categories, func(cat string) bool { return premier[cat] })
 }
 
@@ -265,7 +268,7 @@ func archidektIsCommander(entry ArchidektCardEntry, premier map[string]bool) boo
 // A card belongs to a zone if ANY of its categories matches it, so cards tagged Sideboard alongside a
 // type category (e.g. ["Sideboard", "Creature"]) are still treated as sideboard. excluded holds the
 // category names flagged includedInDeck==false (e.g. Maybeboard).
-func archidektEntryZone(entry ArchidektCardEntry, excluded map[string]bool) string {
+func archidektEntryZone(entry CardEntry, excluded map[string]bool) string {
 	if slices.Contains(entry.Categories, archidektSideboardZone) {
 		return archidektSideboardZone
 	}
@@ -277,7 +280,7 @@ func archidektEntryZone(entry ArchidektCardEntry, excluded map[string]bool) stri
 
 // archidektEntryInDeck reports whether a card entry counts toward the playable deck (mainboard),
 // i.e. it is not in an out-of-deck zone (Sideboard / Maybeboard).
-func archidektEntryInDeck(entry ArchidektCardEntry, excluded map[string]bool) bool {
+func archidektEntryInDeck(entry CardEntry, excluded map[string]bool) bool {
 	return archidektEntryZone(entry, excluded) == ""
 }
 
@@ -295,8 +298,8 @@ func formatArchidektZone(title string, cards []string) string {
 	return output.String()
 }
 
-// FormatArchidektDeckForDisplay formats an Archidekt deck for text display.
-func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
+// FormatDeck formats an Archidekt deck for text display.
+func FormatDeck(deck *Deck) string {
 	var output strings.Builder
 
 	premier := archidektPremierCategories(deck.Categories)
@@ -304,7 +307,7 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 
 	// Header
 	_, _ = fmt.Fprintf(&output, "# %s\n\n", deck.Name)
-	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", archidektFormatName(deck.DeckFormat))
+	_, _ = fmt.Fprintf(&output, "**Format:** %s\n", FormatName(deck.DeckFormat))
 	_, _ = fmt.Fprintf(&output, "**Author:** %s\n", deck.Owner.Username)
 	_, _ = fmt.Fprintf(&output, "**Views:** %d\n", deck.ViewCount)
 	if deck.EdhBracket != nil {
@@ -354,9 +357,9 @@ func FormatArchidektDeckForDisplay(deck *ArchidektDeck) string {
 	return output.String()
 }
 
-// FormatArchidektLandsForDisplay returns only the land cards from a deck — useful for
+// FormatLands returns only the land cards from a deck — useful for
 // landbase comparisons without the token overhead of a full decklist.
-func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
+func FormatLands(deck *Deck) string {
 	var output strings.Builder
 
 	premier := archidektPremierCategories(deck.Categories)
@@ -391,7 +394,7 @@ func FormatArchidektLandsForDisplay(deck *ArchidektDeck) string {
 
 // groupArchidektDeckCards categorizes non-commander, in-deck cards by oracle type,
 // excluding cards that sit outside the deck (Sideboard / Maybeboard).
-func groupArchidektDeckCards(cards []ArchidektCardEntry, premier, excluded map[string]bool) deckfmt.CardGroups {
+func groupArchidektDeckCards(cards []CardEntry, premier, excluded map[string]bool) deckfmt.CardGroups {
 	var groups deckfmt.CardGroups
 	for _, entry := range cards {
 		// Skip commanders and cards outside the deck (Sideboard / Maybeboard)

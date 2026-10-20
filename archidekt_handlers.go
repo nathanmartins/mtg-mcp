@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/archidekt"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 )
 
@@ -19,7 +20,7 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	deckID, err := ExtractArchidektDeckID(deckIDStr)
+	deckID, err := archidekt.ExtractDeckID(deckIDStr)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Invalid deck ID: %v", err)), nil
 	}
@@ -29,7 +30,7 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 		Int("deck_id", deckID).
 		Msg("Fetching Archidekt deck")
 
-	deck, err := getArchidektDeckWithURL(ctx, deckID, s.archidektBaseURL)
+	deck, err := archidekt.GetDeckWithURL(ctx, deckID, s.archidektBaseURL)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -57,9 +58,9 @@ func (s *MTGCommanderServer) handleGetArchidektDeck(
 
 	var output string
 	if landsOnly {
-		output = FormatArchidektLandsForDisplay(deck)
+		output = archidekt.FormatLands(deck)
 	} else {
-		output = FormatArchidektDeckForDisplay(deck)
+		output = archidekt.FormatDeck(deck)
 	}
 	return mcp.NewToolResultText(output), nil
 }
@@ -87,7 +88,7 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 		Int("page", page).
 		Msg("Fetching Archidekt user decks")
 
-	result, err := getArchidektUserDecksWithURL(ctx, username, page, s.archidektBaseURL)
+	result, err := archidekt.GetUserDecksWithURL(ctx, username, page, s.archidektBaseURL)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -107,7 +108,7 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 	} else {
 		for i, deck := range result.Results {
 			_, _ = fmt.Fprintf(&output, "## %d. %s\n", i+1, deck.Name)
-			_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", archidektFormatName(deck.DeckFormat))
+			_, _ = fmt.Fprintf(&output, "- **Format:** %s\n", archidekt.FormatName(deck.DeckFormat))
 			_, _ = fmt.Fprintf(&output, "- **Views:** %d\n", deck.ViewCount)
 			_, _ = fmt.Fprintf(&output, "- **Last Updated:** %s\n", deck.UpdatedAt)
 			_, _ = fmt.Fprintf(&output, "- **URL:** https://archidekt.com/decks/%d\n\n", deck.ID)
@@ -124,8 +125,8 @@ func (s *MTGCommanderServer) handleGetArchidektUserDecks(
 // archidektSearchParamsFromRequest validates MCP arguments into search parameters.
 // Invalid values are rejected instead of being clamped, because Archidekt accepts
 // bad orderBy values silently and would return a wrongly ordered page.
-func archidektSearchParamsFromRequest(commander string, args map[string]any) (ArchidektSearchParams, error) {
-	params := ArchidektSearchParams{
+func archidektSearchParamsFromRequest(commander string, args map[string]any) (archidekt.SearchParams, error) {
+	params := archidekt.SearchParams{
 		Commander: commander,
 		Colors:    stringArg(args, "colors", ""),
 		Author:    stringArg(args, "author", ""),
@@ -144,7 +145,7 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 	}
 	params.Page = page
 
-	limit, err := intArg(args, "limit", archidektSearchDefaultLimit)
+	limit, err := intArg(args, "limit", archidekt.SearchDefaultLimit)
 	if err != nil {
 		return params, err
 	}
@@ -168,27 +169,27 @@ func archidektSearchParamsFromRequest(commander string, args map[string]any) (Ar
 	}
 	params.Ascending = ascending
 
-	if params.Bracket != 0 && (params.Bracket < archidektMinBracket || params.Bracket > archidektMaxBracket) {
+	if params.Bracket != 0 && (params.Bracket < archidekt.MinBracket || params.Bracket > archidekt.MaxBracket) {
 		return params, fmt.Errorf("invalid bracket %d (accepted: %d-%d, or omit for all brackets)",
-			params.Bracket, archidektMinBracket, archidektMaxBracket)
+			params.Bracket, archidekt.MinBracket, archidekt.MaxBracket)
 	}
-	if params.Page < 1 || params.Page > archidektSearchMaxPage {
-		return params, fmt.Errorf("invalid page %d (accepted: 1-%d)", params.Page, archidektSearchMaxPage)
+	if params.Page < 1 || params.Page > archidekt.SearchMaxPage {
+		return params, fmt.Errorf("invalid page %d (accepted: 1-%d)", params.Page, archidekt.SearchMaxPage)
 	}
-	if params.Limit < 1 || params.Limit > archidektSearchMaxLimit {
-		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.Limit, archidektSearchMaxLimit)
+	if params.Limit < 1 || params.Limit > archidekt.SearchMaxLimit {
+		return params, fmt.Errorf("invalid limit %d (accepted: 1-%d)", params.Limit, archidekt.SearchMaxLimit)
 	}
-	if _, err = archidektOrderBy(params.Sort, params.Ascending); err != nil {
+	if _, err = archidekt.OrderBy(params.Sort, params.Ascending); err != nil {
 		return params, err
 	}
-	colors, err := normalizeArchidektColors(params.Colors)
+	colors, err := archidekt.NormalizeColors(params.Colors)
 	if err != nil {
 		return params, err
 	}
 	params.Colors = colors
-	if params.DeckSize < 0 || params.DeckSize > archidektMaxDeckSize {
+	if params.DeckSize < 0 || params.DeckSize > archidekt.MaxDeckSize {
 		return params, fmt.Errorf("invalid deck_size %d (accepted: 1-%d, or omit)",
-			params.DeckSize, archidektMaxDeckSize)
+			params.DeckSize, archidekt.MaxDeckSize)
 	}
 
 	return params, nil
@@ -218,7 +219,7 @@ func (s *MTGCommanderServer) handleSearchArchidektDecks(
 		Int("limit", params.Limit).
 		Msg("Searching Archidekt decks")
 
-	result, err := searchArchidektDecksWithURL(ctx, params, s.archidektBaseURL)
+	result, err := archidekt.SearchDecksWithURL(ctx, params, s.archidektBaseURL)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -234,5 +235,5 @@ func (s *MTGCommanderServer) handleSearchArchidektDecks(
 		Int("results_count", len(result.Decks)).
 		Msg("Successfully searched Archidekt decks")
 
-	return mcp.NewToolResultText(FormatArchidektSearchResultsForDisplay(params, result)), nil
+	return mcp.NewToolResultText(archidekt.FormatSearchResults(params, result)), nil
 }

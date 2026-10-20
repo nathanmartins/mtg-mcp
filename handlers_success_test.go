@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nathanmartins/mtg-mcp/internal/archidekt"
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
 
@@ -411,24 +412,24 @@ func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T)
 	})
 }
 
-func sampleArchidektDeck() ArchidektDeck {
-	return ArchidektDeck{
+func sampleArchidektDeck() archidekt.Deck {
+	return archidekt.Deck{
 		ID:         123,
 		Name:       "Test Deck",
 		DeckFormat: 3,
-		Cards: []ArchidektCardEntry{
+		Cards: []archidekt.CardEntry{
 			{
 				Quantity:   1,
 				Categories: []string{"Commander"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
+				Card: archidekt.Card{
+					OracleCard: archidekt.OracleCard{Name: "Atraxa, Praetors' Voice", Types: []string{"Creature"}},
 				},
 			},
 			{
 				Quantity:   1,
 				Categories: []string{"Land"},
-				Card: ArchidektCard{
-					OracleCard: ArchidektOracleCard{Name: "Command Tower", Types: []string{"Land"}},
+				Card: archidekt.Card{
+					OracleCard: archidekt.OracleCard{Name: "Command Tower", Types: []string{"Land"}},
 				},
 			},
 		},
@@ -474,10 +475,10 @@ func TestHandleGetArchidektDeckFailure(t *testing.T) {
 
 func TestHandleGetArchidektUserDecks(t *testing.T) {
 	t.Run("with results and pagination", func(t *testing.T) {
-		resp := ArchidektUserDecksResponse{
+		resp := archidekt.UserDecksResponse{
 			Count: 2,
 			Next:  "https://archidekt.com/api/decks/v3/?page=2",
-			Results: []ArchidektDeckSummary{
+			Results: []archidekt.DeckSummary{
 				{ID: 1, Name: "Deck A", DeckFormat: 3, ViewCount: 5, UpdatedAt: "2024-01-01"},
 			},
 		}
@@ -498,7 +499,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
-		resp := ArchidektUserDecksResponse{Count: 0, Next: "", Results: nil}
+		resp := archidekt.UserDecksResponse{Count: 0, Next: "", Results: nil}
 		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, resp)}
 		res, _ := s.handleGetArchidektUserDecks(context.Background(), toolRequest(map[string]any{"username": "tester"}))
 		if !strings.Contains(resultText(t, res), "No public decks found") {
@@ -517,9 +518,9 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 
 func TestHandleSearchArchidektDecks(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		resp := ArchidektUserDecksResponse{
+		resp := archidekt.UserDecksResponse{
 			Count: 1,
-			Results: []ArchidektDeckSummary{
+			Results: []archidekt.DeckSummary{
 				{ID: 9, Name: "Atraxa Brew", DeckFormat: 3, ViewCount: 99, UpdatedAt: "2024-02-02"},
 			},
 		}
@@ -543,8 +544,8 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 		var gotQuery url.Values
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotQuery = r.URL.Query()
-			_ = json.NewEncoder(w).Encode(ArchidektUserDecksResponse{Count: 1, Results: []ArchidektDeckSummary{
-				{ID: 7, Name: "Budget Atraxa", Owner: ArchidektOwner{Username: "player"}},
+			_ = json.NewEncoder(w).Encode(archidekt.UserDecksResponse{Count: 1, Results: []archidekt.DeckSummary{
+				{ID: 7, Name: "Budget Atraxa", Owner: archidekt.Owner{Username: "player"}},
 			}})
 		}))
 		t.Cleanup(ts.Close)
@@ -616,9 +617,9 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	t.Run("page beyond the reachable range is rejected", func(t *testing.T) {
 		// (page-1)*limit used to overflow int here, producing a negative window offset
 		// and panicking on collected[offset:end] after a perfectly successful fetch.
-		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, ArchidektUserDecksResponse{
+		s := &MTGCommanderServer{archidektBaseURL: jsonServer(t, http.StatusOK, archidekt.UserDecksResponse{
 			Count:   5,
-			Results: []ArchidektDeckSummary{{ID: 1, Name: "Deck"}},
+			Results: []archidekt.DeckSummary{{ID: 1, Name: "Deck"}},
 		})}
 		res, err := s.handleSearchArchidektDecks(context.Background(), toolRequest(map[string]any{
 			"commander": "Atraxa", "page": float64(200000000000000000), "limit": float64(60),

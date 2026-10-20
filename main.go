@@ -8,6 +8,7 @@ import (
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/nathanmartins/mtg-mcp/internal/archidekt"
 	"github.com/nathanmartins/mtg-mcp/internal/logging"
 	"github.com/nathanmartins/mtg-mcp/internal/moxfield"
 )
@@ -44,8 +45,7 @@ const (
 	defaultCardImageSize         = imageSizeNormal
 	mimeTypeTextPlain            = "text/plain"
 
-	defaultArchidektBaseURL = "https://archidekt.com/api"
-	defaultEDHRECBaseURL    = "https://json.edhrec.com/pages"
+	defaultEDHRECBaseURL = "https://json.edhrec.com/pages"
 )
 
 // MTGCommanderServer wraps the MCP server with MTG-specific functionality.
@@ -73,7 +73,7 @@ func NewMTGCommanderServer() (*MTGCommanderServer, error) {
 		scryfallClient:    client,
 		moxfieldBaseURL:   moxfield.DefaultBaseURL,
 		moxfieldSearchURL: moxfield.DefaultSearchURL,
-		archidektBaseURL:  defaultArchidektBaseURL,
+		archidektBaseURL:  archidekt.DefaultBaseURL,
 		edhrecBaseURL:     defaultEDHRECBaseURL,
 		verifyDelay:       moxfield.VerifyDelay,
 		rules:             &rulesCache{},
@@ -407,7 +407,7 @@ func (s *MTGCommanderServer) registerArchidektTools(mcpServer *server.MCPServer)
 			mcp.Description("Filter by EDH bracket (1–4). Omit to return all brackets."),
 		),
 		mcp.WithString("sort",
-			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", archidektSortValues(), searchSortDefault)),
+			mcp.Description(fmt.Sprintf("Sort field: %s (default: %s)", archidekt.SortValues(), searchSortDefault)),
 		),
 		mcp.WithString("sort_direction",
 			mcp.Description("Sort direction: asc or desc (default: desc)"),
