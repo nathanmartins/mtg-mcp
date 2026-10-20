@@ -64,15 +64,13 @@ func deckHasCommander(deck *Deck, commander string) bool {
 // deck read fails are counted in Failed and make the outcome incomplete, because a deck
 // that could not be read cannot be ruled out either. Candidates never reached because
 // limit matches were already found are counted in Unexamined instead: the run
-// succeeded, but those decks are unreachable by paging.
-func VerifyCommanderDecks(
+// succeeded, but those decks are unreachable by paging. Requests are spaced by c.VerifyDelay.
+func (c *Client) VerifyCommanderDecks(
 	ctx context.Context,
 	candidates []DeckSummary,
 	commander string,
-	deckBaseURL string,
 	limit int,
 	maxChecks int,
-	delay time.Duration,
 ) CommanderSearch {
 	outcome := CommanderSearch{Candidates: len(candidates)}
 	stopReason := ""
@@ -86,9 +84,9 @@ func VerifyCommanderDecks(
 			stopReason = fmt.Sprintf("verification budget reached after %d decks", outcome.Checked)
 			break
 		}
-		waitBeforeCheck(ctx, i, delay)
+		waitBeforeCheck(ctx, i, c.VerifyDelay)
 
-		deck, err := GetDeckWithURL(ctx, candidate.PublicID, deckBaseURL)
+		deck, err := c.GetDeck(ctx, candidate.PublicID)
 		if err != nil {
 			// An expired budget and a rate limit both end verification, and neither says
 			// anything about this candidate, so they are ruled out before the failed read

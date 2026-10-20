@@ -43,7 +43,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 			"sol": {Quantity: 1, Card: moxfield.CardInfo{Name: "Sol Ring", TypeLine: "Artifact"}},
 		},
 	}
-	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusOK, deck)}
+	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusOK, deck)}}
 
 	res, err := s.handleGetMoxfieldDeck(t.Context(), toolRequest(map[string]any{"deck_id": "abc123"}))
 	if err != nil {
@@ -58,7 +58,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldDeckFailure(t *testing.T) {
-	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetMoxfieldDeck(t.Context(), toolRequest(map[string]any{"deck_id": "abc123"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
@@ -82,7 +82,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 			},
 		},
 	}
-	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusOK, resp)}
+	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 
 	res, err := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{
 		"username":  "tester",
@@ -100,7 +100,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
-	s := &Server{moxfieldBaseURL: jsonServer(t, http.StatusInternalServerError, nil)}
+	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{"username": "tester"}))
 	if !res.IsError {
 		t.Error("expected error result on fetch failure")
@@ -133,7 +133,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(deckServer.Close)
 
-		s := &Server{moxfieldSearchURL: ts.URL, moxfieldBaseURL: deckServer.URL}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: ts.URL, BaseURL: deckServer.URL}}
 		res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander":      "Atraxa",
 			"format":         "modern",
@@ -176,7 +176,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &Server{moxfieldSearchURL: ts.URL}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: ts.URL}}
 		if _, err := s.handleSearchMoxfieldDecks(
 			t.Context(), toolRequest(map[string]any{"commander": "Atraxa"}),
 		); err != nil {
@@ -193,7 +193,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("no results", func(t *testing.T) {
 		resp := moxfield.SearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
-		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, resp)}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, resp)}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{"commander": "Nobody"}))
 		if !strings.Contains(resultText(t, res), "No decks with this commander were found") {
 			t.Error("expected no-decks message")
@@ -201,7 +201,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
-		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusInternalServerError, nil)}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{"commander": "Atraxa"}))
 		if !res.IsError {
 			t.Error("expected error result")
@@ -210,7 +210,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
 		// The stub answers 200 on any path, so only local validation can make this an error.
-		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "sort": "price",
 		}))
@@ -225,7 +225,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	t.Run("limit beyond the verification budget is rejected", func(t *testing.T) {
 		// Verification confirms at most moxfield.VerifyMaxChecks decks per call, so a
 		// larger limit could never be honoured and must not be silently truncated.
-		s := &Server{moxfieldSearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks + 1),
 		}))
@@ -246,7 +246,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 		}))
 		t.Cleanup(ts.Close)
 
-		s := &Server{moxfieldSearchURL: ts.URL}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: ts.URL}}
 		res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "limit": float64(moxfield.VerifyMaxChecks),
 		}))
@@ -263,7 +263,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("wrong-typed page is rejected", func(t *testing.T) {
-		s := &Server{moxfieldSearchURL: "http://127.0.0.1:1"}
+		s := &Server{moxfield: &moxfield.Client{SearchURL: "http://127.0.0.1:1"}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 			"commander": "Atraxa", "page": true,
 		}))
@@ -295,7 +295,7 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 	}))
 	defer deckServer.Close()
 
-	s := &Server{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
+	s := &Server{moxfield: &moxfield.Client{SearchURL: searchServer.URL, BaseURL: deckServer.URL}}
 	res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 		"commander": "Atraxa, Praetors' Voice",
 		"limit":     float64(1),
@@ -337,7 +337,7 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 	}))
 	defer deckServer.Close()
 
-	s := &Server{moxfieldSearchURL: searchServer.URL, moxfieldBaseURL: deckServer.URL}
+	s := &Server{moxfield: &moxfield.Client{SearchURL: searchServer.URL, BaseURL: deckServer.URL}}
 	res, err := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{
 		"commander": "Atraxa, Praetors' Voice",
 		"limit":     float64(5),

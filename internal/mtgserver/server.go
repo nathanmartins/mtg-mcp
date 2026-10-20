@@ -4,7 +4,6 @@ package mtgserver
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -42,15 +41,11 @@ const (
 // Server wraps the MCP server with MTG-specific functionality.
 // The base URL fields default to the live APIs but can be overridden in tests.
 type Server struct {
-	scryfallClient    *scryfall.Client
-	moxfieldBaseURL   string
-	moxfieldSearchURL string
-	archidektBaseURL  string
-	edhrecBaseURL     string
-	// verifyDelay spaces Moxfield commander-verification requests. Tests build servers
-	// directly and get the zero value, so the suite never sleeps.
-	verifyDelay time.Duration
-	rules       *rules.Cache
+	scryfallClient   *scryfall.Client
+	moxfield         *moxfield.Client
+	archidektBaseURL string
+	edhrecBaseURL    string
+	rules            *rules.Cache
 }
 
 // New creates a new MTG Commander MCP server.
@@ -61,13 +56,11 @@ func New() (*Server, error) {
 	}
 
 	return &Server{
-		scryfallClient:    client,
-		moxfieldBaseURL:   moxfield.DefaultBaseURL,
-		moxfieldSearchURL: moxfield.DefaultSearchURL,
-		archidektBaseURL:  archidekt.DefaultBaseURL,
-		edhrecBaseURL:     edhrec.DefaultBaseURL,
-		verifyDelay:       moxfield.VerifyDelay,
-		rules:             &rules.Cache{},
+		scryfallClient:   client,
+		moxfield:         moxfield.NewClient(),
+		archidektBaseURL: archidekt.DefaultBaseURL,
+		edhrecBaseURL:    edhrec.DefaultBaseURL,
+		rules:            &rules.Cache{},
 	}, nil
 }
 

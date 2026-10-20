@@ -24,7 +24,7 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	searchResp, err := SearchDecks(ctx, searchParams)
+	searchResp, err := NewClient().SearchDecks(ctx, searchParams)
 	if err != nil {
 		t.Fatalf("SearchDecks() failed: %v", err)
 	}
@@ -36,7 +36,7 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 
 	publicID := searchResp.Data[0].PublicID
 
-	deck, err := GetDeck(ctx, publicID)
+	deck, err := NewClient().GetDeck(ctx, publicID)
 	if err != nil {
 		t.Fatalf("GetDeck() failed: %v", err)
 	}
@@ -84,7 +84,7 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	searchResp, searchErr := SearchDecks(ctx, searchParams)
+	searchResp, searchErr := NewClient().SearchDecks(ctx, searchParams)
 	if searchErr != nil {
 		t.Fatalf("SearchDecks() failed: %v", searchErr)
 	}
@@ -114,7 +114,7 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	response, err := SearchDecks(ctx, params)
+	response, err := NewClient().SearchDecks(ctx, params)
 	if err != nil {
 		t.Fatalf("SearchDecks() failed: %v", err)
 	}
@@ -193,7 +193,7 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 		PageNumber:    1,
 	}
 
-	searchResp, err := SearchDecks(ctx, searchParams)
+	searchResp, err := NewClient().SearchDecks(ctx, searchParams)
 	if err != nil {
 		t.Fatalf("SearchDecks() failed: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestMoxfieldFormatDeckE2E(t *testing.T) {
 
 	publicID := searchResp.Data[0].PublicID
 
-	deck, err := GetDeck(ctx, publicID)
+	deck, err := NewClient().GetDeck(ctx, publicID)
 	if err != nil {
 		t.Fatalf("GetDeck() failed: %v", err)
 	}

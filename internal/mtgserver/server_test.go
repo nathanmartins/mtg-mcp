@@ -19,19 +19,14 @@ func TestNewMTGCommanderServer(t *testing.T) {
 	}
 }
 
-// TestNewMTGCommanderServerMoxfieldWiring pins the production Moxfield settings: the search
-// URL is a different host from deck reads, and verification requests must be spaced.
-func TestNewMTGCommanderServerMoxfieldWiring(t *testing.T) {
+// TestNewWiresProductionClients checks New uses the production API clients.
+func TestNewWiresProductionClients(t *testing.T) {
 	s, err := New()
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
 	}
-	if s.moxfieldSearchURL != moxfield.DefaultSearchURL {
-		t.Errorf("moxfieldSearchURL = %q, want %q", s.moxfieldSearchURL, moxfield.DefaultSearchURL)
-	}
-	if s.verifyDelay != moxfield.VerifyDelay {
-		t.Errorf("verifyDelay = %v, want %v — production must space verification requests",
-			s.verifyDelay, moxfield.VerifyDelay)
+	if s.moxfield == nil || *s.moxfield != *moxfield.NewClient() {
+		t.Errorf("moxfield client = %+v, want moxfield.NewClient()", s.moxfield)
 	}
 }
 

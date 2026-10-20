@@ -122,7 +122,7 @@ func TestGetMoxfieldDeck(t *testing.T) {
 			defer server.Close()
 
 			ctx := t.Context()
-			got, err := GetDeckWithURL(ctx, tt.publicID, server.URL)
+			got, err := (&Client{BaseURL: server.URL}).GetDeck(ctx, tt.publicID)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetDeck() error = %v, wantErr %v", err, tt.wantErr)
@@ -211,7 +211,7 @@ func TestGetUserDecks(t *testing.T) {
 			defer server.Close()
 
 			ctx := t.Context()
-			got, err := GetUserDecksWithURL(ctx, tt.username, tt.pageSize, server.URL)
+			got, err := (&Client{BaseURL: server.URL}).GetUserDecks(ctx, tt.username, tt.pageSize)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetUserDecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -320,7 +320,7 @@ func TestSearchMoxfieldDecks(t *testing.T) {
 			defer server.Close()
 
 			ctx := t.Context()
-			got, err := SearchDecksWithURL(ctx, tt.params, server.URL)
+			got, err := (&Client{SearchURL: server.URL}).SearchDecks(ctx, tt.params)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SearchDecks() error = %v, wantErr %v", err, tt.wantErr)
@@ -390,7 +390,7 @@ func TestSearchMoxfieldDecks_PageSizeValidation(t *testing.T) {
 			}
 
 			ctx := t.Context()
-			_, err := SearchDecksWithURL(ctx, params, server.URL)
+			_, err := (&Client{SearchURL: server.URL}).SearchDecks(ctx, params)
 			if err != nil {
 				t.Errorf("SearchDecks() unexpected error = %v", err)
 			}
@@ -412,14 +412,15 @@ func TestSearchMoxfieldDecksSendsVerifiedParams(t *testing.T) {
 	}))
 	defer server.Close()
 
-	_, err := SearchDecksWithURL(t.Context(), SearchParams{
+	client := &Client{SearchURL: server.URL + "/v2/decks/search"}
+	_, err := client.SearchDecks(t.Context(), SearchParams{
 		CardName:      "Atraxa, Praetors' Voice",
 		Format:        "commander",
 		SortType:      "views",
 		SortDirection: "Descending",
 		PageSize:      50,
 		PageNumber:    2,
-	}, server.URL+"/v2/decks/search")
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -681,4 +682,16 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 			t.Error("formatDeckHeader() should skip non-string author values")
 		}
 	})
+}
+
+// TestNewClient pins the production settings: search lives on a different host from deck
+// reads, and verification requests must be spaced.
+func TestNewClient(t *testing.T) {
+	c := NewClient()
+	if c.BaseURL != DefaultBaseURL || c.SearchURL != DefaultSearchURL {
+		t.Errorf("NewClient() URLs = %q, %q", c.BaseURL, c.SearchURL)
+	}
+	if c.VerifyDelay != VerifyDelay || c.VerifyDelay <= 0 {
+		t.Errorf("VerifyDelay = %v, want %v — production must space verification requests", c.VerifyDelay, VerifyDelay)
+	}
 }

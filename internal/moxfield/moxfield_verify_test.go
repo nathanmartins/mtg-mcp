@@ -66,8 +66,12 @@ func TestVerifyMoxfieldCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 	defer server.Close()
 
 	candidates := []DeckSummary{{PublicID: "yes1"}, {PublicID: "no1"}, {PublicID: "yes2"}}
-	got := VerifyCommanderDecks(
-		t.Context(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
+		t.Context(),
+		candidates,
+		"Atraxa, Praetors' Voice",
+		10,
+		20,
 	)
 
 	if len(got.Decks) != 2 {
@@ -98,8 +102,12 @@ func TestVerifyMoxfieldCommanderDecksStopsAtLimit(t *testing.T) {
 		candidates = append(candidates, DeckSummary{PublicID: fmt.Sprintf("d%d", i)})
 	}
 
-	got := VerifyCommanderDecks(
-		t.Context(), candidates, "Atraxa, Praetors' Voice", server.URL, 3, 20, 0,
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
+		t.Context(),
+		candidates,
+		"Atraxa, Praetors' Voice",
+		3,
+		20,
 	)
 	if len(got.Decks) != 3 {
 		t.Fatalf("returned %d decks, want 3", len(got.Decks))
@@ -130,8 +138,12 @@ func TestVerifyMoxfieldCommanderDecksRespectsCheckBudget(t *testing.T) {
 		candidates = append(candidates, DeckSummary{PublicID: fmt.Sprintf("d%d", i)})
 	}
 
-	got := VerifyCommanderDecks(
-		t.Context(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 4, 0,
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
+		t.Context(),
+		candidates,
+		"Atraxa, Praetors' Voice",
+		10,
+		4,
 	)
 	if got.Checked != 4 {
 		t.Errorf("Checked = %d, want 4 (the budget)", got.Checked)
@@ -154,8 +166,12 @@ func TestVerifyMoxfieldCommanderDecksReportsUnreadableDecks(t *testing.T) {
 	defer server.Close()
 
 	candidates := []DeckSummary{{PublicID: "yes1"}, {PublicID: "gone"}}
-	got := VerifyCommanderDecks(
-		t.Context(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
+		t.Context(),
+		candidates,
+		"Atraxa, Praetors' Voice",
+		10,
+		20,
 	)
 
 	if len(got.Decks) != 1 || got.Decks[0].PublicID != "yes1" {
@@ -187,7 +203,7 @@ func TestVerifyMoxfieldCommanderDecksStopsOnCancelledContext(t *testing.T) {
 	cancel()
 
 	candidates := []DeckSummary{{PublicID: "a"}, {PublicID: "b"}}
-	got := VerifyCommanderDecks(ctx, candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0)
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(ctx, candidates, "Atraxa, Praetors' Voice", 10, 20)
 
 	if requests != 0 {
 		t.Errorf("made %d requests on a cancelled context, want 0", requests)
@@ -218,8 +234,12 @@ func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 	defer server.Close()
 
 	candidates := []DeckSummary{{PublicID: "a"}, {PublicID: "b"}, {PublicID: "c"}}
-	got := VerifyCommanderDecks(
-		t.Context(), candidates, "Atraxa, Praetors' Voice", server.URL, 10, 20, 0,
+	got := (&Client{BaseURL: server.URL}).VerifyCommanderDecks(
+		t.Context(),
+		candidates,
+		"Atraxa, Praetors' Voice",
+		10,
+		20,
 	)
 
 	if len(got.Decks) != 1 {

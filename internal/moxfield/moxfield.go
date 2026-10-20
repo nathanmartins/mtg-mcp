@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/nathanmartins/mtg-mcp/internal/deckfmt"
 	"github.com/nathanmartins/mtg-mcp/internal/httpx"
@@ -18,6 +19,23 @@ import (
 
 // apiSource names Moxfield in upstream status and decode errors.
 const apiSource = "moxfield API"
+
+// Client talks to the Moxfield API. Deck reads and deck search live on different hosts, so
+// each has its own URL. The zero value has no URLs and makes no live requests; NewClient
+// returns a client for the production API.
+type Client struct {
+	// BaseURL serves deck reads and user deck lists (DefaultBaseURL in production).
+	BaseURL string
+	// SearchURL is the full deck-search endpoint (DefaultSearchURL in production).
+	SearchURL string
+	// VerifyDelay spaces commander-verification requests; zero means no pause.
+	VerifyDelay time.Duration
+}
+
+// NewClient returns a client for the production Moxfield API.
+func NewClient() *Client {
+	return &Client{BaseURL: DefaultBaseURL, SearchURL: DefaultSearchURL, VerifyDelay: VerifyDelay}
+}
 
 // isRateLimited reports whether err is a Moxfield HTTP 429, which callers treat
 // differently from hard failures.
@@ -146,13 +164,8 @@ func SortDirection(ascending bool) string {
 }
 
 // GetDeck fetches a deck by its public ID.
-func GetDeck(ctx context.Context, publicID string) (*Deck, error) {
-	return GetDeckWithURL(ctx, publicID, DefaultBaseURL)
-}
-
-// GetDeckWithURL fetches a deck with a custom base URL.
-func GetDeckWithURL(ctx context.Context, publicID, baseURL string) (*Deck, error) {
-	reqURL := fmt.Sprintf("%s/decks/all/%s", baseURL, url.PathEscape(publicID))
+func (c *Client) GetDeck(ctx context.Context, publicID string) (*Deck, error) {
+	reqURL := fmt.Sprintf("%s/decks/all/%s", c.BaseURL, url.PathEscape(publicID))
 
 	var deck Deck
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &deck); err != nil {
@@ -161,13 +174,8 @@ func GetDeckWithURL(ctx context.Context, publicID, baseURL string) (*Deck, error
 	return &deck, nil
 }
 
-// GetUserDecksWithURL fetches user decks with a custom base URL.
-func GetUserDecksWithURL(
-	ctx context.Context,
-	username string,
-	pageSize int,
-	baseURL string,
-) (*UserDecksResponse, error) {
+// GetUserDecks fetches a user's public decks, up to pageSize of them (capped at 100).
+func (c *Client) GetUserDecks(ctx context.Context, username string, pageSize int) (*UserDecksResponse, error) {
 	const maxPageSize = 100
 	if pageSize <= 0 || pageSize > maxPageSize {
 		pageSize = maxPageSize
@@ -175,7 +183,7 @@ func GetUserDecksWithURL(
 
 	queryParams := url.Values{}
 	queryParams.Set("pageSize", strconv.Itoa(pageSize))
-	reqURL := fmt.Sprintf("%s/users/%s/decks?%s", baseURL, url.PathEscape(username), queryParams.Encode())
+	reqURL := fmt.Sprintf("%s/users/%s/decks?%s", c.BaseURL, url.PathEscape(username), queryParams.Encode())
 
 	var decksResp UserDecksResponse
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &decksResp); err != nil {
@@ -185,16 +193,7 @@ func GetUserDecksWithURL(
 }
 
 // SearchDecks searches for decks on Moxfield.
-func SearchDecks(ctx context.Context, params SearchParams) (*SearchResponse, error) {
-	return SearchDecksWithURL(ctx, params, DefaultSearchURL)
-}
-
-// SearchDecksWithURL searches decks with a custom search URL.
-func SearchDecksWithURL(
-	ctx context.Context,
-	params SearchParams,
-	searchURL string,
-) (*SearchResponse, error) {
+func (c *Client) SearchDecks(ctx context.Context, params SearchParams) (*SearchResponse, error) {
 	const maxPageSize = 100
 	const defaultPageSize = 20
 	if params.PageSize <= 0 || params.PageSize > maxPageSize {
@@ -219,7 +218,7 @@ func SearchDecksWithURL(
 	if params.SortDirection != "" {
 		queryParams.Set("sortDirection", params.SortDirection)
 	}
-	reqURL := fmt.Sprintf("%s?%s", searchURL, queryParams.Encode())
+	reqURL := fmt.Sprintf("%s?%s", c.SearchURL, queryParams.Encode())
 
 	var searchResp SearchResponse
 	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, apiSource, &searchResp); err != nil {

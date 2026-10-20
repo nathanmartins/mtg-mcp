@@ -27,7 +27,7 @@ func (s *Server) handleGetMoxfieldDeck(
 		Str("deck_id", publicID).
 		Msg("Fetching Moxfield deck")
 
-	deck, err := moxfield.GetDeckWithURL(ctx, publicID, s.moxfieldBaseURL)
+	deck, err := s.moxfield.GetDeck(ctx, publicID)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -67,7 +67,7 @@ func (s *Server) handleGetMoxfieldUserDecks(
 		}
 	}
 
-	decks, err := moxfield.GetUserDecksWithURL(ctx, username, pageSize, s.moxfieldBaseURL)
+	decks, err := s.moxfield.GetUserDecks(ctx, username, pageSize)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to fetch user decks: %v", err)), nil
 	}
@@ -178,7 +178,7 @@ func (s *Server) handleSearchMoxfieldDecks(
 	// many candidates were left unexamined.
 	params.PageSize = min(wanted*moxfield.CandidateFactor, moxfield.VerifyMaxChecks)
 
-	results, err := moxfield.SearchDecksWithURL(ctx, params, s.moxfieldSearchURL)
+	results, err := s.moxfield.SearchDecks(ctx, params)
 	if err != nil {
 		logging.Get().Error().
 			Err(err).
@@ -190,9 +190,9 @@ func (s *Server) handleSearchMoxfieldDecks(
 
 	verifyCtx, cancel := context.WithTimeout(ctx, moxfield.VerifyBudget)
 	defer cancel()
-	outcome := moxfield.VerifyCommanderDecks(
-		verifyCtx, results.Data, commander, s.moxfieldBaseURL,
-		wanted, moxfield.VerifyMaxChecks, s.verifyDelay,
+	outcome := s.moxfield.VerifyCommanderDecks(
+		verifyCtx, results.Data, commander,
+		wanted, moxfield.VerifyMaxChecks,
 	)
 
 	logging.Get().Info().
