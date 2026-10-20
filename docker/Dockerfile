@@ -13,11 +13,11 @@
 # (or just `make docker-build` / `docker compose up`.)
 
 # ---- Builder ----------------------------------------------------------------
-# Pinned to satisfy the `go 1.27.1` directive in go.mod. GOTOOLCHAIN=local turns
+# Pinned to satisfy the `go 1.27.3` directive in go.mod. GOTOOLCHAIN=local turns
 # an unexpected toolchain bump into a hard build failure instead of a silent
 # download. --platform=$BUILDPLATFORM runs the compiler natively (fast) and
 # cross-compiles to TARGETOS/TARGETARCH below, so arm64 hosts get a native image.
-FROM --platform=$BUILDPLATFORM golang:1.27.2-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.3-alpine AS builder
 ENV GOTOOLCHAIN=local CGO_ENABLED=0
 WORKDIR /src
 
