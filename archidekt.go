@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 const (
@@ -123,8 +125,8 @@ func getArchidektDeckWithURL(ctx context.Context, deckID int, baseURL string) (*
 	reqURL := fmt.Sprintf("%s/decks/%d/", baseURL, deckID)
 
 	var deck ArchidektDeck
-	if err := getJSON(ctx, apiHTTPClient(), reqURL, archidektSource, &deck); err != nil {
-		if hasStatus(err, http.StatusNotFound) {
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, archidektSource, &deck); err != nil {
+		if httpx.HasStatus(err, http.StatusNotFound) {
 			return nil, fmt.Errorf("deck %d not found (it may be private or deleted)", deckID)
 		}
 		return nil, err
@@ -156,7 +158,7 @@ func getArchidektUserDecksWithURL(
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
 	var result ArchidektUserDecksResponse
-	if err := getJSON(ctx, apiHTTPClient(), reqURL, archidektSource, &result); err != nil {
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, archidektSource, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

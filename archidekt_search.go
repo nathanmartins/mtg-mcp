@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 const (
@@ -286,7 +288,7 @@ func fetchArchidektSearchPage(
 	reqURL := fmt.Sprintf("%s/decks/v3/?%s", baseURL, queryParams.Encode())
 
 	var result ArchidektUserDecksResponse
-	if err := getJSON(ctx, apiHTTPClient(), reqURL, archidektSource, &result); err != nil {
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, archidektSource, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

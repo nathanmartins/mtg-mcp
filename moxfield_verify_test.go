@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 // commanderDeck builds a deck payload whose commander zone holds the given cards.
@@ -232,10 +234,10 @@ func TestVerifyMoxfieldCommanderDecksStopsOnRateLimit(t *testing.T) {
 }
 
 func TestIsMoxfieldRateLimited(t *testing.T) {
-	if !isMoxfieldRateLimited(&httpStatusError{Source: moxfieldSource, StatusCode: http.StatusTooManyRequests}) {
+	if !isMoxfieldRateLimited(&httpx.StatusError{Source: moxfieldSource, StatusCode: http.StatusTooManyRequests}) {
 		t.Error("429 must be detected as a rate limit")
 	}
-	if isMoxfieldRateLimited(&httpStatusError{Source: moxfieldSource, StatusCode: http.StatusNotFound}) {
+	if isMoxfieldRateLimited(&httpx.StatusError{Source: moxfieldSource, StatusCode: http.StatusNotFound}) {
 		t.Error("404 must not be detected as a rate limit")
 	}
 	if isMoxfieldRateLimited(errors.New("network down")) {

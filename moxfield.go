@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 // moxfieldSource names Moxfield in upstream status and decode errors.
@@ -17,7 +19,7 @@ const moxfieldSource = "moxfield API"
 // isMoxfieldRateLimited reports whether err is a Moxfield HTTP 429, which callers treat
 // differently from hard failures.
 func isMoxfieldRateLimited(err error) bool {
-	return hasStatus(err, http.StatusTooManyRequests)
+	return httpx.HasStatus(err, http.StatusTooManyRequests)
 }
 
 // MoxfieldDeck represents a deck from Moxfield.
@@ -151,7 +153,7 @@ func getMoxfieldDeckWithURL(ctx context.Context, publicID, baseURL string) (*Mox
 	reqURL := fmt.Sprintf("%s/decks/all/%s", baseURL, url.PathEscape(publicID))
 
 	var deck MoxfieldDeck
-	if err := getJSON(ctx, apiHTTPClient(), reqURL, moxfieldSource, &deck); err != nil {
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, moxfieldSource, &deck); err != nil {
 		return nil, err
 	}
 	return &deck, nil
@@ -174,7 +176,7 @@ func getUserDecksWithURL(
 	reqURL := fmt.Sprintf("%s/users/%s/decks?%s", baseURL, url.PathEscape(username), queryParams.Encode())
 
 	var decksResp MoxfieldUserDecksResponse
-	if err := getJSON(ctx, apiHTTPClient(), reqURL, moxfieldSource, &decksResp); err != nil {
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, moxfieldSource, &decksResp); err != nil {
 		return nil, err
 	}
 	return &decksResp, nil
@@ -218,7 +220,7 @@ func searchMoxfieldDecksWithURL(
 	reqURL := fmt.Sprintf("%s?%s", searchURL, queryParams.Encode())
 
 	var searchResp MoxfieldSearchResponse
-	if err := getJSON(ctx, apiHTTPClient(), reqURL, moxfieldSource, &searchResp); err != nil {
+	if err := httpx.GetJSON(ctx, httpx.APIClient(), reqURL, moxfieldSource, &searchResp); err != nil {
 		return nil, err
 	}
 	return &searchResp, nil

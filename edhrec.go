@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 const (
@@ -147,7 +149,7 @@ func SanitizeCardName(name string) string {
 // undocumented reverse-engineered API: unknown slugs answer 403 with an XML body, so any
 // non-200 status is reported as an error without attempting to decode.
 func fetchEDHRECPage(ctx context.Context, reqURL, pageKind string, target any) error {
-	return getJSON(ctx, apiHTTPClient(), reqURL, "EDHREC "+pageKind, target)
+	return httpx.GetJSON(ctx, httpx.APIClient(), reqURL, "EDHREC "+pageKind, target)
 }
 
 // getCommanderPageWithURL fetches a commander page from baseURL, optionally narrowed by filter.

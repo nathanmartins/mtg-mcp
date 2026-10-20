@@ -12,6 +12,7 @@ import (
 
 	"github.com/BlueMonday/go-scryfall"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/nathanmartins/mtg-mcp/internal/httpx"
 )
 
 func (s *MTGCommanderServer) handleSearchCards(
@@ -705,7 +706,7 @@ func parseCardLine(line string) (string, int) {
 
 const exchangeRateURL = "https://api.frankfurter.app/latest?from=USD&to=BRL"
 
-// httpGetter performs an HTTP GET; HTTPGet satisfies it in production, and a stub satisfies it in tests.
+// httpGetter performs an HTTP GET; httpx.Get satisfies it in production, and a stub satisfies it in tests.
 type httpGetter func(ctx context.Context, rawURL string) (*http.Response, error)
 
 // exchangeRateFetcher fetches the current USD to BRL exchange rate.
@@ -714,7 +715,7 @@ var exchangeRateFetcher = getUSDToBRLRate //nolint:gochecknoglobals // test seam
 
 // getUSDToBRLRate fetches the current USD to BRL exchange rate.
 func getUSDToBRLRate(ctx context.Context) (float64, error) {
-	return getExchangeRate(ctx, exchangeRateURL, HTTPGet)
+	return getExchangeRate(ctx, exchangeRateURL, httpx.Get)
 }
 
 // getExchangeRate fetches and decodes the USD to BRL rate from the given URL using the provided getter.
@@ -985,7 +986,7 @@ var cardImageBytesFetcher = fetchCardImageBytes //nolint:gochecknoglobals // tes
 
 // fetchCardImageBytes downloads the image at the given HTTPS URL.
 func fetchCardImageBytes(ctx context.Context, rawURL string) ([]byte, error) {
-	return getImageBytes(ctx, rawURL, HTTPGet)
+	return getImageBytes(ctx, rawURL, httpx.Get)
 }
 
 // getImageBytes downloads and reads an image body using the provided getter.

@@ -1,4 +1,4 @@
-package main
+package httpx
 
 import (
 	"context"
@@ -27,7 +27,7 @@ func TestHTTPGet(t *testing.T) {
 			name:           "server returns 404",
 			serverResponse: `{"error":"not found"}`,
 			serverStatus:   http.StatusNotFound,
-			wantErr:        false, // HTTPGet doesn't error on status codes
+			wantErr:        false, // Get doesn't error on status codes
 			checkHeaders:   true,
 		},
 		{
@@ -60,10 +60,10 @@ func TestHTTPGet(t *testing.T) {
 
 			// Test the function using the internal client-aware variant
 			ctx := context.Background()
-			resp, err := httpGetWithClient(ctx, server.URL, server.Client())
+			resp, err := GetWithClient(ctx, server.URL, server.Client())
 
 			if (err != nil) != tt.wantErr {
-				t.Errorf("HTTPGet() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Get() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
@@ -72,7 +72,7 @@ func TestHTTPGet(t *testing.T) {
 					_ = resp.Body.Close()
 				}()
 				if resp.StatusCode != tt.serverStatus {
-					t.Errorf("HTTPGet() status = %v, want %v", resp.StatusCode, tt.serverStatus)
+					t.Errorf("Get() status = %v, want %v", resp.StatusCode, tt.serverStatus)
 				}
 			}
 		})
@@ -92,9 +92,9 @@ func TestHTTPGet_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	_, err := httpGetWithClient(ctx, server.URL, server.Client())
+	_, err := GetWithClient(ctx, server.URL, server.Client())
 	if err == nil {
-		t.Error("HTTPGet() expected error with cancelled context, got nil")
+		t.Error("Get() expected error with cancelled context, got nil")
 	}
 }
 
@@ -114,18 +114,18 @@ func TestHTTPGet_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 
-	_, err := httpGetWithClient(ctx, server.URL, server.Client())
+	_, err := GetWithClient(ctx, server.URL, server.Client())
 
 	// Should timeout due to context deadline
 	if err == nil {
-		t.Error("HTTPGet() expected timeout error, got nil")
+		t.Error("Get() expected timeout error, got nil")
 	}
 }
 
 func TestHTTPGet_InvalidURL(t *testing.T) {
 	ctx := context.Background()
-	_, err := HTTPGet(ctx, "://invalid-url")
+	_, err := Get(ctx, "://invalid-url")
 	if err == nil {
-		t.Error("HTTPGet() expected error with invalid URL, got nil")
+		t.Error("Get() expected error with invalid URL, got nil")
 	}
 }
