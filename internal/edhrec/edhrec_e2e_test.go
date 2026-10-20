@@ -1,3 +1,5 @@
+//go:build e2e
+
 package edhrec
 
 import (
@@ -9,10 +11,6 @@ import (
 
 // TestEDHRECCommanderRecommendationsE2E tests real EDHREC API for commander recommendations.
 func TestEDHRECCommanderRecommendationsE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -58,10 +56,6 @@ func TestEDHRECCommanderRecommendationsE2E(t *testing.T) {
 
 // TestEDHRECCombosE2E tests real EDHREC API for color combos.
 func TestEDHRECCombosE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -97,10 +91,6 @@ func TestEDHRECCombosE2E(t *testing.T) {
 
 // TestEDHRECSanitizationE2E tests that card name sanitization works with real API.
 func TestEDHRECSanitizationE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -130,10 +120,6 @@ func TestEDHRECSanitizationE2E(t *testing.T) {
 
 // TestEDHRECFormatOutputE2E tests that formatting functions work with real data.
 func TestEDHRECFormatOutputE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -176,10 +162,6 @@ func TestEDHRECFormatOutputE2E(t *testing.T) {
 // TestEDHRECThemeAndBudgetFilterE2E proves the composed theme+tier path is real and narrows the
 // deck pool: unfiltered > theme-only > theme+tier.
 func TestEDHRECThemeAndBudgetFilterE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -220,10 +202,6 @@ func TestEDHRECThemeAndBudgetFilterE2E(t *testing.T) {
 // TestEDHRECInvalidThemeE2E confirms an unrouted theme slug surfaces as an error, not a decode
 // panic on EDHREC's XML error body.
 func TestEDHRECInvalidThemeE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -237,10 +215,6 @@ func TestEDHRECInvalidThemeE2E(t *testing.T) {
 
 // TestEDHRECSetCardsE2E fetches a real set page and confirms the formatter never emits NaN.
 func TestEDHRECSetCardsE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 

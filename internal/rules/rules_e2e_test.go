@@ -1,3 +1,5 @@
+//go:build e2e
+
 package rules
 
 import (
@@ -6,10 +8,6 @@ import (
 )
 
 func TestComprehensiveRulesE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	rules, err := Get(t.Context())
 	if err != nil {
 		t.Fatalf("failed to fetch comprehensive rules: %v", err)

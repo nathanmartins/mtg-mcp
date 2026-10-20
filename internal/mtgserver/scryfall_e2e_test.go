@@ -1,3 +1,5 @@
+//go:build e2e
+
 package mtgserver
 
 import (
@@ -10,10 +12,6 @@ import (
 
 // TestScryfallSearchCardsE2E tests real Scryfall API card search.
 func TestScryfallSearchCardsE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -54,10 +52,6 @@ func TestScryfallSearchCardsE2E(t *testing.T) {
 
 // TestScryfallGetCardByNameE2E tests fetching a specific card by exact name.
 func TestScryfallGetCardByNameE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -90,10 +84,6 @@ func TestScryfallGetCardByNameE2E(t *testing.T) {
 
 // TestScryfallGetRandomCardE2E tests fetching a random card.
 func TestScryfallGetRandomCardE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -122,10 +112,6 @@ func TestScryfallGetRandomCardE2E(t *testing.T) {
 
 // TestScryfallCommanderLegalityE2E tests checking commander legality.
 func TestScryfallCommanderLegalityE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -182,10 +168,6 @@ func TestScryfallCommanderLegalityE2E(t *testing.T) {
 
 // TestScryfallCardRulingsE2E tests fetching card rulings.
 func TestScryfallCardRulingsE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -221,10 +203,6 @@ func TestScryfallCardRulingsE2E(t *testing.T) {
 
 // TestScryfallCardPricingE2E tests fetching card pricing information.
 func TestScryfallCardPricingE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 

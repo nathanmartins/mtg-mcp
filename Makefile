@@ -49,22 +49,22 @@ build:
 ## test-unit: Run unit tests only (fast)
 test-unit:
 	@echo "Running unit tests..."
-	$(GOTEST) -short -v ./...
+	$(GOTEST) -v ./...
 
-## test-e2e: Run end-to-end tests (requires API access)
+## test-e2e: Run end-to-end tests against the real APIs (opt-in via the e2e build tag)
 test-e2e:
 	@echo "Running E2E tests..."
-	$(GOTEST) -v -run E2E -timeout 5m ./...
+	$(GOTEST) -tags e2e -v -run E2E -timeout 5m ./...
 
-## test: Run all tests (unit + E2E)
+## test: Run all tests (unit + E2E, hits the real APIs)
 test:
 	@echo "Running all tests..."
-	$(GOTEST) -v -timeout 5m ./...
+	$(GOTEST) -tags e2e -v -timeout 5m ./...
 
 ## test-coverage: Run tests with coverage report
 test-coverage:
 	@echo "Running tests with coverage..."
-	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic -v ./...
+	$(GOTEST) -tags e2e -coverprofile=$(COVERAGE_FILE) -covermode=atomic -v ./...
 	@echo "Generating coverage report..."
 	$(GOCMD) tool cover -html=$(COVERAGE_FILE) -o coverage.html
 	@echo "Coverage report generated: coverage.html"
@@ -72,7 +72,7 @@ test-coverage:
 ## test-coverage-cli: Run tests with coverage (terminal output only)
 test-coverage-cli:
 	@echo "Running tests with coverage..."
-	$(GOTEST) -short -coverprofile=$(COVERAGE_FILE) -covermode=atomic -v ./...
+	$(GOTEST) -coverprofile=$(COVERAGE_FILE) -covermode=atomic -v ./...
 	@echo "Coverage summary:"
 	$(GOCMD) tool cover -func=$(COVERAGE_FILE)
 
@@ -84,7 +84,7 @@ update-coverage-badge:
 ## test-race: Run tests with race detector
 test-race:
 	@echo "Running tests with race detector..."
-	$(GOTEST) -short -race -v ./...
+	$(GOTEST) -race -v ./...
 
 ## bench: Run benchmarks
 bench:

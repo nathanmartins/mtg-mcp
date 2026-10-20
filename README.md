@@ -496,11 +496,11 @@ make ci
 The project includes comprehensive unit tests with good coverage:
 
 ```bash
-# Run all tests (unit tests only, skips E2E)
-go test -short -v ./...
+# Run unit tests (E2E tests are excluded unless the e2e build tag is set)
+go test -v ./...
 
 # Run tests with coverage
-go test -short -v -race -coverprofile=coverage.out -covermode=atomic ./...
+go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
 # View coverage report
 go tool cover -html=coverage.out
@@ -508,8 +508,9 @@ go tool cover -html=coverage.out
 
 ### End-to-End (E2E) Tests
 
-E2E tests validate the integration with real external APIs (Scryfall, EDHREC, Moxfield) and are **not run
-automatically** in CI. They test:
+E2E tests validate the integration with real external APIs (Scryfall, EDHREC, Moxfield, Archidekt, WotC rules).
+They sit behind the `e2e` build tag, so `go test ./...` never calls the real APIs. Run them now and then, not on
+every change, to avoid hammering the upstream services. They test:
 
 - Real API connectivity and response formats
 - Data structure validation with actual API responses
@@ -520,14 +521,11 @@ automatically** in CI. They test:
 **Running E2E Tests Locally:**
 
 ```bash
-# Run all tests including E2E (no -short flag)
-go test -v ./...
+# Run all tests including E2E
+go test -tags e2e -v -timeout 5m ./...
 
-# Run only E2E tests
-go test -v -run E2E ./...
-
-# Run with timeout for slower APIs
-go test -v -timeout 5m ./...
+# Run only E2E tests (same as make test-e2e)
+go test -tags e2e -v -run E2E -timeout 5m ./...
 ```
 
 **Running E2E Tests via GitHub Actions:**
@@ -542,7 +540,7 @@ E2E tests can be triggered manually through the GitHub Actions workflow:
 The workflow:
 
 - Runs unit tests first for quick validation
-- Runs all tests including E2E (without `-short` flag)
+- Runs all tests including E2E (with `-tags e2e`)
 - Generates coverage badge and auto-commits to README
 - Has a 15-minute timeout to accommodate API calls
 - Uploads test logs as artifacts for debugging
@@ -609,7 +607,7 @@ The project uses GitHub Actions with two main workflows:
 **CI Workflow** (runs on push/PR):
 
 - **Build**: Compiles the project for Linux/amd64
-- **Test**: Runs unit tests (with `-short` flag) with race detection
+- **Test**: Runs unit tests (E2E tests are excluded by the `e2e` build tag)
 - **Lint**: Runs golangci-lint for code quality checks
 - Fast feedback loop for development (skips E2E tests)
 

@@ -2,6 +2,11 @@
 
 version: "2"
 
+run:
+  # Lint the opt-in end-to-end tests too.
+  build-tags:
+    - e2e
+
 issues:
   # Maximum count of issues with the same text.
   # Set to 0 to disable.

@@ -1,3 +1,5 @@
+//go:build e2e
+
 package mtgserver
 
 import (
@@ -23,10 +25,6 @@ func newE2EImageServer(t *testing.T) *Server {
 
 // TestGetCardImageEnglishE2E fetches a plain English card image end-to-end.
 func TestGetCardImageEnglishE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -63,10 +61,6 @@ func TestGetCardImageEnglishE2E(t *testing.T) {
 
 // TestGetCardImageItalianE2E fetches an Italian printing (Sol Ring -> Anello Solare).
 func TestGetCardImageItalianE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -97,10 +91,6 @@ func TestGetCardImageItalianE2E(t *testing.T) {
 
 // TestGetCardImageFallbackE2E requests a language with no printing and expects English.
 func TestGetCardImageFallbackE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -121,10 +111,6 @@ func TestGetCardImageFallbackE2E(t *testing.T) {
 
 // TestGetCardImageDoubleFacedE2E fetches a transform card and expects two images.
 func TestGetCardImageDoubleFacedE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 

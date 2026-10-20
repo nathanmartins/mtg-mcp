@@ -1,3 +1,5 @@
+//go:build e2e
+
 package moxfield
 
 import (
@@ -9,10 +11,6 @@ import (
 
 // TestMoxfieldGetDeckE2E tests fetching a real deck from Moxfield.
 func TestMoxfieldGetDeckE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -72,10 +70,6 @@ func TestMoxfieldGetDeckE2E(t *testing.T) {
 
 // TestMoxfieldGetUserDecksE2E tests fetching user decks from Moxfield.
 func TestMoxfieldGetUserDecksE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -107,10 +101,6 @@ func TestMoxfieldGetUserDecksE2E(t *testing.T) {
 
 // TestMoxfieldSearchDecksE2E tests searching for decks on Moxfield.
 func TestMoxfieldSearchDecksE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
@@ -159,10 +149,6 @@ func TestMoxfieldSearchDecksE2E(t *testing.T) {
 
 // TestMoxfieldExtractPublicIDE2E tests extracting public IDs from URLs.
 func TestMoxfieldExtractPublicIDE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	testCases := []struct {
 		name     string
 		url      string
@@ -194,10 +180,6 @@ func TestMoxfieldExtractPublicIDE2E(t *testing.T) {
 
 // TestMoxfieldFormatDeckE2E tests formatting a real deck.
 func TestMoxfieldFormatDeckE2E(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping E2E test in short mode")
-	}
-
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 

@@ -36,13 +36,13 @@ jobs:
       - name: Run unit tests
         run: |
           echo "::group::Unit Tests"
-          go test -short -v ./...
+          go test -v ./...
           echo "::endgroup::"
 
       - name: Run all tests with coverage (unit + E2E)
         run: |
           echo "::group::Full Test Suite with Coverage"
-          go test -coverprofile=coverage.out -covermode=atomic -v -timeout 5m ./... 2>&1 | tee e2e-tests.log
+          go test -tags e2e -coverprofile=coverage.out -covermode=atomic -v -timeout 5m ./... 2>&1 | tee e2e-tests.log
           echo "::endgroup::"
         env:
           GO_TEST_TIMEOUT_SCALE: 2
