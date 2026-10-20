@@ -25,6 +25,7 @@ func commanderDeck(publicID string, commanders ...string) Deck {
 }
 
 func TestDeckHasCommander(t *testing.T) {
+	t.Parallel()
 	deck := commanderDeck("a", testAtraxa)
 	partners := commanderDeck("b", "Thrasios, Triton Hero", "Tymna the Weaver")
 
@@ -43,6 +44,7 @@ func TestDeckHasCommander(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			if got := deckHasCommander(&tt.deck, tt.commander); got != tt.want {
 				t.Errorf("deckHasCommander(%q) = %v, want %v", tt.commander, got, tt.want)
 			}
@@ -51,6 +53,7 @@ func TestDeckHasCommander(t *testing.T) {
 }
 
 func TestVerifyCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
+	t.Parallel()
 	decks := map[string]Deck{
 		testMatch1: commanderDeck(testMatch1, testAtraxa),
 		"no1":      commanderDeck("no1", "Winota, Joiner of Forces"),
@@ -89,6 +92,7 @@ func TestVerifyCommanderDecksKeepsOnlyRealCommanderDecks(t *testing.T) {
 }
 
 func TestVerifyCommanderDecksStopsAtLimit(t *testing.T) {
+	t.Parallel()
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -125,6 +129,7 @@ func TestVerifyCommanderDecksStopsAtLimit(t *testing.T) {
 }
 
 func TestVerifyCommanderDecksRespectsCheckBudget(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
 		_ = json.NewEncoder(w).Encode(commanderDeck(id, "Winota, Joiner of Forces"))
@@ -150,6 +155,7 @@ func TestVerifyCommanderDecksRespectsCheckBudget(t *testing.T) {
 }
 
 func TestVerifyCommanderDecksReportsUnreadableDecks(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := strings.TrimPrefix(r.URL.Path, "/decks/all/")
 		// "gone" stands for a deck made private between the search and its verification.
@@ -183,6 +189,7 @@ func TestVerifyCommanderDecksReportsUnreadableDecks(t *testing.T) {
 }
 
 func TestVerifyCommanderDecksStopsOnCancelledContext(t *testing.T) {
+	t.Parallel()
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -215,6 +222,7 @@ func TestVerifyCommanderDecksStopsOnCancelledContext(t *testing.T) {
 }
 
 func TestVerifyCommanderDecksStopsOnRateLimit(t *testing.T) {
+	t.Parallel()
 	var requests int
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests++
@@ -246,6 +254,7 @@ func TestVerifyCommanderDecksStopsOnRateLimit(t *testing.T) {
 }
 
 func TestIsRateLimited(t *testing.T) {
+	t.Parallel()
 	if !isRateLimited(&httpx.StatusError{Source: apiSource, StatusCode: http.StatusTooManyRequests}) {
 		t.Error("429 must be detected as a rate limit")
 	}

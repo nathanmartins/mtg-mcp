@@ -33,7 +33,10 @@ A keyword ability that causes damage dealt by an object to be lethal. See rule 7
 `
 
 func TestRulesHandlers(t *testing.T) {
+	t.Parallel(
 	// Pre-populate the cache so handlers do no network.
+	)
+
 	srv := &Server{rules: rules.NewSeededCache(rules.Parse(sampleRulesTxt))}
 
 	req := mcp.CallToolRequest{}

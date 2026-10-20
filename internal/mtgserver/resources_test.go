@@ -33,6 +33,7 @@ func resourceText(t *testing.T, contents []mcp.ResourceContents) string {
 }
 
 func TestHandleCommanderRules(t *testing.T) {
+	t.Parallel()
 	s := &Server{}
 
 	contents, err := s.handleCommanderRules(t.Context(), readResourceRequest(testRulesURI))
@@ -60,7 +61,9 @@ func TestHandleCommanderRules(t *testing.T) {
 }
 
 func TestHandleBannedListResource(t *testing.T) {
+	t.Parallel()
 	t.Run("success returns json", func(t *testing.T) {
+		t.Parallel()
 		body := `{"object":"list","total_cards":1,"has_more":false,"data":[` +
 			`{"id":"1","name":"Mana Crypt","type_line":"Artifact","mana_cost":"{0}",` +
 			`"legalities":{"commander":"banned"}}]}`
@@ -100,6 +103,7 @@ func TestHandleBannedListResource(t *testing.T) {
 	})
 
 	t.Run("fetch failure returns error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusInternalServerError)
 		})

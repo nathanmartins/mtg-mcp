@@ -99,7 +99,9 @@ const solRingJSON = `{
 }`
 
 func TestHandleSearchCards(t *testing.T) {
+	t.Parallel()
 	t.Run("missing query returns error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when query is missing")
 		})
@@ -114,6 +116,7 @@ func TestHandleSearchCards(t *testing.T) {
 	})
 
 	t.Run("successful search renders cards", func(t *testing.T) {
+		t.Parallel()
 		body := `{"object":"list","total_cards":1,"has_more":false,"data":[` + solRingJSON + `]}`
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if !strings.HasPrefix(r.URL.Path, "/cards/search") {
@@ -138,6 +141,7 @@ func TestHandleSearchCards(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
+		t.Parallel()
 		body := `{"object":"list","total_cards":0,"has_more":false,"data":[]}`
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, body)
@@ -153,6 +157,7 @@ func TestHandleSearchCards(t *testing.T) {
 	})
 
 	t.Run("limit is clamped and applied", func(t *testing.T) {
+		t.Parallel()
 		var sb strings.Builder
 		sb.WriteString(`{"object":"list","total_cards":3,"has_more":false,"data":[`)
 		sb.WriteString(solRingJSON + "," + solRingJSON + "," + solRingJSON)
@@ -179,6 +184,7 @@ func TestHandleSearchCards(t *testing.T) {
 	})
 
 	t.Run("search failure returns error result", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusInternalServerError)
 		})
@@ -194,7 +200,9 @@ func TestHandleSearchCards(t *testing.T) {
 }
 
 func TestHandleGetCardDetails(t *testing.T) {
+	t.Parallel()
 	t.Run("missing name", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {})
 		res, _ := s.handleGetCardDetails(t.Context(), toolRequest(nil))
 		if !res.IsError {
@@ -203,6 +211,7 @@ func TestHandleGetCardDetails(t *testing.T) {
 	})
 
 	t.Run("full card details", func(t *testing.T) {
+		t.Parallel()
 		power, toughness, loyalty, artist := "2", "3", "4", "Some Artist"
 		card := `{
 			"id":"id1","name":"Test Walker","mana_cost":"{2}{G}","type_line":"Legendary Planeswalker",
@@ -234,6 +243,7 @@ func TestHandleGetCardDetails(t *testing.T) {
 	})
 
 	t.Run("card not found", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
@@ -245,6 +255,7 @@ func TestHandleGetCardDetails(t *testing.T) {
 }
 
 func TestHandleCheckLegality(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name      string
 		legality  string
@@ -256,6 +267,7 @@ func TestHandleCheckLegality(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			card := `{"id":"id","name":"Card X","type_line":"Creature","legalities":{"commander":"` +
 				tc.legality + `","standard":"legal","pioneer":"legal","modern":"legal","legacy":"legal",` +
 				`"vintage":"legal","pauper":"legal"}}`
@@ -274,6 +286,7 @@ func TestHandleCheckLegality(t *testing.T) {
 	}
 
 	t.Run("missing name", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {})
 		res, _ := s.handleCheckLegality(t.Context(), toolRequest(nil))
 		if !res.IsError {
@@ -282,6 +295,7 @@ func TestHandleCheckLegality(t *testing.T) {
 	})
 
 	t.Run("card not found", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
@@ -293,9 +307,11 @@ func TestHandleCheckLegality(t *testing.T) {
 }
 
 func TestHandleGetRulings(t *testing.T) {
+	t.Parallel()
 	cardJSON := `{"id":"ruling-card","name":"Doubling Season","legalities":{"commander":"legal"}}`
 
 	t.Run("missing name", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {})
 		res, _ := s.handleGetRulings(t.Context(), toolRequest(nil))
 		if !res.IsError {
@@ -304,6 +320,7 @@ func TestHandleGetRulings(t *testing.T) {
 	})
 
 	t.Run("rulings present", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/cards/named"):
@@ -329,6 +346,7 @@ func TestHandleGetRulings(t *testing.T) {
 	})
 
 	t.Run("no rulings", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/named") {
 				jsonResponse(w, cardJSON)
@@ -343,6 +361,7 @@ func TestHandleGetRulings(t *testing.T) {
 	})
 
 	t.Run("card not found", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
@@ -353,6 +372,7 @@ func TestHandleGetRulings(t *testing.T) {
 	})
 
 	t.Run("rulings fetch fails", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/named") {
 				jsonResponse(w, cardJSON)
@@ -368,7 +388,9 @@ func TestHandleGetRulings(t *testing.T) {
 }
 
 func TestHandleGetPrice(t *testing.T) {
+	t.Parallel()
 	t.Run("missing name", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {})
 		res, _ := s.handleGetPrice(t.Context(), toolRequest(nil))
 		if !res.IsError {
@@ -377,6 +399,7 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("price by name with all currencies", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if !strings.HasPrefix(r.URL.Path, "/cards/named") {
 				t.Errorf("unexpected path %q", r.URL.Path)
@@ -399,6 +422,7 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("price by set uses search", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if !strings.HasPrefix(r.URL.Path, "/cards/search") {
 				t.Errorf("expected search path, got %q", r.URL.Path)
@@ -415,6 +439,7 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("card not found in set", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, `{"object":"list","total_cards":0,"has_more":false,"data":[]}`)
 		})
@@ -428,6 +453,7 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("no pricing data", func(t *testing.T) {
+		t.Parallel()
 		card := `{"id":"id","name":"No Price","set":"x","set_name":"X","collector_number":"1",` +
 			`"legalities":{"commander":"legal"},"prices":{}}`
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
@@ -440,6 +466,7 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("card not found by name", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
@@ -450,6 +477,7 @@ func TestHandleGetPrice(t *testing.T) {
 	})
 
 	t.Run("falls back when rate fetch fails", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingJSON)
 		})
@@ -471,7 +499,9 @@ func TestHandleGetPrice(t *testing.T) {
 }
 
 func TestHandleGetBannedList(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		body := `{"object":"list","total_cards":2,"has_more":false,"data":[` +
 			`{"id":"1","name":"Mana Crypt","legalities":{"commander":"banned"}},` +
 			`{"id":"2","name":"Channel","legalities":{"commander":"banned"}}]}`
@@ -491,6 +521,7 @@ func TestHandleGetBannedList(t *testing.T) {
 	})
 
 	t.Run("fetch fails", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusInternalServerError)
 		})
@@ -502,7 +533,9 @@ func TestHandleGetBannedList(t *testing.T) {
 }
 
 func TestGetExchangeRate(t *testing.T) {
+	t.Parallel()
 	t.Run("success decodes BRL", func(t *testing.T) {
+		t.Parallel()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, `{"amount":1,"base":"USD","rates":{"BRL":5.25}}`)
 		}))
@@ -522,6 +555,7 @@ func TestGetExchangeRate(t *testing.T) {
 	})
 
 	t.Run("getter error propagates", func(t *testing.T) {
+		t.Parallel()
 		get := func(context.Context, string) (*http.Response, error) {
 			return nil, io.ErrUnexpectedEOF
 		}
@@ -531,6 +565,7 @@ func TestGetExchangeRate(t *testing.T) {
 	})
 
 	t.Run("decode error", func(t *testing.T) {
+		t.Parallel()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, `not json`)
 		}))

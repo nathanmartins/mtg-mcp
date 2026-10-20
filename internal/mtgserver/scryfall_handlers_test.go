@@ -5,6 +5,7 @@ import (
 )
 
 func TestParseCardLine(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		line     string
@@ -57,6 +58,7 @@ func TestParseCardLine(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			gotName, gotQty := parseCardLine(tt.line)
 			if gotName != tt.wantName {
 				t.Errorf("parseCardLine(%q) name = %q, want %q", tt.line, gotName, tt.wantName)
@@ -69,6 +71,7 @@ func TestParseCardLine(t *testing.T) {
 }
 
 func TestParseTextDecklist(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		decklist  string
@@ -161,6 +164,7 @@ func TestParseTextDecklist(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := parseTextDecklist(tt.decklist)
 			if len(got) != len(tt.wantCards) {
 				t.Errorf("parseTextDecklist() got %d cards, want %d cards\n  got:  %v\n  want: %v",
@@ -177,6 +181,7 @@ func TestParseTextDecklist(t *testing.T) {
 }
 
 func TestParseDecklistString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name      string
 		decklist  string
@@ -196,6 +201,7 @@ func TestParseDecklistString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := parseDecklistString(tt.decklist)
 			if len(got) != len(tt.wantCards) {
 				t.Errorf("parseDecklistString() got %d cards, want %d cards\n  got:  %v\n  want: %v",
@@ -212,6 +218,7 @@ func TestParseDecklistString(t *testing.T) {
 }
 
 func TestConvertToBRL(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		price  string
 		rate   float64
@@ -229,6 +236,7 @@ func TestConvertToBRL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.price, func(t *testing.T) {
+			t.Parallel()
 			got, ok := convertToBRL(tt.price, tt.rate)
 			if got != tt.want || ok != tt.wantOK {
 				t.Errorf(

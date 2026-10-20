@@ -6,8 +6,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -56,10 +58,10 @@ func archidektPageSlice(total, apiPage int) UserDecksResponse {
 }
 
 func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
-	var requestedPages []string
-	fixtureServer := func(total int) *httptest.Server {
+	t.Parallel()
+	fixtureServer := func(total int, log *pageLog) *httptest.Server {
 		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			requestedPages = append(requestedPages, r.URL.Query().Get("page"))
+			log.add(r.URL.Query().Get("page"))
 			apiPage := 1
 			if raw := r.URL.Query().Get("page"); raw != "" {
 				parsed, err := strconv.Atoi(raw)
@@ -71,11 +73,12 @@ func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 			_ = json.NewEncoder(w).Encode(archidektPageSlice(total, apiPage))
 		}))
 	}
-	// search runs one logical-page search against a fixture holding total decks.
-	search := func(t *testing.T, total, page, limit int) *SearchResult {
+	// search runs one logical-page search against its own fixture holding total decks and
+	// returns the upstream pages it requested.
+	search := func(t *testing.T, total, page, limit int) (*SearchResult, []string) {
 		t.Helper()
-		requestedPages = nil
-		server := fixtureServer(total)
+		var log pageLog
+		server := fixtureServer(total, &log)
 		t.Cleanup(server.Close)
 
 		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
@@ -84,11 +87,12 @@ func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		return got
+		return got, log.list()
 	}
 
 	t.Run("window inside a short page", func(t *testing.T) {
-		got := search(t, 25, 2, 10)
+		t.Parallel()
+		got, requestedPages := search(t, 25, 2, 10)
 		if len(got.Decks) != 10 {
 			t.Fatalf("returned %d decks, want 10", len(got.Decks))
 		}
@@ -101,7 +105,8 @@ func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 	})
 
 	t.Run("page past the end returns no decks", func(t *testing.T) {
-		got := search(t, 25, 9, 10)
+		t.Parallel()
+		got, requestedPages := search(t, 25, 9, 10)
 		if len(got.Decks) != 0 {
 			t.Errorf("returned %d decks, want 0", len(got.Decks))
 		}
@@ -114,7 +119,8 @@ func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 	})
 
 	t.Run("straddling window stops at a short first page", func(t *testing.T) {
-		got := search(t, 55, 2, 50)
+		t.Parallel()
+		got, requestedPages := search(t, 55, 2, 50)
 		if len(got.Decks) != 5 {
 			t.Fatalf("returned %d decks, want 5", len(got.Decks))
 		}
@@ -129,6 +135,7 @@ func TestSearchDecksHandlesShortUpstreamPages(t *testing.T) {
 }
 
 func TestArchidektPageWindow(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name                                  string
 		page, limit                           int
@@ -144,6 +151,7 @@ func TestArchidektPageWindow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			gotPage, gotOffset, gotPages := archidektPageWindow(tt.page, tt.limit)
 			if gotPage != tt.wantAPIPage || gotOffset != tt.wantOffset || gotPages != tt.wantAPIPages {
 				t.Errorf("archidektPageWindow(%d, %d) = (%d, %d, %d), want (%d, %d, %d)",
@@ -155,24 +163,32 @@ func TestArchidektPageWindow(t *testing.T) {
 }
 
 func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
-	var requestedPages []string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		requestedPages = append(requestedPages, q.Get("page"))
-		if q.Get("pageSize") != "" || q.Get("limit") != "" {
-			t.Errorf("must not send an upstream page-size parameter, got %q", r.URL.RawQuery)
-		}
-		apiPage := 1
-		if q.Get("page") == "2" {
-			apiPage = 2
-		}
-		_ = json.NewEncoder(w).Encode(syntheticArchidektPage(apiPage, 500))
-	}))
-	defer server.Close()
+	t.Parallel()
+	// newClient returns a client for a fresh 500-deck fixture and the log of upstream pages it
+	// requests, so parallel subtests never share request counts.
+	newClient := func(t *testing.T) (*Client, *pageLog) {
+		t.Helper()
+		log := &pageLog{}
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			log.add(q.Get("page"))
+			if q.Get("pageSize") != "" || q.Get("limit") != "" {
+				t.Errorf("must not send an upstream page-size parameter, got %q", r.URL.RawQuery)
+			}
+			apiPage := 1
+			if q.Get("page") == "2" {
+				apiPage = 2
+			}
+			_ = json.NewEncoder(w).Encode(syntheticArchidektPage(apiPage, 500))
+		}))
+		t.Cleanup(server.Close)
+		return &Client{BaseURL: server.URL}, log
+	}
 
 	t.Run("limit is exact", func(t *testing.T) {
-		requestedPages = nil
-		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
+		t.Parallel()
+		client, log := newClient(t)
+		got, err := client.SearchDecks(t.Context(), SearchParams{
 			Commander: testAtraxa, Sort: archidektSortViews, Page: 1, Limit: 10,
 		})
 		if err != nil {
@@ -184,14 +200,15 @@ func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 		if got.Decks[0].Name != "deck-1" || got.Decks[9].Name != "deck-10" {
 			t.Errorf("wrong window: first=%q last=%q", got.Decks[0].Name, got.Decks[9].Name)
 		}
-		if len(requestedPages) != 1 {
-			t.Errorf("expected 1 upstream request, got %d", len(requestedPages))
+		if len(log.list()) != 1 {
+			t.Errorf("expected 1 upstream request, got %d", len(log.list()))
 		}
 	})
 
 	t.Run("logical page 2 slices inside the same api page", func(t *testing.T) {
-		requestedPages = nil
-		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
+		t.Parallel()
+		client, log := newClient(t)
+		got, err := client.SearchDecks(t.Context(), SearchParams{
 			Commander: testAtraxa, Sort: archidektSortViews, Page: 2, Limit: 10,
 		})
 		if err != nil {
@@ -200,14 +217,15 @@ func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 		if got.Decks[0].Name != "deck-11" {
 			t.Errorf("first deck = %q, want deck-11", got.Decks[0].Name)
 		}
-		if len(requestedPages) != 1 {
-			t.Errorf("expected 1 upstream request, got %d", len(requestedPages))
+		if len(log.list()) != 1 {
+			t.Errorf("expected 1 upstream request, got %d", len(log.list()))
 		}
 	})
 
 	t.Run("straddling window fetches two api pages", func(t *testing.T) {
-		requestedPages = nil
-		got, err := (&Client{BaseURL: server.URL}).SearchDecks(t.Context(), SearchParams{
+		t.Parallel()
+		client, log := newClient(t)
+		got, err := client.SearchDecks(t.Context(), SearchParams{
 			Commander: testAtraxa, Sort: archidektSortViews, Page: 2, Limit: 50,
 		})
 		if err != nil {
@@ -219,13 +237,14 @@ func TestSearchDecksHonoursLimitAndPage(t *testing.T) {
 		if got.Decks[0].Name != "deck-51" || got.Decks[49].Name != "deck-100" {
 			t.Errorf("wrong window: first=%q last=%q", got.Decks[0].Name, got.Decks[49].Name)
 		}
-		if len(requestedPages) != 2 {
-			t.Errorf("expected 2 upstream requests, got %d (%v)", len(requestedPages), requestedPages)
+		if len(log.list()) != 2 {
+			t.Errorf("expected 2 upstream requests, got %d (%v)", len(log.list()), log.list())
 		}
 	})
 }
 
 func TestOrderBy(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		sort      string
 		ascending bool
@@ -244,6 +263,7 @@ func TestOrderBy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.sort+strconv.FormatBool(tt.ascending), func(t *testing.T) {
+			t.Parallel()
 			got, err := OrderBy(tt.sort, tt.ascending)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("OrderBy(%q, %v) error = %v, wantErr %v", tt.sort, tt.ascending, err, tt.wantErr)
@@ -256,6 +276,7 @@ func TestOrderBy(t *testing.T) {
 }
 
 func TestSearchDecksSendsOrderByAndBracket(t *testing.T) {
+	t.Parallel()
 	var gotQuery string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.RawQuery
@@ -283,6 +304,7 @@ func TestSearchDecksSendsOrderByAndBracket(t *testing.T) {
 }
 
 func TestSearchDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Error("upstream must not be called for an invalid sort")
 	}))
@@ -297,6 +319,7 @@ func TestSearchDecksRejectsUnknownSortWithoutCallingAPI(t *testing.T) {
 }
 
 func TestInterpretArchidektCount(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name       string
 		count      int
@@ -312,6 +335,7 @@ func TestInterpretArchidektCount(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			total, capped, known := interpretArchidektCount(tt.count)
 			if total != tt.wantTotal || capped != tt.wantCapped || known != tt.wantKnown {
 				t.Errorf("interpretArchidektCount(%d) = (%d, %v, %v), want (%d, %v, %v)",
@@ -322,6 +346,7 @@ func TestInterpretArchidektCount(t *testing.T) {
 }
 
 func TestFormatSearchResults(t *testing.T) {
+	t.Parallel()
 	bracket := 4
 	result := &SearchResult{
 		Decks: []DeckSummary{{
@@ -332,6 +357,7 @@ func TestFormatSearchResults(t *testing.T) {
 	}
 
 	t.Run("reports the window and exact total", func(t *testing.T) {
+		t.Parallel()
 		got := FormatSearchResults(SearchParams{
 			Commander: testAtraxaShort, Bracket: 4, Sort: archidektSortViews, Page: 3, Limit: 10,
 		}, result)
@@ -346,6 +372,7 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("marks a capped total", func(t *testing.T) {
+		t.Parallel()
 		capped := &SearchResult{
 			Decks:       result.Decks,
 			Page:        1,
@@ -364,6 +391,7 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("marks an unknown total", func(t *testing.T) {
+		t.Parallel()
 		unknown := &SearchResult{Decks: result.Decks, Page: 1, Limit: 10}
 		got := FormatSearchResults(
 			SearchParams{Commander: testAtraxaShort, Sort: archidektSortViews, Page: 1, Limit: 10},
@@ -375,6 +403,7 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("no next-page hint once the known total is exhausted", func(t *testing.T) {
+		t.Parallel()
 		full := &SearchResult{
 			Decks: archidektPageSlice(20, 1).Results[10:20],
 			Page:  2, Limit: 10, Total: 20, TotalKnown: true,
@@ -388,6 +417,7 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("next-page hint when the known total is larger", func(t *testing.T) {
+		t.Parallel()
 		more := &SearchResult{
 			Decks: archidektPageSlice(25, 1).Results[10:20],
 			Page:  2, Limit: 10, Total: 25, TotalKnown: true,
@@ -401,6 +431,7 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("next-page hint when the total is unknown", func(t *testing.T) {
+		t.Parallel()
 		unknownTotal := &SearchResult{
 			Decks: archidektPageSlice(10, 1).Results,
 			Page:  1, Limit: 10,
@@ -414,7 +445,10 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("next-page hint survives a capped total", func(t *testing.T) {
+		t.Parallel(
 		// A capped total is a lower bound, so page*limit reaching it proves nothing.
+		)
+
 		capped := &SearchResult{
 			Decks:       archidektPageSlice(archidektCountCap, 1).Results[:10],
 			Page:        100,
@@ -443,6 +477,7 @@ func TestFormatSearchResults(t *testing.T) {
 	})
 
 	t.Run("empty page", func(t *testing.T) {
+		t.Parallel()
 		empty := &SearchResult{Page: 9, Limit: 10, TotalKnown: true}
 		got := FormatSearchResults(
 			SearchParams{Commander: "Nobody", Sort: archidektSortViews, Page: 9, Limit: 10},
@@ -455,6 +490,7 @@ func TestFormatSearchResults(t *testing.T) {
 }
 
 func TestNormalizeColors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		input   string
@@ -474,6 +510,7 @@ func TestNormalizeColors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := NormalizeColors(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("NormalizeColors(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
@@ -486,6 +523,7 @@ func TestNormalizeColors(t *testing.T) {
 }
 
 func TestSearchDecksSendsFilters(t *testing.T) {
+	t.Parallel()
 	var gotQuery url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -519,6 +557,7 @@ func TestSearchDecksSendsFilters(t *testing.T) {
 }
 
 func TestSearchDecksOmitsUnsetFilters(t *testing.T) {
+	t.Parallel()
 	var gotQuery url.Values
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotQuery = r.URL.Query()
@@ -544,6 +583,7 @@ func TestSearchDecksOmitsUnsetFilters(t *testing.T) {
 }
 
 func TestSearchDecksRejectsInvalidColors(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 		t.Error("upstream must not be called for invalid colors")
 	}))
@@ -558,6 +598,7 @@ func TestSearchDecksRejectsInvalidColors(t *testing.T) {
 }
 
 func TestFormatSearchResultsShowsActiveFilters(t *testing.T) {
+	t.Parallel()
 	result := &SearchResult{
 		Decks:      []DeckSummary{{ID: 7, Name: "Budget Atraxa", Owner: Owner{Username: testPlayer}}},
 		Page:       1,
@@ -575,4 +616,23 @@ func TestFormatSearchResultsShowsActiveFilters(t *testing.T) {
 			t.Errorf("output missing %q\n%s", want, got)
 		}
 	}
+}
+
+// pageLog records the upstream page parameter of each request a fixture server receives. The
+// handler runs on the server's goroutine, so access is guarded.
+type pageLog struct {
+	mu    sync.Mutex
+	pages []string
+}
+
+func (l *pageLog) add(page string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.pages = append(l.pages, page)
+}
+
+func (l *pageLog) list() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return slices.Clone(l.pages)
 }

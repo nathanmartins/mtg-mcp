@@ -7,6 +7,7 @@ import (
 )
 
 func TestCardGroupsAdd(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		typeLine string
 		group    func(*CardGroups) []string
@@ -35,6 +36,7 @@ func TestCardGroupsAdd(t *testing.T) {
 }
 
 func TestCardGroupsTotalCountsQuantities(t *testing.T) {
+	t.Parallel()
 	var g CardGroups
 	g.Add("Basic Land — Island", "Island", 30)
 	g.Add("Artifact", "Sol Ring", 1)
@@ -44,6 +46,7 @@ func TestCardGroupsTotalCountsQuantities(t *testing.T) {
 }
 
 func TestCardGroupsRender(t *testing.T) {
+	t.Parallel()
 	var g CardGroups
 	g.Add("Basic Land — Island", "Island", 9)
 	g.Add("Creature — Bird", "Birds of Paradise", 1)
@@ -64,6 +67,7 @@ func TestCardGroupsRender(t *testing.T) {
 }
 
 func TestCardGroupsRenderEmpty(t *testing.T) {
+	t.Parallel()
 	var g CardGroups
 	var output strings.Builder
 	g.Render(&output)

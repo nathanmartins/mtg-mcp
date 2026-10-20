@@ -123,6 +123,7 @@ func validateDeck(t *testing.T, s *Server, commander, decklist string) string {
 }
 
 func TestHandleValidateDeckArguments(t *testing.T) {
+	t.Parallel()
 	fixture := &deckCheckFixture{commander: atraxa()}
 	s := fixture.server(t)
 
@@ -147,6 +148,7 @@ func TestHandleValidateDeckArguments(t *testing.T) {
 }
 
 func TestHandleValidateDeckBatchesLookupsAndPassesALegalDeck(t *testing.T) {
+	t.Parallel()
 	fixture := &deckCheckFixture{commander: atraxa(), cards: map[string]*scryfallCardJSON{
 		"forest": fixtureCard("Forest", "Basic Land — Forest", "({T}: Add {G}.)", nil, testLegal),
 	}}
@@ -173,6 +175,7 @@ func TestHandleValidateDeckBatchesLookupsAndPassesALegalDeck(t *testing.T) {
 }
 
 func TestHandleValidateDeckReportsEveryProblem(t *testing.T) {
+	t.Parallel()
 	fixture := &deckCheckFixture{
 		commander: atraxa(),
 		cards: map[string]*scryfallCardJSON{
@@ -222,6 +225,7 @@ func TestHandleValidateDeckReportsEveryProblem(t *testing.T) {
 }
 
 func TestHandleValidateDeckMatchesDoubleFacedCardsByFrontFace(t *testing.T) {
+	t.Parallel()
 	delver := fixtureCard("Delver of Secrets // Insectile Aberration", "Creature — Human Wizard // Creature — Insect",
 		"", []string{"U"}, testLegal)
 	delver.CardFaces = []scryfallFaceJSON{
@@ -238,6 +242,7 @@ func TestHandleValidateDeckMatchesDoubleFacedCardsByFrontFace(t *testing.T) {
 }
 
 func TestHandleValidateDeckRejectsIneligibleCommander(t *testing.T) {
+	t.Parallel()
 	fixture := &deckCheckFixture{commander: fixtureCard("Urza's Ruinous Blast", "Legendary Sorcery",
 		"(You may cast a legendary sorcery only if you control a legendary creature or planeswalker.)",
 		[]string{"W"}, testLegal)}
@@ -250,6 +255,7 @@ func TestHandleValidateDeckRejectsIneligibleCommander(t *testing.T) {
 }
 
 func TestHandleValidateDeckStillChecksSingletonWhenLookupFails(t *testing.T) {
+	t.Parallel()
 	fixture := &deckCheckFixture{commander: atraxa(), collectionStatus: http.StatusInternalServerError}
 
 	text := validateDeck(t, fixture.server(t), testAtraxa, "2 Sol Ring\n4 Snow-Covered Forest")
@@ -265,6 +271,7 @@ func TestHandleValidateDeckStillChecksSingletonWhenLookupFails(t *testing.T) {
 }
 
 func TestCommanderEligible(t *testing.T) {
+	t.Parallel()
 	power := "4"
 	tests := []struct {
 		name string
@@ -301,6 +308,7 @@ func TestCommanderEligible(t *testing.T) {
 }
 
 func TestAllowedCopies(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name string
 		card scryfall.Card

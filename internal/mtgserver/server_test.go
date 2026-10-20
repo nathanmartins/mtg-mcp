@@ -12,6 +12,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
 	s, err := New()
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -23,6 +24,7 @@ func TestNew(t *testing.T) {
 
 // TestNewWiresProductionClients checks New uses the production API clients.
 func TestNewWiresProductionClients(t *testing.T) {
+	t.Parallel()
 	s, err := New()
 	if err != nil {
 		t.Fatalf("New() error = %v", err)
@@ -44,6 +46,7 @@ func TestNewWiresProductionClients(t *testing.T) {
 // TestRegisterToolsAndResources pins the exact tool and resource surface Register exposes,
 // so adding, renaming or dropping one is a deliberate change to this list.
 func TestRegisterToolsAndResources(t *testing.T) {
+	t.Parallel()
 	s, err := New()
 	if err != nil {
 		t.Fatalf("New() error = %v", err)

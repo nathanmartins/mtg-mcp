@@ -24,7 +24,9 @@ func serve(t *testing.T, status int, body string) string {
 }
 
 func TestGetJSON(t *testing.T) {
+	t.Parallel()
 	t.Run("decodes a 200 body", func(t *testing.T) {
+		t.Parallel()
 		var got sample
 		err := GetJSON(
 			t.Context(),
@@ -42,6 +44,7 @@ func TestGetJSON(t *testing.T) {
 	})
 
 	t.Run("reports a non-200 status without decoding", func(t *testing.T) {
+		t.Parallel()
 		var got sample
 		err := GetJSON(t.Context(), APIClient(), serve(t, http.StatusTooManyRequests, `<html>slow down</html>`),
 			"test API", &got)
@@ -54,6 +57,7 @@ func TestGetJSON(t *testing.T) {
 	})
 
 	t.Run("names the source in decode errors", func(t *testing.T) {
+		t.Parallel()
 		var got sample
 		err := GetJSON(t.Context(), APIClient(), serve(t, http.StatusOK, `{"name":`), "test API", &got)
 		if err == nil || !strings.Contains(err.Error(), "failed to decode test API response") {
@@ -64,6 +68,7 @@ func TestGetJSON(t *testing.T) {
 	// encoding/json/v2 matches names case-sensitively, unlike v1: a differently cased key is
 	// ignored rather than filling the field.
 	t.Run("matches field names case-sensitively", func(t *testing.T) {
+		t.Parallel()
 		var got sample
 		err := GetJSON(t.Context(), APIClient(), serve(t, http.StatusOK, `{"Name":"Sol Ring"}`), "test API", &got)
 		if err != nil {
@@ -76,6 +81,7 @@ func TestGetJSON(t *testing.T) {
 
 	// v2 also rejects duplicate object names, which v1 silently resolves to the last one.
 	t.Run("rejects duplicate names", func(t *testing.T) {
+		t.Parallel()
 		var got sample
 		err := GetJSON(t.Context(), APIClient(), serve(t, http.StatusOK, `{"name":"a","name":"b"}`), "test API", &got)
 		if err == nil {
@@ -85,6 +91,7 @@ func TestGetJSON(t *testing.T) {
 }
 
 func TestHasStatus(t *testing.T) {
+	t.Parallel()
 	err := &StatusError{Source: "x", StatusCode: http.StatusNotFound}
 	if !HasStatus(err, http.StatusNotFound) {
 		t.Error("HasStatus() should match the error's own status")
@@ -98,6 +105,7 @@ func TestHasStatus(t *testing.T) {
 }
 
 func TestAPIClientIsShared(t *testing.T) {
+	t.Parallel()
 	first, second := APIClient(), APIClient()
 	if first != second {
 		t.Error("APIClient() should return one shared client so connections are reused")

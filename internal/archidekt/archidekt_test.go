@@ -9,6 +9,7 @@ import (
 )
 
 func TestExtractDeckID(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		input   string
@@ -54,6 +55,7 @@ func TestExtractDeckID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := ExtractDeckID(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ExtractDeckID() error = %v, wantErr %v", err, tt.wantErr)
@@ -67,6 +69,7 @@ func TestExtractDeckID(t *testing.T) {
 }
 
 func TestFormatName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		code int
 		want string
@@ -79,6 +82,7 @@ func TestFormatName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.want, func(t *testing.T) {
+			t.Parallel()
 			got := FormatName(tt.code)
 			if got != tt.want {
 				t.Errorf("FormatName(%d) = %v, want %v", tt.code, got, tt.want)
@@ -88,6 +92,7 @@ func TestFormatName(t *testing.T) {
 }
 
 func TestGetDeck(t *testing.T) {
+	t.Parallel()
 	mockDeck := Deck{
 		ID:         12345,
 		Name:       "Test Commander Deck",
@@ -158,6 +163,7 @@ func TestGetDeck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if ua := r.Header.Get("User-Agent"); ua != "MTG-Commander-MCP-Server/1.0" {
 					t.Errorf("User-Agent = %v, want MTG-Commander-MCP-Server/1.0", ua)
@@ -190,6 +196,7 @@ func TestGetDeck(t *testing.T) {
 }
 
 func TestGetUserDecks(t *testing.T) {
+	t.Parallel()
 	mockResponse := UserDecksResponse{
 		Count: 2,
 		Results: []DeckSummary{
@@ -244,6 +251,7 @@ func TestGetUserDecks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Verify the owner filter Archidekt honors; "owner" is ignored upstream
 				q := r.URL.Query()
@@ -285,6 +293,7 @@ func TestGetUserDecks(t *testing.T) {
 }
 
 func TestFormatDeck(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         12345,
 		Name:       "Hylda Control",
@@ -359,6 +368,7 @@ func TestFormatDeck(t *testing.T) {
 }
 
 func TestFormatLands(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         12345,
 		Name:       "Hearthhull Lands",
@@ -413,6 +423,7 @@ func TestFormatLands(t *testing.T) {
 }
 
 func TestFormatDeckMaybeboardSeparated(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         555,
 		Name:       "Maybe Deck",
@@ -471,6 +482,7 @@ func TestFormatDeckMaybeboardSeparated(t *testing.T) {
 }
 
 func TestFormatLandsExcludesMaybeboard(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         556,
 		Name:       "Maybe Lands",
@@ -508,6 +520,7 @@ func TestFormatLandsExcludesMaybeboard(t *testing.T) {
 }
 
 func TestFormatDeckSideboardSeparated(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         557,
 		Name:       "Side Deck",
@@ -581,6 +594,7 @@ func TestFormatDeckSideboardSeparated(t *testing.T) {
 }
 
 func TestFormatLandsExcludesSideboard(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         558,
 		Name:       "Side Lands",
@@ -619,6 +633,7 @@ func TestFormatLandsExcludesSideboard(t *testing.T) {
 }
 
 func TestFormatZonesMatchMoxfieldStyle(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         559,
 		Name:       "Zones Deck",
@@ -682,6 +697,7 @@ func TestFormatZonesMatchMoxfieldStyle(t *testing.T) {
 }
 
 func TestGroupDeckCards(t *testing.T) {
+	t.Parallel()
 	premier := map[string]bool{archidektCommanderCategory: true}
 	excluded := map[string]bool{archidektMaybeboardZone: true}
 
@@ -738,6 +754,7 @@ func TestGroupDeckCards(t *testing.T) {
 }
 
 func TestFormatDeckWithBracket(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		ID:         99,
 		Name:       "Bracket Deck",
@@ -755,6 +772,7 @@ func TestFormatDeckWithBracket(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	if got := NewClient().BaseURL; got != DefaultBaseURL {
 		t.Errorf("NewClient().BaseURL = %q, want %q", got, DefaultBaseURL)
 	}

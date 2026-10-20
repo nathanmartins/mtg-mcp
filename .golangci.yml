@@ -96,6 +96,7 @@ linters:
     - nolintlint # reports ill-formed or insufficient nolint directives
     - nonamedreturns # reports all named returns
     - nosprintfhostport # checks for misuse of Sprintf to construct a host with port in a URL
+    - paralleltest # checks that tests and subtests call t.Parallel()
     - perfsprint # checks that fmt.Sprintf can be replaced with a faster alternative
     - predeclared # finds code that shadows one of Go's predeclared identifiers
     - promlinter # checks Prometheus metrics naming via promlint
@@ -163,7 +164,6 @@ linters:
     # [too strict and mostly code is not more readable]
     # - nlreturn # checks for a new line before return and branch statements to increase code clarity
     # [too many false positives]
-    # - paralleltest # detects missing usage of t.Parallel() method in your Go test
     # - tagliatelle # checks the struct tags
     # [too strict and mostly code is not more readable]
     # - wsl # whitespace linter forces you to use empty lines
@@ -453,3 +453,15 @@ linters:
       - path: cmd
         linters:
           - gochecknoglobals
+
+      # E2E tests stay serial on purpose: running them in parallel would send concurrent
+      # bursts to the live Scryfall, Moxfield, Archidekt and EDHREC APIs.
+      - path: 'e2e_test\.go'
+        linters:
+          - paralleltest
+
+      # The logging tests reconfigure the process-wide logger and zerolog's global level, so
+      # they cannot run alongside each other.
+      - path: 'internal/logging/'
+        linters:
+          - paralleltest

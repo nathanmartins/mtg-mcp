@@ -8,10 +8,12 @@ import (
 // which return before any network call and are therefore hermetic.
 
 func TestMoxfieldHandlerValidation(t *testing.T) {
+	t.Parallel()
 	s := &Server{}
 	ctx := t.Context()
 
 	t.Run("get deck missing id", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetMoxfieldDeck(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing deck_id")
@@ -19,6 +21,7 @@ func TestMoxfieldHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("user decks missing username", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetMoxfieldUserDecks(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing username")
@@ -26,6 +29,7 @@ func TestMoxfieldHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("search missing commander", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleSearchMoxfieldDecks(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing commander")
@@ -34,10 +38,12 @@ func TestMoxfieldHandlerValidation(t *testing.T) {
 }
 
 func TestArchidektHandlerValidation(t *testing.T) {
+	t.Parallel()
 	s := &Server{}
 	ctx := t.Context()
 
 	t.Run("get deck missing id", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetArchidektDeck(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing deck_id")
@@ -45,6 +51,7 @@ func TestArchidektHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("get deck invalid id", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetArchidektDeck(ctx, toolRequest(map[string]any{argDeckID: "not-a-number"}))
 		if !res.IsError {
 			t.Error("expected error for invalid deck_id")
@@ -52,6 +59,7 @@ func TestArchidektHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("user decks missing username", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetArchidektUserDecks(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing username")
@@ -59,6 +67,7 @@ func TestArchidektHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("search missing commander", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleSearchArchidektDecks(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing commander")
@@ -67,10 +76,12 @@ func TestArchidektHandlerValidation(t *testing.T) {
 }
 
 func TestEDHRECHandlerValidation(t *testing.T) {
+	t.Parallel()
 	s := &Server{}
 	ctx := t.Context()
 
 	t.Run("recommendations missing commander", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetEDHRECRecommendations(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing commander")
@@ -78,6 +89,7 @@ func TestEDHRECHandlerValidation(t *testing.T) {
 	})
 
 	t.Run("combos missing colors", func(t *testing.T) {
+		t.Parallel()
 		res, _ := s.handleGetEDHRECCombos(ctx, toolRequest(nil))
 		if !res.IsError {
 			t.Error("expected error for missing colors")

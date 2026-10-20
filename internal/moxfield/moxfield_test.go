@@ -11,6 +11,7 @@ import (
 )
 
 func TestExtractPublicID(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -40,6 +41,7 @@ func TestExtractPublicID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := ExtractPublicID(tt.input)
 			if got != tt.want {
 				t.Errorf("ExtractPublicID() = %v, want %v", got, tt.want)
@@ -49,6 +51,7 @@ func TestExtractPublicID(t *testing.T) {
 }
 
 func TestGetDeck(t *testing.T) {
+	t.Parallel()
 	mockDeck := Deck{
 		ID:          "test-id",
 		PublicID:    testShortID,
@@ -107,6 +110,7 @@ func TestGetDeck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.checkHeaders {
 					if ua := r.Header.Get("User-Agent"); ua != "MTG-Commander-MCP-Server/1.0" {
@@ -142,6 +146,7 @@ func TestGetDeck(t *testing.T) {
 }
 
 func TestGetUserDecks(t *testing.T) {
+	t.Parallel()
 	mockResponse := UserDecksResponse{
 		PageNumber:   1,
 		PageSize:     20,
@@ -202,6 +207,7 @@ func TestGetUserDecks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if got := r.URL.Query().Get("authorUserNames"); got != tt.username {
 					t.Errorf("authorUserNames = %q, want %q", got, tt.username)
@@ -234,6 +240,7 @@ func TestGetUserDecks(t *testing.T) {
 }
 
 func TestSearchDecks(t *testing.T) {
+	t.Parallel()
 	mockResponse := SearchResponse{
 		PageNumber:   1,
 		PageSize:     20,
@@ -310,6 +317,7 @@ func TestSearchDecks(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.checkQuery {
 					query := r.URL.Query()
@@ -350,6 +358,7 @@ func TestSearchDecks(t *testing.T) {
 }
 
 func TestSearchDecks_PageSizeValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		inputPageSize  int
@@ -379,6 +388,7 @@ func TestSearchDecks_PageSizeValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			var gotPageSize string
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotPageSize = r.URL.Query().Get("pageSize")
@@ -408,6 +418,7 @@ func TestSearchDecks_PageSizeValidation(t *testing.T) {
 }
 
 func TestSearchDecksSendsVerifiedParams(t *testing.T) {
+	t.Parallel()
 	var gotQuery url.Values
 	var gotPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -456,6 +467,7 @@ func TestSearchDecksSendsVerifiedParams(t *testing.T) {
 }
 
 func TestParseSortType(t *testing.T) {
+	t.Parallel()
 	for _, valid := range []string{testSortUpdated, "created", testSortViews, "likes", "comments", "relevance"} {
 		if got, err := ParseSortType(valid); err != nil || got != valid {
 			t.Errorf("ParseSortType(%q) = (%q, %v), want (%q, nil)", valid, got, err, valid)
@@ -470,6 +482,7 @@ func TestParseSortType(t *testing.T) {
 }
 
 func TestSortDirection(t *testing.T) {
+	t.Parallel()
 	if got := SortDirection(false); got != DirectionDescending {
 		t.Errorf("descending = %q, want Descending", got)
 	}
@@ -481,6 +494,7 @@ func TestSortDirection(t *testing.T) {
 // TestMoxfieldSearchURLWiring pins the fix for the production HTTP 404: deck reads and deck
 // search live on different Moxfield hosts, and the server must be built with the search URL.
 func TestMoxfieldSearchURLWiring(t *testing.T) {
+	t.Parallel()
 	if DefaultSearchURL == DefaultBaseURL {
 		t.Fatal("the search URL must differ from the deck-read base URL")
 	}
@@ -497,6 +511,7 @@ func TestMoxfieldSearchURLWiring(t *testing.T) {
 }
 
 func TestFormatDeck(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		Name:         testDeckName,
 		Format:       testFormatCommander,
@@ -559,6 +574,7 @@ func TestFormatDeck(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := FormatDeck(tt.deck)
 
 			for _, want := range tt.wantContains {
@@ -571,6 +587,7 @@ func TestFormatDeck(t *testing.T) {
 }
 
 func TestGroupDeckCards(t *testing.T) {
+	t.Parallel()
 	mainboard := map[string]CardEntry{
 		"a": {Quantity: 1, Card: CardInfo{Name: "Counterspell", TypeLine: testInstant}},
 		"b": {Quantity: 1, Card: CardInfo{Name: "Ponder", TypeLine: "Sorcery"}},
@@ -609,6 +626,7 @@ func TestGroupDeckCards(t *testing.T) {
 }
 
 func TestFormatDeckSideboardAndMaybeboard(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		Name:   testDeckName,
 		Format: testFormatCommander,
@@ -640,6 +658,7 @@ func TestFormatDeckSideboardAndMaybeboard(t *testing.T) {
 }
 
 func TestFormatDeckOthers(t *testing.T) {
+	t.Parallel()
 	deck := &Deck{
 		Name:   testDeckName,
 		Format: testFormatCommander,
@@ -659,8 +678,12 @@ func TestFormatDeckOthers(t *testing.T) {
 }
 
 func TestFormatDeckHeaderAuthors(t *testing.T) {
+	t.Parallel(
 	// The live API's shape, confirmed against a real deck read.
+	)
+
 	t.Run("user objects show their usernames", func(t *testing.T) {
+		t.Parallel()
 		deck := &Deck{
 			Name:   testName,
 			Format: testFormatCommander,
@@ -676,6 +699,7 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 	})
 
 	t.Run("non-slice authors skipped gracefully", func(t *testing.T) {
+		t.Parallel()
 		deck := &Deck{
 			Name:    testName,
 			Format:  testFormatCommander,
@@ -688,6 +712,7 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 	})
 
 	t.Run("slice with non-string values skipped", func(t *testing.T) {
+		t.Parallel()
 		deck := &Deck{
 			Name:    testName,
 			Format:  testFormatCommander,
@@ -703,6 +728,7 @@ func TestFormatDeckHeaderAuthors(t *testing.T) {
 // TestNewClient pins the production settings: search lives on a different host from deck
 // reads, and verification requests must be spaced.
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	c := NewClient()
 	if c.BaseURL != DefaultBaseURL || c.SearchURL != DefaultSearchURL {
 		t.Errorf("NewClient() URLs = %q, %q", c.BaseURL, c.SearchURL)

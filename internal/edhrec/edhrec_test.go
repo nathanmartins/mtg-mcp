@@ -10,6 +10,7 @@ import (
 )
 
 func TestSanitizeCardName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name  string
 		input string
@@ -64,6 +65,7 @@ func TestSanitizeCardName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := SanitizeCardName(tt.input)
 			if got != tt.want {
 				t.Errorf("SanitizeCardName() = %v, want %v", got, tt.want)
@@ -73,6 +75,7 @@ func TestSanitizeCardName(t *testing.T) {
 }
 
 func TestGetCommanderPage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		commanderName string
@@ -165,6 +168,7 @@ func TestGetCommanderPage(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.checkURL && !strings.HasSuffix(r.URL.Path, tt.expectedURL) {
 					t.Errorf("Request URL = %v, want suffix %v", r.URL.Path, tt.expectedURL)
@@ -196,6 +200,7 @@ func TestGetCommanderPage(t *testing.T) {
 }
 
 func TestGetSetCards(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setCode     string
@@ -231,6 +236,7 @@ func TestGetSetCards(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if tt.expectedURL != "" && !strings.HasSuffix(r.URL.Path, tt.expectedURL) {
 					t.Errorf("Request URL = %v, want suffix %v", r.URL.Path, tt.expectedURL)
@@ -252,6 +258,7 @@ func TestGetSetCards(t *testing.T) {
 }
 
 func TestGetCombosForColors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		colors       string
@@ -294,6 +301,7 @@ func TestGetCombosForColors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockStatus == http.StatusOK {
@@ -321,6 +329,7 @@ func TestGetCombosForColors(t *testing.T) {
 }
 
 func TestFormatCommanderRecs(t *testing.T) {
+	t.Parallel()
 	page := &Response{
 		Container: Container{
 			JSONDict: Data{
@@ -378,6 +387,7 @@ func TestFormatCommanderRecs(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := FormatCommanderRecs(tt.page, RecFilter{}, tt.limit)
 
 			for _, want := range tt.wantContains {
@@ -398,7 +408,9 @@ func TestFormatCommanderRecs(t *testing.T) {
 }
 
 func TestFormatCommanderRecsDeckStats(t *testing.T) {
+	t.Parallel()
 	t.Run("nonzero total decks shows percentage", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
@@ -419,6 +431,7 @@ func TestFormatCommanderRecsDeckStats(t *testing.T) {
 	})
 
 	t.Run("zero total decks shows raw count only", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
@@ -440,6 +453,7 @@ func TestFormatCommanderRecsDeckStats(t *testing.T) {
 }
 
 func TestFormatCommanderRecsThemes(t *testing.T) {
+	t.Parallel()
 	tags := make([]TagCount, 20)
 	for i := range tags {
 		tags[i] = TagCount{
@@ -456,6 +470,7 @@ func TestFormatCommanderRecsThemes(t *testing.T) {
 	}
 
 	t.Run("unfiltered shows available themes", func(t *testing.T) {
+		t.Parallel()
 		got := FormatCommanderRecs(page, RecFilter{}, 10)
 		if !strings.Contains(got, "## Available Themes") {
 			t.Error("expected Available Themes section")
@@ -472,6 +487,7 @@ func TestFormatCommanderRecsThemes(t *testing.T) {
 	})
 
 	t.Run("filtered suppresses available themes", func(t *testing.T) {
+		t.Parallel()
 		got := FormatCommanderRecs(page, RecFilter{Theme: testThemeInfect}, 10)
 		if strings.Contains(got, "## Available Themes") {
 			t.Error("Available Themes section should be suppressed when a filter is active")
@@ -480,7 +496,9 @@ func TestFormatCommanderRecsThemes(t *testing.T) {
 }
 
 func TestFormatCommanderRecsHeader(t *testing.T) {
+	t.Parallel()
 	t.Run("uses page header when present", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Header: "X (Commander) - Budget Infect",
 			Container: Container{
@@ -494,6 +512,7 @@ func TestFormatCommanderRecsHeader(t *testing.T) {
 	})
 
 	t.Run("falls back to card name when header is empty", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{Card: CardInfo{Name: "Fallback Commander"}},
@@ -507,7 +526,9 @@ func TestFormatCommanderRecsHeader(t *testing.T) {
 }
 
 func TestFormatSetCards(t *testing.T) {
+	t.Parallel()
 	t.Run("commander and card views", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Header: testRNAName,
 			Container: Container{
@@ -540,6 +561,7 @@ func TestFormatSetCards(t *testing.T) {
 	})
 
 	t.Run("truncation and unlimited", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
@@ -575,6 +597,7 @@ func TestFormatSetCards(t *testing.T) {
 }
 
 func TestFormatCombos(t *testing.T) {
+	t.Parallel()
 	data := &ComboData{
 		CardLists: []ComboList{
 			{
@@ -633,6 +656,7 @@ func TestFormatCombos(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := FormatCombos(tt.data, tt.limit)
 
 			for _, want := range tt.wantContains {
@@ -649,7 +673,9 @@ func TestFormatCombos(t *testing.T) {
 }
 
 func TestFormatCommanderRecsEdgeCases(t *testing.T) {
+	t.Parallel()
 	t.Run("empty card list skipped", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
@@ -673,6 +699,7 @@ func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 	})
 
 	t.Run("zero synergy and zero salt omitted", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
@@ -695,6 +722,7 @@ func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 	})
 
 	t.Run("truncation suffix shown", func(t *testing.T) {
+		t.Parallel()
 		page := &Response{
 			Container: Container{
 				JSONDict: Data{
@@ -717,6 +745,7 @@ func TestFormatCommanderRecsEdgeCases(t *testing.T) {
 }
 
 func TestComboPageName(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		colors  string
 		want    string
@@ -752,6 +781,7 @@ func TestComboPageName(t *testing.T) {
 }
 
 func TestGetCombosForColorsRequestsNamedPage(t *testing.T) {
+	t.Parallel()
 	var gotPath string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -768,6 +798,7 @@ func TestGetCombosForColorsRequestsNamedPage(t *testing.T) {
 }
 
 func TestNewClient(t *testing.T) {
+	t.Parallel()
 	if got := NewClient().BaseURL; got != DefaultBaseURL {
 		t.Errorf("NewClient().BaseURL = %q, want %q", got, DefaultBaseURL)
 	}

@@ -29,6 +29,7 @@ func jsonServer(t *testing.T, status int, body any) string {
 }
 
 func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
+	t.Parallel()
 	deck := moxfield.Deck{
 		PublicID: testDeckID,
 		Name:     "Atraxa Superfriends",
@@ -58,6 +59,7 @@ func TestHandleGetMoxfieldDeckSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldDeckFailure(t *testing.T) {
+	t.Parallel()
 	s := &Server{moxfield: &moxfield.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetMoxfieldDeck(t.Context(), toolRequest(map[string]any{argDeckID: testDeckID}))
 	if !res.IsError {
@@ -66,6 +68,7 @@ func TestHandleGetMoxfieldDeckFailure(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
+	t.Parallel()
 	resp := moxfield.UserDecksResponse{
 		PageNumber:   1,
 		PageSize:     20,
@@ -102,6 +105,7 @@ func TestHandleGetMoxfieldUserDecksSuccess(t *testing.T) {
 }
 
 func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
+	t.Parallel()
 	s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetMoxfieldUserDecks(t.Context(), toolRequest(map[string]any{argUsername: testUsername}))
 	if !res.IsError {
@@ -110,7 +114,9 @@ func TestHandleGetMoxfieldUserDecksFailure(t *testing.T) {
 }
 
 func TestHandleSearchMoxfieldDecks(t *testing.T) {
+	t.Parallel()
 	t.Run("with results and overrides", func(t *testing.T) {
+		t.Parallel()
 		resp := moxfield.SearchResponse{
 			PageNumber:   3,
 			TotalResults: 1,
@@ -174,8 +180,11 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("default limit never asks for more candidates than verification can read", func(t *testing.T) {
+		t.Parallel(
 		// The default limit of 10 would over-fetch 50 candidates, but only the first 20 can
 		// ever be verified and page 2 starts after candidate 50, so 21-50 would be lost.
+		)
+
 		var gotQuery url.Values
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotQuery = r.URL.Query()
@@ -199,6 +208,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
+		t.Parallel()
 		resp := moxfield.SearchResponse{PageNumber: 1, TotalResults: 0, TotalPages: 0, Data: nil}
 		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, resp)}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{paramCommander: "Nobody"}))
@@ -208,6 +218,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 		res, _ := s.handleSearchMoxfieldDecks(t.Context(), toolRequest(map[string]any{paramCommander: testAtraxaShort}))
 		if !res.IsError {
@@ -216,7 +227,10 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
+		t.Parallel(
 		// The stub answers 200 on any path, so only local validation can make this an error.
+		)
+
 		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}}
 		res, _ := s.handleSearchMoxfieldDecks(
 			t.Context(),
@@ -231,8 +245,11 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("limit beyond the verification budget is rejected", func(t *testing.T) {
+		t.Parallel(
 		// Verification confirms at most moxfield.VerifyMaxChecks decks per call, so a
 		// larger limit could never be honoured and must not be silently truncated.
+		)
+
 		s := &Server{moxfield: &moxfield.Client{SearchURL: jsonServer(t, http.StatusOK, moxfield.SearchResponse{})}}
 		res, _ := s.handleSearchMoxfieldDecks(
 			t.Context(),
@@ -250,6 +267,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("limit at the verification budget is accepted", func(t *testing.T) {
+		t.Parallel()
 		var gotQuery url.Values
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotQuery = r.URL.Query()
@@ -275,6 +293,7 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 	})
 
 	t.Run("wrong-typed page is rejected", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{moxfield: &moxfield.Client{SearchURL: unreachableURL}}
 		res, _ := s.handleSearchMoxfieldDecks(
 			t.Context(),
@@ -287,9 +306,12 @@ func TestHandleSearchMoxfieldDecks(t *testing.T) {
 }
 
 func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
+	t.Parallel(
 	// limit 1 is satisfied by the first candidate, so the other two are never fetched.
 	// Page 2 resumes after this whole candidate page, so they are not merely deferred:
 	// nothing will ever look at them, and the output must admit it.
+	)
+
 	searchServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(moxfield.SearchResponse{
 			PageNumber: 1, TotalResults: 3, TotalPages: 1,
@@ -329,6 +351,7 @@ func TestHandleSearchMoxfieldDecksDisclosesUnexaminedCandidates(t *testing.T) {
 }
 
 func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
+	t.Parallel()
 	matching := moxfield.DeckSummary{PublicID: "yes1", Name: "Atraxa Superfriends", Format: defaultFormat}
 	other := moxfield.DeckSummary{PublicID: "no1", Name: "Winota Blink", Format: defaultFormat}
 
@@ -372,14 +395,18 @@ func TestHandleSearchMoxfieldDecksVerifiesCommander(t *testing.T) {
 }
 
 func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T) {
+	t.Parallel(
 	// SortDirection holds Moxfield's wire value, which the handler produces; the output
 	// must be rendered back in the asc/desc vocabulary the caller actually passed.
+	)
+
 	params := moxfield.SearchParams{
 		Format: defaultFormat, SortType: testSortViews, SortDirection: moxfield.DirectionDescending,
 	}
 	results := &moxfield.SearchResponse{PageNumber: 1, TotalPages: 1, TotalResults: 3}
 
 	t.Run("unreadable decks are named", func(t *testing.T) {
+		t.Parallel()
 		text := formatMoxfieldCommanderSearch(testAtraxa, params, results, moxfield.CommanderSearch{
 			Candidates: 3,
 			Checked:    3,
@@ -396,6 +423,7 @@ func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T)
 	})
 
 	t.Run("a clean verification says nothing about fetch failures", func(t *testing.T) {
+		t.Parallel()
 		text := formatMoxfieldCommanderSearch(testAtraxa, params, results, moxfield.CommanderSearch{
 			Candidates: 3,
 			Checked:    3,
@@ -409,6 +437,7 @@ func TestFormatMoxfieldCommanderSearchReportsUnfetchableCandidates(t *testing.T)
 	})
 
 	t.Run("the sort direction is echoed in the caller's vocabulary", func(t *testing.T) {
+		t.Parallel()
 		text := formatMoxfieldCommanderSearch(testAtraxa, params, results,
 			moxfield.CommanderSearch{Candidates: 3, Checked: 3})
 		if !strings.Contains(text, "**Sort:** views (desc)") {
@@ -450,9 +479,11 @@ func sampleArchidektDeck() archidekt.Deck {
 }
 
 func TestHandleGetArchidektDeckSuccess(t *testing.T) {
+	t.Parallel()
 	url := jsonServer(t, http.StatusOK, sampleArchidektDeck())
 
 	t.Run("full deck", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: url}}
 		res, err := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{argDeckID: "123"}))
 		if err != nil {
@@ -464,6 +495,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 	})
 
 	t.Run("lands only", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: url}}
 		res, err := s.handleGetArchidektDeck(
 			t.Context(),
@@ -479,6 +511,7 @@ func TestHandleGetArchidektDeckSuccess(t *testing.T) {
 }
 
 func TestHandleGetArchidektDeckFailure(t *testing.T) {
+	t.Parallel()
 	s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 	res, _ := s.handleGetArchidektDeck(t.Context(), toolRequest(map[string]any{argDeckID: "123"}))
 	if !res.IsError {
@@ -487,7 +520,9 @@ func TestHandleGetArchidektDeckFailure(t *testing.T) {
 }
 
 func TestHandleGetArchidektUserDecks(t *testing.T) {
+	t.Parallel()
 	t.Run("with results and pagination", func(t *testing.T) {
+		t.Parallel()
 		resp := archidekt.UserDecksResponse{
 			Count: 2,
 			Next:  "https://archidekt.com/api/decks/v3/?page=2",
@@ -512,6 +547,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 	})
 
 	t.Run("no results", func(t *testing.T) {
+		t.Parallel()
 		resp := archidekt.UserDecksResponse{Count: 0, Next: "", Results: nil}
 		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusOK, resp)}}
 		res, _ := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{argUsername: testUsername}))
@@ -521,6 +557,7 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 		res, _ := s.handleGetArchidektUserDecks(t.Context(), toolRequest(map[string]any{argUsername: testUsername}))
 		if !res.IsError {
@@ -530,7 +567,9 @@ func TestHandleGetArchidektUserDecks(t *testing.T) {
 }
 
 func TestHandleSearchArchidektDecks(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		resp := archidekt.UserDecksResponse{
 			Count: 1,
 			Results: []archidekt.DeckSummary{
@@ -559,6 +598,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("colour filter is echoed as it was sent", func(t *testing.T) {
+		t.Parallel()
 		var gotQuery url.Values
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotQuery = r.URL.Query()
@@ -585,6 +625,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusInternalServerError, nil)}}
 		res, _ := s.handleSearchArchidektDecks(
 			t.Context(),
@@ -596,6 +637,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("invalid sort is rejected", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: unreachableURL}}
 		res, _ := s.handleSearchArchidektDecks(
 			t.Context(),
@@ -608,6 +650,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("invalid colors are rejected", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: unreachableURL}}
 		res, _ := s.handleSearchArchidektDecks(
 			t.Context(),
@@ -619,6 +662,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("wrong-typed limit is rejected", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: unreachableURL}}
 		res, _ := s.handleSearchArchidektDecks(
 			t.Context(),
@@ -630,6 +674,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("empty sort is rejected", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: unreachableURL}}
 		res, _ := s.handleSearchArchidektDecks(
 			t.Context(),
@@ -641,8 +686,11 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("page beyond the reachable range is rejected", func(t *testing.T) {
+		t.Parallel(
 		// (page-1)*limit used to overflow int here, producing a negative window offset
 		// and panicking on collected[offset:end] after a perfectly successful fetch.
+		)
+
 		s := &Server{
 			archidekt: &archidekt.Client{BaseURL: jsonServer(t, http.StatusOK, archidekt.UserDecksResponse{
 				Count:   5,
@@ -668,6 +716,7 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 	})
 
 	t.Run("fractional limit is rejected", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{archidekt: &archidekt.Client{BaseURL: unreachableURL}}
 		res, _ := s.handleSearchArchidektDecks(
 			t.Context(),
@@ -680,7 +729,9 @@ func TestHandleSearchArchidektDecks(t *testing.T) {
 }
 
 func TestHandleGetEDHRECRecommendations(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		resp := edhrec.Response{
 			Container: edhrec.Container{
 				JSONDict: edhrec.Data{
@@ -710,6 +761,7 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusNotFound, nil)}}
 		res, _ := s.handleGetEDHRECRecommendations(
 			t.Context(),
@@ -722,7 +774,9 @@ func TestHandleGetEDHRECRecommendations(t *testing.T) {
 }
 
 func TestHandleGetEDHRECCombos(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		resp := edhrec.ComboResponse{
 			Container: edhrec.ComboContainer{
 				JSONDict: edhrec.ComboData{
@@ -750,6 +804,7 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusNotFound, nil)}}
 		res, _ := s.handleGetEDHRECCombos(t.Context(), toolRequest(map[string]any{argColors: "zz"}))
 		if !res.IsError {
@@ -759,7 +814,9 @@ func TestHandleGetEDHRECCombos(t *testing.T) {
 }
 
 func TestHandleGetEDHRECSetCards(t *testing.T) {
+	t.Parallel()
 	t.Run("success", func(t *testing.T) {
+		t.Parallel()
 		resp := edhrec.Response{
 			Header: "Ravnica Allegiance",
 			Container: edhrec.Container{
@@ -784,6 +841,7 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 	})
 
 	t.Run("failure", func(t *testing.T) {
+		t.Parallel()
 		s := &Server{edhrec: &edhrec.Client{BaseURL: jsonServer(t, http.StatusForbidden, nil)}}
 		res, _ := s.handleGetEDHRECSetCards(t.Context(), toolRequest(map[string]any{paramSet: "notaset"}))
 		if !res.IsError {
@@ -796,7 +854,9 @@ func TestHandleGetEDHRECSetCards(t *testing.T) {
 }
 
 func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
+	t.Parallel()
 	t.Run("invalid theme suggests the real slug", func(t *testing.T) {
+		t.Parallel()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasSuffix(r.URL.Path, "/commanders/atraxa-praetors-voice/infekt.json"):
@@ -830,6 +890,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 	})
 
 	t.Run("valid-looking theme that still fails does not misreport an outage", func(t *testing.T) {
+		t.Parallel()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusForbidden)
 		}))
@@ -853,6 +914,7 @@ func TestHandleGetEDHRECRecommendationsThemeHint(t *testing.T) {
 }
 
 func TestHandleGetEDHRECRecommendationsBadPriceTier(t *testing.T) {
+	t.Parallel()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		t.Error("no HTTP request should be made for an invalid price tier")
 		w.WriteHeader(http.StatusOK)

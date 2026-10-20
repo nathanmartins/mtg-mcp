@@ -8,6 +8,7 @@ import (
 // TestScryfallLimiterSpacesRequests checks the limiter configuration: requests are spaced at
 // the two-per-second rate even after idle time, with no banked burst.
 func TestScryfallLimiterSpacesRequests(t *testing.T) {
+	t.Parallel()
 	limiter := newScryfallLimiter()
 	limiter.Take()
 	time.Sleep(time.Second) // idle time that a slack-enabled limiter would bank as a burst

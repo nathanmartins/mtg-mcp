@@ -8,6 +8,7 @@ import (
 )
 
 func TestSortAscendingArg(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		args    map[string]any
@@ -23,6 +24,7 @@ func TestSortAscendingArg(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := sortAscendingArg(tt.args)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("sortAscendingArg() error = %v, wantErr %v", err, tt.wantErr)
@@ -35,6 +37,7 @@ func TestSortAscendingArg(t *testing.T) {
 }
 
 func TestCappedIntArg(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name    string
 		args    map[string]any
@@ -52,6 +55,7 @@ func TestCappedIntArg(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := cappedIntArg(tt.args, argLimit, 10, 1, 50)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("cappedIntArg() error = %v, wantErr %v", err, tt.wantErr)
@@ -67,6 +71,7 @@ func TestCappedIntArg(t *testing.T) {
 // reports a bad value instead of silently substituting its default. Validation runs before
 // any upstream call, so a zero Server is enough.
 func TestHandlersRejectInvalidNumbers(t *testing.T) {
+	t.Parallel()
 	s := &Server{}
 	tests := []struct {
 		name    string
@@ -91,6 +96,7 @@ func TestHandlersRejectInvalidNumbers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			res, err := tt.handler(t.Context(), toolRequest(tt.args))
 			if err != nil {
 				t.Fatalf("handler returned a Go error: %v", err)

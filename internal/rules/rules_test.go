@@ -35,6 +35,7 @@ A keyword ability that causes damage dealt by an object to be lethal. See rule 7
 `
 
 func TestParse(t *testing.T) {
+	t.Parallel()
 	cr := Parse(sampleRulesTxt)
 
 	for _, num := range []string{"100.1", testTrampleRule, "702.19a", "702.19b"} {
@@ -60,6 +61,7 @@ func TestParse(t *testing.T) {
 }
 
 func TestRulesLookups(t *testing.T) {
+	t.Parallel()
 	cr := Parse(sampleRulesTxt)
 
 	// Rule with subrules
@@ -103,6 +105,7 @@ func TestRulesLookups(t *testing.T) {
 }
 
 func TestGetWithURL(t *testing.T) {
+	t.Parallel()
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ".txt") {
@@ -127,6 +130,7 @@ func TestGetWithURL(t *testing.T) {
 }
 
 func TestGetWithURL_NoLink(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `<html><body>no rules link here</body></html>`)
 	}))
@@ -138,6 +142,7 @@ func TestGetWithURL_NoLink(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
+	t.Parallel()
 	var pageHits int
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -169,6 +174,7 @@ func TestCache(t *testing.T) {
 }
 
 func TestCache_StaleOnError(t *testing.T) {
+	t.Parallel()
 	cache := &Cache{
 		rules:     Parse(sampleRulesTxt),
 		fetchedAt: time.Now().Add(-2 * rulesCacheTTL), // expired
@@ -189,6 +195,7 @@ func TestCache_StaleOnError(t *testing.T) {
 }
 
 func TestRulesFormatters(t *testing.T) {
+	t.Parallel()
 	r := FormatRule(testTrampleRule, "702.19. Trample")
 	if !strings.Contains(r, "# Rule 702.19") || !strings.Contains(r, "Trample") {
 		t.Errorf("FormatRule wrong:\n%s", r)
@@ -214,6 +221,7 @@ func TestRulesFormatters(t *testing.T) {
 }
 
 func TestRulesHTTPGetRejectsOversizedBody(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		// One byte over the cap.
 		fmt.Fprint(w, strings.Repeat("a", rulesMaxBodyBytes+1))
@@ -226,7 +234,10 @@ func TestRulesHTTPGetRejectsOversizedBody(t *testing.T) {
 }
 
 func TestGetWithURLRejectsForeignHost(t *testing.T) {
+	t.Parallel(
 	// The page links to a .txt on a host unrelated to the page host — must be rejected, not fetched.
+	)
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		fmt.Fprint(w, `<html><a href="http://evil.example/MagicCompRules 20260619.txt">r</a></html>`)
 	}))
@@ -242,7 +253,10 @@ func TestGetWithURLRejectsForeignHost(t *testing.T) {
 }
 
 func TestGetWithURLRejectsEmptyParse(t *testing.T) {
+	t.Parallel(
 	// A 200 response whose body has no parseable rules must be treated as a failure, not cached.
+	)
+
 	var server *httptest.Server
 	server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ".txt") {
@@ -259,6 +273,7 @@ func TestGetWithURLRejectsEmptyParse(t *testing.T) {
 }
 
 func TestRulesHTTPGetReportsStatus(t *testing.T) {
+	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusServiceUnavailable)
 	}))

@@ -120,7 +120,9 @@ const (
 )
 
 func TestHandleGetCardImageValidation(t *testing.T) {
+	t.Parallel()
 	t.Run("missing name returns error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when name is missing")
 		})
@@ -134,6 +136,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 	})
 
 	t.Run("invalid size returns error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when size is invalid")
 		})
@@ -147,6 +150,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 	})
 
 	t.Run("card not found returns error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			scryfallError(w, http.StatusNotFound)
 		})
@@ -157,6 +161,7 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 	})
 
 	t.Run("download failure returns error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
@@ -171,7 +176,9 @@ func TestHandleGetCardImageValidation(t *testing.T) {
 }
 
 func TestHandleGetCardImageRendering(t *testing.T) {
+	t.Parallel()
 	t.Run("english single-faced card returns structuredContent + fixed ui:// URI", func(t *testing.T) {
+		t.Parallel()
 		searched := false
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/search") {
@@ -216,6 +223,7 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 	})
 
 	t.Run("size parameter selects png data URI", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
@@ -237,6 +245,7 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 	})
 
 	t.Run("double-faced card yields one image per face", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverImageJSON)
 		})
@@ -258,7 +267,9 @@ func TestHandleGetCardImageRendering(t *testing.T) {
 }
 
 func TestHandleGetCardImageLanguage(t *testing.T) {
+	t.Parallel()
 	t.Run("localized italian printing", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case strings.HasPrefix(r.URL.Path, "/cards/named"):
@@ -288,6 +299,7 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 	})
 
 	t.Run("falls back to english when no localized printing", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/search") {
 				scryfallError(w, http.StatusNotFound)
@@ -312,7 +324,9 @@ func TestHandleGetCardImageLanguage(t *testing.T) {
 }
 
 func TestHandleGetCardImageEdition(t *testing.T) {
+	t.Parallel()
 	t.Run("set selects that set's printing", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if strings.HasPrefix(r.URL.Path, "/cards/named") && r.URL.Query().Get("set") == testSetC21 {
 				jsonResponse(w, solRingC21JSON)
@@ -338,6 +352,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("set + collector_number selects the exact printing", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/cards/c21/263" {
 				jsonResponse(w, solRingC21JSON)
@@ -365,6 +380,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("collector_number pointing at a different card falls back to default", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			switch {
 			case r.URL.Path == "/cards/xyz/999":
@@ -389,6 +405,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("collector_number without set is an error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called when collector_number lacks set")
 		})
@@ -402,6 +419,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 	})
 
 	t.Run("unknown set falls back to the default printing", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Query().Get("set") == testGibberish {
 				scryfallError(w, http.StatusNotFound)
@@ -430,6 +448,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 }
 
 func TestHandleGetCardImageFace(t *testing.T) {
+	t.Parallel()
 	dfc := func(t *testing.T) *Server {
 		t.Helper()
 		return newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
@@ -438,6 +457,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	}
 
 	t.Run("face=back returns only the back face", func(t *testing.T) {
+		t.Parallel()
 		res, _ := dfc(
 			t,
 		).handleGetCardImage(t.Context(), toolRequest(map[string]any{paramName: testDelver, paramFace: faceBack}))
@@ -449,6 +469,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=front returns only the front face", func(t *testing.T) {
+		t.Parallel()
 		res, _ := dfc(
 			t,
 		).handleGetCardImage(t.Context(), toolRequest(map[string]any{paramName: testDelver, paramFace: "front"}))
@@ -459,6 +480,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=front keys on card face order, not the image-filtered slice", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverFrontlessJSON)
 		})
@@ -475,6 +497,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=back returns the back even when the front lacks that size", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, delverFrontlessJSON)
 		})
@@ -489,6 +512,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("face=back on a single-faced card is an error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(w http.ResponseWriter, _ *http.Request) {
 			jsonResponse(w, solRingImageJSON)
 		})
@@ -502,6 +526,7 @@ func TestHandleGetCardImageFace(t *testing.T) {
 	})
 
 	t.Run("invalid face is an error", func(t *testing.T) {
+		t.Parallel()
 		s := newTestScryfallServer(t, func(http.ResponseWriter, *http.Request) {
 			t.Error("scryfall should not be called for an invalid face")
 		})
@@ -516,9 +541,12 @@ func TestHandleGetCardImageFace(t *testing.T) {
 }
 
 func TestHandleCardImageUIResource(t *testing.T) {
+	t.Parallel(
 	// The widget is a fixed, static resource: it renders no card itself and performs
 	// no download. Per-card images arrive via ui/notifications/tool-result, so the
 	// widget script reads structuredContent.images and runs the MCP Apps handshake.
+	)
+
 	s := &Server{}
 
 	contents, err := s.handleCardImageUIResource(t.Context(), readResourceRequest(cardImageWidgetURI))
@@ -541,6 +569,7 @@ func TestHandleCardImageUIResource(t *testing.T) {
 }
 
 func TestImageURLForSize(t *testing.T) {
+	t.Parallel()
 	iu := scryfall.ImageURIs{
 		Small:      "s",
 		Normal:     "n",
@@ -571,12 +600,14 @@ func TestImageURLForSize(t *testing.T) {
 }
 
 func TestGetImageBytes(t *testing.T) {
+	t.Parallel()
 	get := func(ctx context.Context, rawURL string) (*http.Response, error) {
 		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 		return http.DefaultClient.Do(req)
 	}
 
 	t.Run("downloads body", func(t *testing.T) {
+		t.Parallel()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("BYTES"))
@@ -593,6 +624,7 @@ func TestGetImageBytes(t *testing.T) {
 	})
 
 	t.Run("non-200 status is an error", func(t *testing.T) {
+		t.Parallel()
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}))
@@ -604,6 +636,7 @@ func TestGetImageBytes(t *testing.T) {
 	})
 
 	t.Run("getter error propagates", func(t *testing.T) {
+		t.Parallel()
 		getErr := func(context.Context, string) (*http.Response, error) {
 			return nil, http.ErrHandlerTimeout
 		}

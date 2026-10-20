@@ -9,6 +9,7 @@ import (
 )
 
 func TestGet(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		serverResponse string
@@ -41,7 +42,10 @@ func TestGet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel(
 			// Create test server
+			)
+
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				// Check headers if requested
 				if tt.checkHeaders {
@@ -80,7 +84,10 @@ func TestGet(t *testing.T) {
 }
 
 func TestGet_ContextCancellation(t *testing.T) {
+	t.Parallel(
 	// Create a server that delays response
+	)
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(100 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -100,9 +107,11 @@ func TestGet_ContextCancellation(t *testing.T) {
 }
 
 func TestGet_Timeout(t *testing.T) {
+	t.Parallel(
 	// Note: synctest doesn't work well with httptest.NewServer since it uses real TCP connections.
 	// Instead, we use a short real timeout (50ms) to keep the test fast.
 	// See: https://go.dev/blog/synctest (recommends net.Pipe for in-memory testing)
+	)
 
 	// Create a server that blocks until request context is cancelled
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
@@ -125,6 +134,7 @@ func TestGet_Timeout(t *testing.T) {
 }
 
 func TestGet_InvalidURL(t *testing.T) {
+	t.Parallel()
 	ctx := t.Context()
 	resp, err := Get(ctx, "://invalid-url")
 	if err == nil {
