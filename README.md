@@ -500,7 +500,6 @@ make ci
 | `make help`                  | Show all available commands                        |
 | `make build`                 | Build the binary                                   |
 | `make test-unit`             | Run unit tests only (fast, skips E2E)              |
-| `make test-race`             | Run unit tests with the race detector (no cgo)     |
 | `make test-e2e`              | Run E2E tests only                                 |
 | `make test`                  | Run all tests (unit + E2E)                         |
 | `make test-coverage`         | Generate HTML coverage report                      |
@@ -642,7 +641,7 @@ The project uses GitHub Actions with two main workflows:
 **CI Workflow** (runs on push/PR):
 
 - **Build**: Compiles the project for Linux/amd64
-- **Test**: Runs unit tests with the race detector, without cgo (E2E tests are excluded by the `e2e` build tag)
+- **Test**: Runs unit tests (E2E tests are excluded by the `e2e` build tag)
 - **Lint**: Runs golangci-lint for code quality checks
 - Fast feedback loop for development (skips E2E tests)
 
