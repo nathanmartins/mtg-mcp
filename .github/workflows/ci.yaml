@@ -7,10 +7,18 @@ on: # yamllint disable-line rule:truthy
     branches: [master, main]
     paths:
       - "**.go"
+      - go.mod
+      - go.sum
+      - .golangci.yml
+      - .github/workflows/ci.yaml
   pull_request:
     branches: [master, main]
     paths:
       - "**.go"
+      - go.mod
+      - go.sum
+      - .golangci.yml
+      - .github/workflows/ci.yaml
 
 permissions:
   contents: read
