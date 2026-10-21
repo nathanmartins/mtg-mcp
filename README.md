@@ -641,7 +641,7 @@ The project uses GitHub Actions with two main workflows:
 **CI Workflow** (runs on push/PR):
 
 - **Build**: Compiles the project for Linux/amd64
-- **Test**: Runs unit tests (E2E tests are excluded by the `e2e` build tag)
+- **Test**: Runs unit tests with the race detector, the only step that enables cgo (E2E tests are excluded)
 - **Lint**: Runs golangci-lint for code quality checks
 - Fast feedback loop for development (skips E2E tests)
 
