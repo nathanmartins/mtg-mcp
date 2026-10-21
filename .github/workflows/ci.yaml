@@ -73,10 +73,8 @@ jobs:
         run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /dev/null ./cmd/mtg-mcp
 
       - name: Run tests
-        # cgo is enabled for this step only: on Linux the race detector requires it. The
-        # binary itself is still built with CGO_ENABLED=0 (see Go Build above and goreleaser).
         run: |
-          CGO_ENABLED=1 go test -race -json -v ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
+          go test -json -v ./... 2>&1 | tee /tmp/gotest.log | gotestfmt
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
