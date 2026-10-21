@@ -220,3 +220,15 @@ func TestLogger_ConcurrentWrites(t *testing.T) {
 		t.Error("Log file is empty after concurrent writes")
 	}
 }
+
+func TestDefaultLoggerIsSilentUnlessRequested(t *testing.T) {
+	t.Setenv(testLogsEnv, "")
+	if got := newLoggerInstance().get().GetLevel(); got != zerolog.Disabled {
+		t.Errorf("default logger level = %v, want disabled so tests stay quiet", got)
+	}
+
+	t.Setenv(testLogsEnv, "1")
+	if got := newLoggerInstance().get().GetLevel(); got == zerolog.Disabled {
+		t.Errorf("with %s set the default logger must log, got level %v", testLogsEnv, got)
+	}
+}

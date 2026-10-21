@@ -531,6 +531,9 @@ go test -v -coverprofile=coverage.out -covermode=atomic ./...
 
 # View coverage report
 go tool cover -html=coverage.out
+
+# Show the server's log output while debugging a test (silenced by default)
+MTG_MCP_TEST_LOGS=1 go test -v -run TestHandleValidateDeck ./internal/mtgserver/
 ```
 
 ### End-to-End (E2E) Tests

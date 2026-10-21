@@ -28,8 +28,16 @@ func (l *loggerInstance) get() *zerolog.Logger {
 	return &l.logger
 }
 
-// newLoggerInstance creates a new logger instance with default configuration.
+// testLogsEnv, when set, makes the default logger write to stderr; see newLoggerInstance.
+const testLogsEnv = "MTG_MCP_TEST_LOGS"
+
+// newLoggerInstance returns the logger used until Init runs. The binary always calls Init
+// first, so in practice this is the logger tests see, and it discards everything to keep test
+// output readable. Set MTG_MCP_TEST_LOGS=1 to send it to stderr while debugging a test.
 func newLoggerInstance() *loggerInstance {
+	if os.Getenv(testLogsEnv) == "" {
+		return &loggerInstance{logger: zerolog.Nop()}
+	}
 	return &loggerInstance{
 		logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
 	}
