@@ -27,7 +27,7 @@ COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 BUILD_DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS=-ldflags="-w -s -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)"
 
-.PHONY: all build test test-unit test-e2e test-coverage clean fmt lint help install deps tidy docker-build docker-run docker-proxy
+.PHONY: all build test test-unit test-e2e test-race test-coverage clean fmt lint help install deps tidy docker-build docker-run docker-proxy
 
 # Default target
 all: fmt lint test-unit build
@@ -80,6 +80,11 @@ test-coverage-cli:
 update-coverage-badge:
 	@echo "Updating coverage badge..."
 	@./scripts/update-coverage-badge.sh
+
+## test-race: Run unit tests with the race detector (no cgo needed)
+test-race:
+	@echo "Running tests with race detector..."
+	CGO_ENABLED=0 $(GOTEST) -race -v ./...
 
 ## bench: Run benchmarks
 bench:
