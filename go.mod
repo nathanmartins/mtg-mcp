@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/BlueMonday/go-scryfall v0.10.0
-	github.com/mark3labs/mcp-go v1.3.0
+	github.com/mark3labs/mcp-go v1.4.0
 	github.com/rs/zerolog v1.35.1
 	go.uber.org/ratelimit v0.3.1
 )
