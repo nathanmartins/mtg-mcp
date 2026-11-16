@@ -40,3 +40,5 @@ build/
 # pi agent stuff
 .pi/
 coverage.html
+# nix build output
+result
