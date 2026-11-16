@@ -7,7 +7,8 @@
 
   outputs = { self, nixpkgs }:
     let
-      systems = [ "aarch64-darwin" ];
+      # x86_64-linux is for CI, which keeps vendorHash current on ubuntu runners.
+      systems = [ "aarch64-darwin" "x86_64-linux" ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
     in
     {
