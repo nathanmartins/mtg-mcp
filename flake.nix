@@ -19,6 +19,9 @@
           subPackages = [ "cmd/mtg-mcp" ];
           # Replace with the hash the first `nix build` prints; update it when go.sum changes.
           vendorHash = "sha256-D/bLlURyv6Wft1KWsJrvkKFcZBj2cxaHIYSPevBql8o=";
+          # The default name includes the version (the commit here), which would re-download every
+          # module on each new commit; keyed on pname alone they are reused until vendorHash changes.
+          overrideModAttrs = _: { name = "${pname}-go-modules"; };
           env.CGO_ENABLED = 0;
           ldflags = [
             "-s"
