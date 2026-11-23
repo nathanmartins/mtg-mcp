@@ -76,23 +76,23 @@ func assertContainsAll(t *testing.T, text string, want ...string) {
 const (
 	solRingImageJSON = `{
 		"id":"sol","name":"Sol Ring","lang":"en",
-		"image_uris":{"small":"https://img.test/small.jpg","normal":"https://img.test/en-normal.jpg",
-			"large":"https://img.test/large.jpg","png":"https://img.test/en.png",
-			"art_crop":"https://img.test/art.jpg","border_crop":"https://img.test/border.jpg"},
+		"image_uris":{"thumb":"https://img.test/small.jpg","jpeg":"https://img.test/en-normal.jpg",
+			"display":"https://img.test/large.jpg","png":"https://img.test/en.png",
+			"art":"https://img.test/art.jpg","crop":"https://img.test/border.jpg"},
 		"legalities":{"commander":"legal"}
 	}`
 
 	solRingItalianListJSON = `{"object":"list","total_cards":1,"has_more":false,"data":[{
 		"id":"sol-it","name":"Sol Ring","lang":"it","printed_name":"Anello Solare",
-		"image_uris":{"normal":"https://img.test/it-normal.jpg","png":"https://img.test/it.png"},
+		"image_uris":{"jpeg":"https://img.test/it-normal.jpg","png":"https://img.test/it.png"},
 		"legalities":{"commander":"legal"}
 	}]}`
 
 	delverImageJSON = `{
 		"id":"delver","name":"Delver of Secrets // Insectile Aberration","lang":"en",
 		"card_faces":[
-			{"name":"Delver of Secrets","image_uris":{"normal":"https://img.test/front.jpg"}},
-			{"name":"Insectile Aberration","image_uris":{"normal":"https://img.test/back.jpg"}}
+			{"name":"Delver of Secrets","image_uris":{"jpeg":"https://img.test/front.jpg"}},
+			{"name":"Insectile Aberration","image_uris":{"jpeg":"https://img.test/back.jpg"}}
 		],
 		"legalities":{"commander":"legal"}
 	}`
@@ -103,8 +103,8 @@ const (
 	delverFrontlessJSON = `{
 		"id":"delver2","name":"Delver of Secrets // Insectile Aberration","lang":"en",
 		"card_faces":[
-			{"name":"Delver of Secrets","image_uris":{"large":"https://img.test/front-large.jpg"}},
-			{"name":"Insectile Aberration","image_uris":{"normal":"https://img.test/back.jpg"}}
+			{"name":"Delver of Secrets","image_uris":{"display":"https://img.test/front-large.jpg"}},
+			{"name":"Insectile Aberration","image_uris":{"jpeg":"https://img.test/back.jpg"}}
 		],
 		"legalities":{"commander":"legal"}
 	}`
@@ -112,9 +112,9 @@ const (
 	solRingC21JSON = `{
 		"id":"sol-c21","name":"Sol Ring","lang":"en","set":"c21","set_name":"Commander 2021",
 		"collector_number":"263",
-		"image_uris":{"small":"https://img.test/c21-small.jpg","normal":"https://img.test/c21-normal.jpg",
-			"large":"https://img.test/c21-large.jpg","png":"https://img.test/c21.png",
-			"art_crop":"https://img.test/c21-art.jpg","border_crop":"https://img.test/c21-border.jpg"},
+		"image_uris":{"thumb":"https://img.test/c21-small.jpg","jpeg":"https://img.test/c21-normal.jpg",
+			"display":"https://img.test/c21-large.jpg","png":"https://img.test/c21.png",
+			"art":"https://img.test/c21-art.jpg","crop":"https://img.test/c21-border.jpg"},
 		"legalities":{"commander":"legal"}
 	}`
 )
@@ -385,7 +385,7 @@ func TestHandleGetCardImageEdition(t *testing.T) {
 			switch {
 			case r.URL.Path == "/cards/xyz/999":
 				jsonResponse(w, `{"id":"other","name":"Fellwar Stone","lang":"en","set":"xyz",
-					"collector_number":"999","image_uris":{"normal":"https://img.test/other.jpg"},
+					"collector_number":"999","image_uris":{"jpeg":"https://img.test/other.jpg"},
 					"legalities":{"commander":"legal"}}`)
 			case r.URL.Query().Get("set") == "xyz":
 				scryfallError(w, http.StatusNotFound)
@@ -568,15 +568,32 @@ func TestHandleCardImageUIResource(t *testing.T) {
 	}
 }
 
+func TestImageMIMEType(t *testing.T) {
+	t.Parallel()
+	cases := map[string]string{
+		imageSizeSmall:      mimeWebP,
+		imageSizeNormal:     mimeJPEG,
+		imageSizeLarge:      mimeWebP,
+		imageSizePNG:        mimePNG,
+		imageSizeArtCrop:    mimeWebP,
+		imageSizeBorderCrop: mimeWebP,
+	}
+	for size, want := range cases {
+		if got := imageMIMEType(size); got != want {
+			t.Errorf("imageMIMEType(%q) = %q, want %q", size, got, want)
+		}
+	}
+}
+
 func TestImageURLForSize(t *testing.T) {
 	t.Parallel()
 	iu := scryfall.ImageURIs{
-		Small:      "s",
-		Normal:     "n",
-		Large:      "l",
-		PNG:        "p",
-		ArtCrop:    "a",
-		BorderCrop: "b",
+		Thumb:   "s",
+		JPEG:    "n",
+		Display: "l",
+		PNG:     "p",
+		Art:     "a",
+		Crop:    "b",
 	}
 	cases := []struct {
 		size string

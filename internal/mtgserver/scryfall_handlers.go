@@ -846,6 +846,7 @@ const (
 
 	mimeJPEG = "image/jpeg"
 	mimePNG  = "image/png"
+	mimeWebP = "image/webp"
 )
 
 // cardImage is a single downloadable card face image.
@@ -861,32 +862,37 @@ func isValidImageSize(size string) bool {
 	return ok
 }
 
-// imageMIMEType returns the MIME type for a Scryfall image size. Only the "png"
-// size is a PNG; every other size is JPEG.
+// imageMIMEType returns the MIME type for a Scryfall image size: "png" is a PNG,
+// "normal" is the one JPEG Scryfall keeps, and every other size is WebP.
 func imageMIMEType(size string) string {
-	if size == imageSizePNG {
+	switch size {
+	case imageSizePNG:
 		return mimePNG
+	case imageSizeNormal:
+		return mimeJPEG
+	default:
+		return mimeWebP
 	}
-
-	return mimeJPEG
 }
 
 // imageURLForSize returns the URL for the requested size and whether size is a
-// recognized image_uris key.
+// recognized size. Scryfall drops the old small, large, art_crop and border_crop
+// JPEGs after 2027-01-01, so each size maps to its WebP replacement and "normal"
+// to the "jpeg" key, which is the same image.
 func imageURLForSize(iu scryfall.ImageURIs, size string) (string, bool) {
 	switch size {
 	case imageSizeSmall:
-		return iu.Small, true
+		return iu.Thumb, true
 	case imageSizeNormal:
-		return iu.Normal, true
+		return iu.JPEG, true
 	case imageSizeLarge:
-		return iu.Large, true
+		return iu.Display, true
 	case imageSizePNG:
 		return iu.PNG, true
 	case imageSizeArtCrop:
-		return iu.ArtCrop, true
+		return iu.Art, true
 	case imageSizeBorderCrop:
-		return iu.BorderCrop, true
+		return iu.Crop, true
 	default:
 		return "", false
 	}
